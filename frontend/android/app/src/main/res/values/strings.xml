@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SGEN</string>
+    <string name="title_activity_main">SGEN</string>
+    <string name="package_name">com.sgen.app</string>
+    <string name="custom_url_scheme">com.sgen.app</string>
+</resources>

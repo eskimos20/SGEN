@@ -1,0 +1,175 @@
+app:
+  version: '@project.version@'
+
+spring:
+  application:
+    name: sgen-backend
+  
+  # Fix UTF-8 encoding issues - moved to server.servlet.encoding
+  
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+  
+  datasource:
+    url: jdbc:h2:file:./data/sgen;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        '[format_sql]': true
+
+server:
+  port: 8084
+  address: 0.0.0.0
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# Logging Configuration
+logging:
+  file:
+    name: ./logs/sgen.log
+  level:
+    root: INFO
+    '[com.sgen]': INFO
+    '[org.springframework.security]': WARN
+    '[org.hibernate.orm.connections.pooling]': WARN
+    '[org.springframework.security.config.annotation.authentication.configuration]': ERROR
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 0
+      clean-history-on-start: true
+
+# JWT Configuration
+jwt:
+  secret: @jwt.secret@
+  expiration: 3600000  # 1 hour for web (1000 * 60 * 60)
+  mobile-expiration: 31536000000  # 1 year for mobile (1000 * 60 * 60 * 24 * 365)
+
+# Intervals.icu API Configuration
+intervals:
+  api:
+    base-url: https://intervals.icu
+
+# OpenAI API Configuration
+openai:
+  api:
+    base-url: https://api.openai.com/v1
+  pricing:
+    # GPT-5 series
+    '[gpt-5.2]':
+      input: 1.75
+      output: 14.00
+    '[gpt-5.1]':
+      input: 1.25
+      output: 10.00
+    gpt-5:
+      input: 1.25
+      output: 10.00
+    gpt-5-mini:
+      input: 0.25
+      output: 2.00
+    gpt-5-nano:
+      input: 0.05
+      output: 0.40
+    '[gpt-5.2-pro]':
+      input: 21.00
+      output: 168.00
+    gpt-5-pro:
+      input: 15.00
+      output: 120.00
+    # GPT-4.1 series
+    '[gpt-4.1]':
+      input: 2.00
+      output: 8.00
+    '[gpt-4.1-mini]':
+      input: 0.40
+      output: 1.60
+    '[gpt-4.1-nano]':
+      input: 0.10
+      output: 0.40
+    # GPT-4o series
+    gpt-4o:
+      input: 2.50
+      output: 10.00
+    gpt-4o-mini:
+      input: 0.15
+      output: 0.60
+    # O-series reasoning models
+    o1:
+      input: 15.00
+      output: 60.00
+    o1-mini:
+      input: 1.10
+      output: 4.40
+    o1-pro:
+      input: 150.00
+      output: 600.00
+    o3:
+      input: 2.00
+      output: 8.00
+    o3-mini:
+      input: 1.10
+      output: 4.40
+    o3-pro:
+      input: 20.00
+      output: 80.00
+    o4-mini:
+      input: 1.10
+      output: 4.40
+    # Legacy models
+    '[gpt-4-turbo]':
+      input: 10.00
+      output: 30.00
+    gpt-4:
+      input: 30.00
+      output: 60.00
+    '[gpt-3.5-turbo]':
+      input: 0.50
+      output: 1.50
+
+# Strava API Configuration
+strava:
+  api:
+    base-url: https://www.strava.com/api/v3
+  oauth:
+    authorize-url: https://www.strava.com/oauth/authorize
+    token-url: https://www.strava.com/oauth/token
+    redirect-uri: ${STRAVA_REDIRECT_URI:http://localhost:8084/api/strava/callback}
+
+# CORS Configuration
+cors:
+  allowed-origins: @cors.allowed-origins@
+
+# Workout Library Configuration
+workout:
+  library:
+    path: ./workout-library
+  summarize:
+    path: ./summarize.json
+
+# BikeFit Configuration
+bikefit:
+  python:
+    service:
+      url: ${BIKEFIT_PYTHON_URL:http://localhost:5000}
+  upload:
+    dir: ${BIKEFIT_UPLOAD_DIR:uploads/bikefit}

@@ -1,0 +1,16 @@
+[Unit]
+Description=SGEN Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/eskimos/SERVER/SGEN
+ExecStart=/usr/bin/java -jar SGEN.jar
+Restart=on-failure
+RestartSec=10
+User=eskimos
+Group=eskimos
+# Environment variables are set via /etc/systemd/system/sgen.service.d/override.conf
+
+[Install]
+WantedBy=multi-user.target

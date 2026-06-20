@@ -1,0 +1,54 @@
+{
+  "properties": [
+    {
+      "name": "app.version",
+      "type": "java.lang.String",
+      "description": "Application version from pom.xml"
+    },
+    {
+      "name": "jwt.secret",
+      "type": "java.lang.String",
+      "description": "JWT signing secret key"
+    },
+    {
+      "name": "jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT token expiration time in milliseconds"
+    },
+    {
+      "name": "intervals.api.base-url",
+      "type": "java.lang.String",
+      "description": "Intervals.icu API base URL"
+    },
+    {
+      "name": "openai.api.base-url",
+      "type": "java.lang.String",
+      "description": "OpenAI API base URL"
+    },
+    {
+      "name": "openai.pricing",
+      "type": "java.util.Map",
+      "description": "OpenAI model pricing configuration"
+    },
+    {
+      "name": "cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed CORS origins"
+    },
+    {
+      "name": "workout.library.path",
+      "type": "java.lang.String",
+      "description": "Path to workout library directory"
+    },
+    {
+      "name": "workout.library-running.path",
+      "type": "java.lang.String",
+      "description": "Path to running workout library directory"
+    },
+    {
+      "name": "workout.summarize.path",
+      "type": "java.lang.String",
+      "description": "Path to workout summarize JSON file"
+    }
+  ]
+}
