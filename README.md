@@ -238,7 +238,6 @@ All scripts read from `.env` file or shell environment:
 │   ├── IntervalsService.java       # Intervals.icu API integration
 │   ├── OpenAIService.java          # OpenAI API integration
 │   ├── PerformanceService.java     # Performance analytics
-│   ├── PromptService.java          # AI prompt management
 │   ├── SmhiForecastService.java    # SMHI weather forecasts
 │   ├── SmhiStationService.java     # SMHI station search
 │   ├── UserService.java            # User management

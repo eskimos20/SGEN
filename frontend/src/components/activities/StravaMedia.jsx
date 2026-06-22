@@ -45,6 +45,7 @@ const PhotoLightbox = ({ photos, startIndex, getImageUrl, getVideoUrl, onClose }
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef(null);
+  const pinchStart = useRef(null);
   const imgRef = useRef(null);
 
   const resetZoom = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
@@ -77,6 +78,36 @@ const PhotoLightbox = ({ photos, startIndex, getImageUrl, getVideoUrl, onClose }
   };
 
   const handleMouseUp = () => setDragging(false);
+
+  const touchDistance = (touches) =>
+    Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      pinchStart.current = { dist: touchDistance(e.touches), scale };
+      setDragging(false);
+    } else if (e.touches.length === 1 && scale > 1) {
+      setDragging(true);
+      dragStart.current = { x: e.touches[0].clientX - offset.x, y: e.touches[0].clientY - offset.y };
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && pinchStart.current) {
+      const ratio = touchDistance(e.touches) / pinchStart.current.dist;
+      setScale(Math.min(5, Math.max(1, pinchStart.current.scale * ratio)));
+    } else if (e.touches.length === 1 && dragging && dragStart.current) {
+      setOffset({ x: e.touches[0].clientX - dragStart.current.x, y: e.touches[0].clientY - dragStart.current.y });
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) pinchStart.current = null;
+    if (e.touches.length === 0) {
+      setDragging(false);
+      if (scale <= 1) setOffset({ x: 0, y: 0 });
+    }
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -134,7 +165,13 @@ const PhotoLightbox = ({ photos, startIndex, getImageUrl, getVideoUrl, onClose }
         onMouseMove={!isLightboxVideo(photos[index]) ? handleMouseMove : undefined}
         onMouseUp={!isLightboxVideo(photos[index]) ? handleMouseUp : undefined}
         onMouseLeave={!isLightboxVideo(photos[index]) ? handleMouseUp : undefined}
-        style={{ cursor: !isLightboxVideo(photos[index]) && scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'default' }}
+        onTouchStart={!isLightboxVideo(photos[index]) ? handleTouchStart : undefined}
+        onTouchMove={!isLightboxVideo(photos[index]) ? handleTouchMove : undefined}
+        onTouchEnd={!isLightboxVideo(photos[index]) ? handleTouchEnd : undefined}
+        style={{
+          cursor: !isLightboxVideo(photos[index]) && scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'default',
+          touchAction: !isLightboxVideo(photos[index]) ? 'none' : undefined,
+        }}
       >
         {isLightboxVideo(photos[index]) ? (
           <HlsVideo

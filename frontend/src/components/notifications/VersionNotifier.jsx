@@ -5,23 +5,18 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'BikeFit Improvements & Achievements Updates',
-  date: '2026-06-17',
+  title: 'Smarter AI Coaching & Mobile Photo Zoom',
+  date: '2026-06-22',
   features: [
     {
-      icon: '�',
-      title: 'BikeFit Analysis Overhaul',
-      description: 'Completely reworked angle calculations now use proper isotropic pixel-space geometry, giving accurate knee, hip, back, ankle and elbow angles regardless of video aspect ratio. Pose detection is more stable with percentile aggregation and a locked camera-side algorithm.'
-    },
-    {
       icon: '🤖',
-      title: 'BikeFit AI Analysis Fixed',
-      description: 'AI-generated bike fit recommendations now use authenticated requests and only send valid, non-null angle data to the backend, preventing crashes and improving recommendation quality.'
+      title: 'Sharper, More Concise AI Analysis',
+      description: 'The AI coach now keeps answers short and to the point by default, scaling length to your question instead of padding every reply. It no longer repeats the same recommendation in different words and avoids contradictory advice, such as telling you to cut a training zone while prescribing work inside it.'
     },
     {
-      icon: '🏆',
-      title: 'Update FTP & LTHR from Achievements Page',
-      description: 'You can now search for achievements over any date range and update your FTP or LTHR directly from the Achievements page — the same way as the Dashboard notification. After updating, each achievement shows a confirmation instead of disappearing.'
+      icon: '📷',
+      title: 'Pinch-to-Zoom & Drag on Activity Photos',
+      description: 'Strava activity photos can now be panned by dragging and zoomed with pinch gestures on phones and tablets. Previously the image stayed locked in the center and could only be zoomed on desktop.'
     }
   ]
 };
