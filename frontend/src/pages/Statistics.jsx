@@ -25,7 +25,7 @@ import { useStatisticsEventHandlers } from '../hooks/useStatisticsEventHandlers'
 const Statistics = () => {
   const { hasIntervalsConfig, user } = useAuth();
   const { fetchCalendarData, getUpcomingWorkouts } = useCalendar();
-  const hasStravaToken = user?.hasStravaToken || false;
+  const hasStravaToken = (user?.stravaEnabled && user?.hasStravaToken) || false;
   
   // State for wellness data (separate from statistics data)
   const [wellnessData, setWellnessData] = useState([]);

@@ -2,6 +2,7 @@ package com.sgen.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sgen.exception.StravaNotConnectedException;
 import com.sgen.exception.StravaRateLimitException;
 import com.sgen.service.StravaService;
 import lombok.RequiredArgsConstructor;
@@ -262,6 +263,12 @@ public class StravaStatisticsController {
             
         } catch (StravaRateLimitException e) {
             throw e;
+        } catch (StravaNotConnectedException e) {
+            // Strava not connected - return empty result without warning
+            Map<String, Object> result = new HashMap<>();
+            result.put("found", false);
+            result.put("photos", "[]");
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.warn("Failed to get photos by date for user: {} - {}", authentication.getName(), e.getMessage());
             Map<String, Object> result = new HashMap<>();
@@ -363,6 +370,12 @@ public class StravaStatisticsController {
             
         } catch (StravaRateLimitException e) {
             throw e;
+        } catch (StravaNotConnectedException e) {
+            // Strava not connected - return empty result without warning
+            Map<String, Object> result = new HashMap<>();
+            result.put("found", false);
+            result.put("segments", "[]");
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.warn("Failed to get segments by date for user: {} - {}", authentication.getName(), e.getMessage());
             Map<String, Object> result = new HashMap<>();

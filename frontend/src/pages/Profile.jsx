@@ -23,6 +23,7 @@ const Profile = () => {
   const [loadingModels, setLoadingModels] = useState(false);
 
   // Strava state
+  const [stravaEnabled, setStravaEnabled] = useState(false);
   const [stravaClientId, setStravaClientId] = useState('');
   const [stravaClientSecret, setStravaClientSecret] = useState('');
   const [hasStravaConfig, setHasStravaConfig] = useState(false);
@@ -48,6 +49,7 @@ const Profile = () => {
       // Load OpenAI config
       await loadOpenAIConfig();
       // Load Strava config
+      setStravaEnabled(response.data.stravaEnabled || false);
       if (response.data.hasStravaConfig) {
         setStravaClientId(response.data.stravaClientId || '');
         setStravaClientSecret('••••••••••••••••');
@@ -276,6 +278,28 @@ const Profile = () => {
       setStravaMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save Strava settings' });
     } finally {
       setSavingStrava(false);
+    }
+  };
+
+  const toggleStrava = async (enabled) => {
+    try {
+      setStravaMessage({ type: '', text: '' });
+      if (enabled) {
+        await api.post('/user/strava/enable');
+        setStravaEnabled(true);
+      } else {
+        await api.post('/user/strava/disable');
+        setStravaEnabled(false);
+        setHasStravaToken(false);
+        setStravaAuthUrl('');
+      }
+      // Refresh auth context with updated user data
+      const userResponse = await api.get('/user/me');
+      if (userResponse.data) {
+        window.dispatchEvent(new CustomEvent('userUpdated', { detail: userResponse.data }));
+      }
+    } catch (err) {
+      setStravaMessage({ type: 'error', text: 'Failed to update Strava settings' });
     }
   };
 
@@ -527,103 +551,123 @@ const Profile = () => {
                 </div>
               )}
 
-              <div>
-                <label htmlFor="stravaClientId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                  Strava Client ID
-                  {hasStravaConfig && stravaClientId && !stravaClientId.includes('•') && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Saved</span>
-                  )}
-                  {hasStravaConfig && stravaClientId.includes('•') && (
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">✓ Configured</span>
-                  )}
-                </label>
-                <input
-                  id="stravaClientId"
-                  type="text"
-                  value={stravaClientId}
-                  onChange={(e) => setStravaClientId(e.target.value)}
-                  className="input-field max-w-md"
-                  placeholder="Enter your Strava Client ID"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  From your Strava API application settings
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="stravaClientSecret" className="block text-sm font-medium text-gray-700 mb-1">
-                  Strava Client Secret
-                </label>
-                <input
-                  id="stravaClientSecret"
-                  type="password"
-                  value={stravaClientSecret}
-                  onChange={(e) => setStravaClientSecret(e.target.value)}
-                  className="input-field max-w-md"
-                  placeholder={hasStravaConfig ? "•••••••••••••••• (enter new to change)" : "Enter your Strava Client Secret"}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Keep this secret! Do not share or commit to code.
-                  {hasStravaConfig && " Type a new value only if you want to change it."}
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveStrava}
-                  disabled={savingStrava || (!stravaClientId && !stravaClientSecret)}
-                  className="btn-primary flex items-center justify-center gap-2 min-w-[150px]"
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div
+                  onClick={() => toggleStrava(!stravaEnabled)}
+                  className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                    stravaEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                  }`}
                 >
-                  {savingStrava ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="h-5 w-5" />
-                      Save Strava Settings
-                    </>
+                  {stravaEnabled && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
                   )}
-                </button>
+                </div>
+                <span className="font-medium text-gray-900">Enable Strava Integration</span>
+              </label>
 
-                <button
-                  type="button"
-                  onClick={handleConnectStrava}
-                  disabled={exchangingStrava || !hasStravaConfig}
-                  className="btn-secondary flex items-center justify-center gap-2 min-w-[150px] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {exchangingStrava ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : hasStravaToken ? (
-                    <>
-                      <CheckCircle className="h-5 w-5" />
-                      Reconnect Strava
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="h-5 w-5" />
-                      Connect Strava
-                    </>
-                  )}
-                </button>
+              {stravaEnabled && (
+                <>
+                  <div>
+                    <label htmlFor="stravaClientId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                      Strava Client ID
+                      {hasStravaConfig && stravaClientId && !stravaClientId.includes('•') && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Saved</span>
+                      )}
+                      {hasStravaConfig && stravaClientId.includes('•') && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">✓ Configured</span>
+                      )}
+                    </label>
+                    <input
+                      id="stravaClientId"
+                      type="text"
+                      value={stravaClientId}
+                      onChange={(e) => setStravaClientId(e.target.value)}
+                      className="input-field max-w-md"
+                      placeholder="Enter your Strava Client ID"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      From your Strava API application settings
+                    </p>
+                  </div>
 
-                {hasStravaToken && (
-                  <button
-                    type="button"
-                    onClick={testStravaConnection}
-                    disabled={testingStrava}
-                    className="btn-secondary flex items-center justify-center gap-2 min-w-[150px]"
-                  >
-                    {testingStrava ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <CheckCircle className="h-5 w-5" />
-                        Test Connection
-                      </>
+                  <div>
+                    <label htmlFor="stravaClientSecret" className="block text-sm font-medium text-gray-700 mb-1">
+                      Strava Client Secret
+                    </label>
+                    <input
+                      id="stravaClientSecret"
+                      type="password"
+                      value={stravaClientSecret}
+                      onChange={(e) => setStravaClientSecret(e.target.value)}
+                      className="input-field max-w-md"
+                      placeholder={hasStravaConfig ? "•••••••••••••••• (enter new to change)" : "Enter your Strava Client Secret"}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Keep this secret! Do not share or commit to code.
+                      {hasStravaConfig && " Type a new value only if you want to change it."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSaveStrava}
+                      disabled={savingStrava || (!stravaClientId && !stravaClientSecret)}
+                      className="btn-primary flex items-center justify-center gap-2 min-w-[150px]"
+                    >
+                      {savingStrava ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5" />
+                          Save Strava Settings
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleConnectStrava}
+                      disabled={exchangingStrava || !hasStravaConfig}
+                      className="btn-secondary flex items-center justify-center gap-2 min-w-[150px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {exchangingStrava ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : hasStravaToken ? (
+                        <>
+                          <CheckCircle className="h-5 w-5" />
+                          Reconnect Strava
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="h-5 w-5" />
+                          Connect Strava
+                        </>
+                      )}
+                    </button>
+
+                    {hasStravaToken && (
+                      <button
+                        type="button"
+                        onClick={testStravaConnection}
+                        disabled={testingStrava}
+                        className="btn-secondary flex items-center justify-center gap-2 min-w-[150px]"
+                      >
+                        {testingStrava ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            <CheckCircle className="h-5 w-5" />
+                            Test Connection
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

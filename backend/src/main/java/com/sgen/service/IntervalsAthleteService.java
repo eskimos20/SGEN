@@ -250,6 +250,55 @@ public class IntervalsAthleteService {
         }
     }
 
+    /**
+     * Fetch the raw sport-settings array for the athlete.
+     * Returns null on failure.
+     */
+    public JsonNode getSportSettings(String username) {
+        ApiContext ctx = clientFactory.buildContext(userService, username);
+        try {
+            String sportSettingsJson = ctx.client.get()
+                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
+                    .retrieve().bodyToMono(String.class).block();
+            return objectMapper.readTree(sportSettingsJson);
+        } catch (Exception e) {
+            log.error("Failed to fetch sport settings for {}: {}", username, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Extract the current FTP for a given sport type from a sport-settings array.
+     */
+    public Integer getFtpForSport(JsonNode sportSettings, String sportType) {
+        return getValueForSport(sportSettings, sportType, "ftp");
+    }
+
+    /**
+     * Extract the current LTHR for a given sport type from a sport-settings array.
+     */
+    public Integer getLthrForSport(JsonNode sportSettings, String sportType) {
+        return getValueForSport(sportSettings, sportType, "lthr");
+    }
+
+    private Integer getValueForSport(JsonNode sportSettings, String sportType, String field) {
+        if (sportSettings == null || !sportSettings.isArray() || sportType == null) {
+            return null;
+        }
+        for (JsonNode setting : sportSettings) {
+            JsonNode types = setting.get("types");
+            if (types != null && types.isArray()) {
+                for (JsonNode type : types) {
+                    if (type.asText().equalsIgnoreCase(sportType)) {
+                        JsonNode value = setting.get(field);
+                        return (value != null && !value.isNull()) ? value.asInt() : null;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     public List<String> getAvailableActivityTypes() {
         if (cachedActivityTypes != null && (System.currentTimeMillis() - activityTypesCacheTime) < CACHE_DURATION_MS) {
             return cachedActivityTypes;

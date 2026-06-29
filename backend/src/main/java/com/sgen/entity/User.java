@@ -58,6 +58,10 @@ public class User {
     private Boolean openaiConnectionTested = false;
 
     // Strava OAuth configuration
+    @Column(name = "strava_enabled", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean stravaEnabled = false;
+
     @Column(name = "strava_client_id")
     private String stravaClientId;
 

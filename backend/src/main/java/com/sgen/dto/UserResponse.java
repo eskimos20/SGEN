@@ -26,6 +26,7 @@ public class UserResponse {
     private Boolean openaiConnectionTested;
 
     // Strava OAuth configuration
+    private Boolean stravaEnabled;
     private boolean hasStravaConfig;
     private boolean hasStravaToken;
     private String stravaClientId;

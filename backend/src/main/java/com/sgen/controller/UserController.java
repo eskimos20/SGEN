@@ -167,6 +167,23 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "Model selected: " + model));
     }
 
+    // User-level Strava Configuration
+    @PostMapping("/strava/enable")
+    public ResponseEntity<Map<String, String>> enableUserStrava(Authentication authentication) {
+        UserProfileRequest request = new UserProfileRequest();
+        request.setStravaEnabled(true);
+        userService.updateUserProfile(authentication.getName(), request);
+        return ResponseEntity.ok(Map.of("message", "Strava enabled for user"));
+    }
+
+    @PostMapping("/strava/disable")
+    public ResponseEntity<Map<String, String>> disableUserStrava(Authentication authentication) {
+        UserProfileRequest request = new UserProfileRequest();
+        request.setStravaEnabled(false);
+        userService.updateUserProfile(authentication.getName(), request);
+        return ResponseEntity.ok(Map.of("message", "Strava disabled and OAuth tokens cleared"));
+    }
+
     // User AI Usage Statistics
     @GetMapping("/ai-usage")
     public ResponseEntity<Map<String, Object>> getUserAIUsage(

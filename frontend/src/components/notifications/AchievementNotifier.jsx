@@ -99,6 +99,7 @@ const AchievementNotifier = ({ achievements, onAccept, onDismiss }) => {
                 const oldValue = isFtpAchievement ? achievement.oldFtpValue : achievement.oldLthrValue;
                 const newValue = isFtpAchievement ? achievement.newFtpValue : achievement.newLthrValue;
                 const delta = newValue && oldValue ? newValue - oldValue : null;
+                const isAtCurrent = oldValue && newValue && newValue === oldValue;
                 
                 return (
                   <div key={achievement.id} className="bg-white/10 rounded-lg p-3 space-y-2">
@@ -133,31 +134,38 @@ const AchievementNotifier = ({ achievements, onAccept, onDismiss }) => {
                       </div>
                     )}
 
-                    {/* Action buttons */}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleAccept(achievement.id)}
-                        disabled={isProcessing}
-                        className="flex-1 bg-white text-purple-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-1"
-                      >
-                        {isProcessing ? (
-                          'Updating...'
-                        ) : (
-                          <>
-                            <Check className="h-3 w-3" />
-                            Update
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleDismiss(achievement.id)}
-                        disabled={isProcessing}
-                        className="flex-1 bg-white/20 text-white font-semibold py-1.5 px-3 rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-1"
-                      >
-                        <X className="h-3 w-3" />
-                        Skip
-                      </button>
-                    </div>
+                    {/* Action buttons OR already-current message */}
+                    {isAtCurrent ? (
+                      <div className="flex items-center gap-1 pt-1 text-sm font-medium text-white/90">
+                        <Check className="h-3 w-3" />
+                        Your {isFtpAchievement ? 'FTP' : 'LTHR'} is already your current
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => handleAccept(achievement.id)}
+                          disabled={isProcessing}
+                          className="flex-1 bg-white text-purple-600 font-semibold py-1.5 px-3 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-1"
+                        >
+                          {isProcessing ? (
+                            'Updating...'
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3" />
+                              Update
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDismiss(achievement.id)}
+                          disabled={isProcessing}
+                          className="flex-1 bg-white/20 text-white font-semibold py-1.5 px-3 rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-1"
+                        >
+                          <X className="h-3 w-3" />
+                          Skip
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

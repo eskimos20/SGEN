@@ -44,6 +44,9 @@ public class AchievementNotificationService {
                 return Map.of("pending", Collections.emptyList());
             }
             
+            // Fetch current sport settings once to compare against the user's ACTUAL current FTP/LTHR
+            JsonNode sportSettings = athleteService.getSportSettings(username);
+            
             // Process activities and extract FTP_UP / LTHR_UP achievements
             List<Map<String, Object>> pendingAchievements = new ArrayList<>();
             
@@ -71,14 +74,15 @@ public class AchievementNotificationService {
                     Optional<UserAchievement> existingOpt = achievementRepository
                             .findByUserAndActivityIdAndAchievementType(user, activityId, type);
                     
+                    Map<String, Object> map;
                     if (existingOpt.isPresent()) {
                         UserAchievement existing = existingOpt.get();
                         // If already accepted or dismissed, skip it
                         if (existing.getStatus() != UserAchievement.AchievementStatus.PENDING) {
                             continue;
                         }
-                        // If still pending, add it to the list
-                        pendingAchievements.add(achievementToMap(existing));
+                        // If still pending, prepare it for the list
+                        map = achievementToMap(existing);
                     } else {
                         // Create new pending achievement
                         UserAchievement userAchievement = createAchievementFromJson(
@@ -88,8 +92,12 @@ public class AchievementNotificationService {
                         
                         achievementRepository.save(userAchievement);
                         
-                        // Add to pending list
-                        pendingAchievements.add(achievementToMap(userAchievement));
+                        map = achievementToMap(userAchievement);
+                    }
+                    
+                    // Use current FTP/LTHR as baseline; skip if not an improvement over current
+                    if (applyCurrentBaseline(map, sportSettings)) {
+                        pendingAchievements.add(map);
                     }
                 }
             }
@@ -111,7 +119,10 @@ public class AchievementNotificationService {
                 boolean alreadyAdded = pendingAchievements.stream()
                         .anyMatch(a -> a.get("id").equals(existing.getId()));
                 if (!alreadyAdded) {
-                    pendingAchievements.add(achievementToMap(existing));
+                    Map<String, Object> map = achievementToMap(existing);
+                    if (applyCurrentBaseline(map, sportSettings)) {
+                        pendingAchievements.add(map);
+                    }
                 }
             }
             
@@ -179,6 +190,34 @@ public class AchievementNotificationService {
         map.put("status", achievement.getStatus().toString());
         map.put("respondedAt", achievement.getRespondedAt());
         return map;
+    }
+    
+    /**
+     * Replace the achievement's "old" value with the user's ACTUAL current FTP/LTHR
+     * from sport settings, so the comparison reflects reality rather than the
+     * historic per-activity value reported by Intervals.icu.
+     *
+     * The achievement is always presented (including decreases), so the user can
+     * see the correct delta against their current value (e.g. 291 -> 284 = -7).
+     *
+     * @return always true (kept for call-site readability/extensibility).
+     */
+    private boolean applyCurrentBaseline(Map<String, Object> map, JsonNode sportSettings) {
+        String type = (String) map.get("achievementType");
+        String sportType = (String) map.get("sportType");
+        
+        if ("FTP_UP".equals(type)) {
+            Integer currentFtp = athleteService.getFtpForSport(sportSettings, sportType);
+            if (currentFtp != null) {
+                map.put("oldFtpValue", currentFtp);
+            }
+        } else if ("LTHR_UP".equals(type)) {
+            Integer currentLthr = athleteService.getLthrForSport(sportSettings, sportType);
+            if (currentLthr != null) {
+                map.put("oldLthrValue", currentLthr);
+            }
+        }
+        return true;
     }
     
     /**
@@ -337,6 +376,9 @@ public class AchievementNotificationService {
                 return Map.of("achievements", Collections.emptyList());
             }
             
+            // Fetch current sport settings once to use the user's ACTUAL current FTP/LTHR as baseline
+            JsonNode sportSettings = athleteService.getSportSettings(username);
+            
             // Process activities and extract ALL achievements
             List<Map<String, Object>> allAchievements = new ArrayList<>();
             
@@ -369,7 +411,10 @@ public class AchievementNotificationService {
                     if (type.equals("FTP_UP")) {
                         Integer newFtp = activity.has("icu_rolling_ftp") ? activity.get("icu_rolling_ftp").asInt() : null;
                         Integer ftpDelta = activity.has("icu_rolling_ftp_delta") ? activity.get("icu_rolling_ftp_delta").asInt() : null;
-                        Integer oldFtp = (newFtp != null && ftpDelta != null) ? newFtp - ftpDelta : null;
+                        // Use the user's current FTP as baseline; fall back to historic delta if unavailable
+                        Integer currentFtp = athleteService.getFtpForSport(sportSettings, sportType);
+                        Integer oldFtp = currentFtp != null ? currentFtp
+                                : ((newFtp != null && ftpDelta != null) ? newFtp - ftpDelta : null);
                         
                         achievementMap.put("newFtpValue", newFtp);
                         achievementMap.put("oldFtpValue", oldFtp);
@@ -380,8 +425,10 @@ public class AchievementNotificationService {
                         if (newLthr == null && achievement.has("value")) {
                             newLthr = achievement.get("value").asInt();
                         }
+                        // Use the user's current LTHR as baseline
+                        Integer currentLthr = athleteService.getLthrForSport(sportSettings, sportType);
                         achievementMap.put("newLthrValue", newLthr);
-                        achievementMap.put("oldLthrValue", null);
+                        achievementMap.put("oldLthrValue", currentLthr);
                     } else if (type.equals("BEST_POWER") || type.equals("BEST_PACE")) {
                         achievementMap.put("watts", achievement.has("watts") ? achievement.get("watts").asInt() : null);
                         achievementMap.put("secs", achievement.has("secs") ? achievement.get("secs").asInt() : null);

@@ -5,18 +5,18 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Smarter AI Coaching & Mobile Photo Zoom',
-  date: '2026-06-22',
+  title: 'Strava Controls & Accurate Achievement Baselines',
+  date: '2026-06-29',
   features: [
     {
-      icon: '🤖',
-      title: 'Sharper, More Concise AI Analysis',
-      description: 'The AI coach now keeps answers short and to the point by default, scaling length to your question instead of padding every reply. It no longer repeats the same recommendation in different words and avoids contradictory advice, such as telling you to cut a training zone while prescribing work inside it.'
+      icon: '⚙️',
+      title: 'Enable/Disable Strava Integration',
+      description: 'Profile settings now include a Strava toggle just like OpenAI. Disabling Strava clears stored OAuth tokens and stops the app from calling Strava endpoints, preventing unnecessary error logs.'
     },
     {
-      icon: '📷',
-      title: 'Pinch-to-Zoom & Drag on Activity Photos',
-      description: 'Strava activity photos can now be panned by dragging and zoomed with pinch gestures on phones and tablets. Previously the image stayed locked in the center and could only be zoomed on desktop.'
+      icon: '🏆',
+      title: 'Achievement FTP/LTHR Compared to Your Current Values',
+      description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear “already your current” message instead of Update/Skip buttons.'
     }
   ]
 };

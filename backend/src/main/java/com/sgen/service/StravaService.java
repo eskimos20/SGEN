@@ -3,6 +3,7 @@ package com.sgen.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.entity.User;
+import com.sgen.exception.StravaNotConnectedException;
 import com.sgen.exception.StravaRateLimitException;
 import com.sgen.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -210,6 +211,10 @@ public class StravaService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (user.getStravaEnabled() == null || !user.getStravaEnabled()) {
+            throw new StravaNotConnectedException("Strava is not enabled for user");
+        }
+
         // Quick check without locking - if token is valid, return it immediately
         boolean needsRefresh = user.getStravaAccessToken() == null;
         boolean isExpired = user.getStravaTokenExpiresAt() != null && 
@@ -221,7 +226,7 @@ public class StravaService {
 
         // Need to refresh - use per-user lock to prevent concurrent refreshes
         if (user.getStravaRefreshToken() == null) {
-            throw new RuntimeException("No access token available and no refresh token");
+            throw new StravaNotConnectedException("No access token available and no refresh token");
         }
 
         // Get or create a lock object for this user
@@ -337,6 +342,9 @@ public class StravaService {
             }
         } catch (StravaRateLimitException e) {
             throw e; // Re-throw rate limit exception as-is
+        } catch (StravaNotConnectedException e) {
+            log.debug("Strava not connected for user: {}", username);
+            throw e;
         } catch (Exception e) {
             log.error("Failed to fetch activities for user: {}", username, e);
             throw new RuntimeException("Failed to fetch activities: " + e.getMessage());

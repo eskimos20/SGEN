@@ -222,7 +222,7 @@ const StravaMedia = ({ activity, preFetchedData }) => {
     const checkStravaConnection = async () => {
       try {
         const response = await api.get('/user/me');
-        setHasStravaToken(response.data.hasStravaToken || false);
+        setHasStravaToken((response.data.stravaEnabled && response.data.hasStravaToken) || false);
       } catch (err) {
         setHasStravaToken(false);
       }

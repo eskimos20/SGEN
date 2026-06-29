@@ -357,6 +357,7 @@ const Achievements = () => {
                   const newValue = isFtp ? achievement.newFtpValue : achievement.newLthrValue;
                   const delta = newValue && oldValue ? newValue - oldValue : null;
                   const unit = isFtp ? 'w' : ' bpm';
+                  const isAtCurrent = oldValue && newValue && newValue === oldValue;
 
                   return (
                     <div
@@ -412,6 +413,11 @@ const Achievements = () => {
                               ) : responded === 'dismissed' ? (
                                 <p className="text-sm text-gray-500">
                                   Skipped – no changes made
+                                </p>
+                              ) : isAtCurrent ? (
+                                <p className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                                  <Check className="h-3 w-3 text-green-600" />
+                                  Your {isFtp ? 'FTP' : 'LTHR'} is already your current
                                 </p>
                               ) : (
                                 <>

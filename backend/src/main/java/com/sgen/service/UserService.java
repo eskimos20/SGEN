@@ -183,6 +183,15 @@ public class UserService {
             user.setOpenaiConnectionTested(request.getOpenaiConnectionTested());
         }
         // Strava configuration
+        if (request.getStravaEnabled() != null) {
+            user.setStravaEnabled(request.getStravaEnabled());
+            if (!request.getStravaEnabled()) {
+                // Clear Strava OAuth tokens when disabled
+                user.setStravaAccessToken(null);
+                user.setStravaRefreshToken(null);
+                user.setStravaTokenExpiresAt(null);
+            }
+        }
         if (request.getStravaClientId() != null) {
             user.setStravaClientId(request.getStravaClientId());
         }
@@ -221,6 +230,7 @@ public class UserService {
                 .openaiModel(user.getOpenaiModel())
                 .openaiConnectionTested(user.getOpenaiConnectionTested())
                 // Strava configuration
+                .stravaEnabled(user.getStravaEnabled())
                 .hasStravaConfig(user.getStravaClientId() != null && user.getStravaClientSecret() != null)
                 .hasStravaToken(user.getStravaAccessToken() != null || user.getStravaRefreshToken() != null)
                 .stravaClientId(user.getStravaClientId())
