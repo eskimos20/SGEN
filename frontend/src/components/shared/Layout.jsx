@@ -197,7 +197,7 @@ const Layout = () => {
             
             {/* Version Notifier - positioned in top right */}
             {showVersionNotifier && (
-              <div className="fixed top-20 inset-x-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm z-50">
+              <div className="fixed top-24 inset-x-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm z-50">
                 <VersionNotifier 
                   isVisible={showVersionNotifier} 
                   onDismiss={() => setShowVersionNotifier(false)} 

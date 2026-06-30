@@ -198,7 +198,7 @@ const GearMaintenanceModal = ({ isOpen, onClose, gearItem, maintenanceRecord, on
               /* ── Multi-row add form ── */
               <div className="space-y-3">
                 {/* Column headers – hidden on very small screens, visible sm+ */}
-                <div className="hidden sm:grid sm:grid-cols-[130px_110px_1fr_1fr_100px_130px_36px] gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <div className="hidden sm:grid sm:grid-cols-[150px_110px_0.8fr_0.6fr_100px_130px_36px] gap-2 px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   <span>Date *</span>
                   <span>Dist. (km)</span>
                   <span>Service Type *</span>
@@ -209,7 +209,7 @@ const GearMaintenanceModal = ({ isOpen, onClose, gearItem, maintenanceRecord, on
                 </div>
 
                 {rows.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-[130px_110px_1fr_1fr_100px_130px_36px] gap-2 items-start bg-gray-50 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 border sm:border-0 border-gray-200">
+                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-[150px_110px_0.8fr_0.6fr_100px_130px_36px] gap-2 items-start bg-gray-50 sm:bg-transparent rounded-xl sm:rounded-none p-3 sm:p-0 border sm:border-0 border-gray-200">
                     {/* Mobile row label */}
                     <div className="flex items-center justify-between sm:hidden mb-1">
                       <span className="text-xs font-semibold text-gray-500">Row {idx + 1}</span>

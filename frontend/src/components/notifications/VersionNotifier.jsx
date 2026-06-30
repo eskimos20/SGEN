@@ -22,6 +22,11 @@ const VERSION_NOTES = {
       icon: '🏆',
       title: 'Achievement FTP/LTHR Compared to Your Current Values',
       description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear “already your current” message instead of Update/Skip buttons.'
+    },
+    {
+      icon: '🛠️',
+      title: 'Minor Bug Fixes',
+      description: 'Version notifier now appears at the correct position regardless of whether it is triggered automatically on login or opened manually via the version number. Service record date column width adjusted for better readability.'
     }
   ]
 };

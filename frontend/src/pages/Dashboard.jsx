@@ -186,7 +186,7 @@ const Dashboard = () => {
         </div>
 
         {/* Notification Stack - Fixed position top right */}
-        <div className="fixed top-4 inset-x-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-50 space-y-4">
+        <div className="fixed top-20 inset-x-4 sm:left-auto sm:right-4 sm:w-full sm:max-w-md z-50 space-y-4">
           <AchievementNotifier 
             achievements={pendingAchievements}
             onAccept={handleAcceptAchievement}
