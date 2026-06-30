@@ -5,9 +5,14 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Strava Controls & Accurate Achievement Baselines',
-  date: '2026-06-29',
+  title: 'Multi-Row Service Records, Strava Controls & Achievement Baselines',
+  date: '2026-06-30',
   features: [
+    {
+      icon: '🔧',
+      title: 'Add Multiple Service Records at Once',
+      description: 'The "Add Service" dialog now works like a spreadsheet. Each row has its own Date, Distance, Service Type, Description, Cost and Performed By. Add as many rows as you need and save them all in one click — each row is stored as its own record.'
+    },
     {
       icon: '⚙️',
       title: 'Enable/Disable Strava Integration',
