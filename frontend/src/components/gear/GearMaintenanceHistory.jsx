@@ -66,7 +66,7 @@ const GearMaintenanceHistory = ({ isOpen, onClose, gearItem }) => {
 
   const formatDistance = (meters) => {
     if (!meters) return 'N/A';
-    return `${Math.round(meters / 1000).toLocaleString()} km`;
+    return `${Math.round(meters / 1000)} km`;
   };
 
   const formatCost = (cost) => {
