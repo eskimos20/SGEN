@@ -9,7 +9,12 @@ const VERSION_NOTES = {
   date: '2026-06-30',
   features: [
     {
-      icon: '🔧',
+      icon: '�',
+      title: 'Export Gear Maintenance to PDF',
+      description: 'You can now export your gear maintenance history to PDF. Select one or more gear items from the export dialog to generate a comprehensive PDF document with all maintenance records, including service type, date, description, distance, cost, and performed by information.'
+    },
+    {
+      icon: '�🔧',
       title: 'Add Multiple Service Records at Once',
       description: 'The "Add Service" dialog now works like a spreadsheet. Each row has its own Date, Distance, Service Type, Description, Cost and Performed By. Add as many rows as you need and save them all in one click — each row is stored as its own record.'
     },
