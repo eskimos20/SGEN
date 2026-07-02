@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Loader2, ExternalLink, Plus } from 'lucide-react';
+import { Loader2, ExternalLink, Plus, Download } from 'lucide-react';
 import GearList from '../components/gear/GearList';
 import GearFormModal from '../components/gear/GearFormModal';
+import ExportGearModal from '../components/gear/ExportGearModal';
 import ConfirmDialog from '../components/modals/ConfirmDialog';
 
 const Gear = () => {
@@ -13,6 +14,7 @@ const Gear = () => {
   const [showGearForm, setShowGearForm] = useState(false);
   const [selectedGear, setSelectedGear] = useState(null);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, gearId: null });
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     fetchGear();
@@ -128,6 +130,15 @@ const Gear = () => {
               <ExternalLink className="h-4 w-4" />
               Update
             </a>
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={loading || gear.length === 0}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export gear maintenance history"
+            >
+              <Download className="h-4 w-4" />
+              Export Gear
+            </button>
           </div>
         </div>
         {loading ? (
@@ -151,6 +162,13 @@ const Gear = () => {
         onClose={() => setShowGearForm(false)}
         gearItem={selectedGear}
         onSaved={handleGearSaved}
+      />
+
+      {/* Export Gear Modal */}
+      <ExportGearModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        gear={gear}
       />
 
       {/* Delete Confirmation Dialog */}
