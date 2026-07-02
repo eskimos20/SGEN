@@ -539,7 +539,6 @@ const Profile = () => {
             <p className="text-gray-600 text-sm mb-6">
               Connect your Strava account to view activities and segments. 
               Create an API application at <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/settings/api</a>.
-              <strong className="block mt-1 text-orange-600">Note: Strava API requires a paid Strava subscription as of June 2026.</strong>
             </p>
 
             <div className="space-y-6">
