@@ -115,7 +115,7 @@ const Gear = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={handleAddGear}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 h-8 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
             >
               <Plus className="h-4 w-4" />
               Add Gear
@@ -124,7 +124,7 @@ const Gear = () => {
               href="https://intervals.icu/settings/gear"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 h-8 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
               title="Update gear from Strava on Intervals.icu"
             >
               <ExternalLink className="h-4 w-4" />
@@ -133,7 +133,7 @@ const Gear = () => {
             <button
               onClick={() => setShowExportModal(true)}
               disabled={loading || gear.length === 0}
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-3 py-1.5 h-8 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Export gear maintenance history"
             >
               <Download className="h-4 w-4" />
