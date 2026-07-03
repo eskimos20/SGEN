@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { X, Download, Loader2, Check } from 'lucide-react';
 import api from '../../api/axios';
 import jsPDF from 'jspdf';
+import { isCapacitor } from '../../config/api.config';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { useLockBodyScroll } from '../../utils/modalScrollLock';
 
 const ExportGearModal = ({ isOpen, onClose, gear }) => {
@@ -175,7 +178,24 @@ const ExportGearModal = ({ isOpen, onClose, gear }) => {
 
       // Save PDF
       const fileName = `gear-maintenance-${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
+
+      if (isCapacitor) {
+        // On Android, pdf.save() and blob/data URI approaches are blocked by WebView.
+        // Write the PDF to the cache directory and open the share sheet.
+        const base64 = pdf.output('datauristring').split(',')[1];
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64,
+          directory: Directory.Cache
+        });
+        await Share.share({
+          title: 'Gear Maintenance PDF',
+          url: savedFile.uri,
+          dialogTitle: 'Save or share PDF'
+        });
+      } else {
+        pdf.save(fileName);
+      }
 
       onClose();
     } catch (err) {
