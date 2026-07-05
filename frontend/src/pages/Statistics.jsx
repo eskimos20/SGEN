@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
-import { Download, Bot, Copy, Loader2, CheckCircle, Activity, Zap, Clock, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Bot, Copy, Loader2, CheckCircle, Activity, Zap, Clock, TrendingUp, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 import FitnessChart from '../components/charts/FitnessChart';
 import PowerCurveHistoryChart from '../components/charts/PowerCurveHistoryChart';
 import ChatWindow from '../components/shared/ChatWindow';
@@ -47,14 +47,8 @@ const Statistics = () => {
     const saved = localStorage.getItem('statistics-fitnessExpanded');
     return saved !== null ? saved === 'true' : true;
   });
-  const [isFtpExpanded, setIsFtpExpanded] = useState(() => {
-    // Load expanded state from localStorage, default to true
-    const saved = localStorage.getItem('statistics-ftpExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
-  const [isVo2MaxExpanded, setIsVo2MaxExpanded] = useState(() => {
-    // Load expanded state from localStorage, default to true
-    const saved = localStorage.getItem('statistics-vo2MaxExpanded');
+  const [isStatsExpanded, setIsStatsExpanded] = useState(() => {
+    const saved = localStorage.getItem('statistics-statsExpanded');
     return saved !== null ? saved === 'true' : true;
   });
   
@@ -140,9 +134,8 @@ const Statistics = () => {
   useEffect(() => {
     localStorage.setItem('statistics-wellnessDays', wellnessDays.toString());
     localStorage.setItem('statistics-fitnessExpanded', isFitnessExpanded.toString());
-    localStorage.setItem('statistics-ftpExpanded', isFtpExpanded.toString());
-    localStorage.setItem('statistics-vo2MaxExpanded', isVo2MaxExpanded.toString());
-  }, [wellnessDays, isFitnessExpanded, isFtpExpanded, isVo2MaxExpanded]);
+    localStorage.setItem('statistics-statsExpanded', isStatsExpanded.toString());
+  }, [wellnessDays, isFitnessExpanded, isStatsExpanded]);
 
   // Fetch wellness data on component mount and when wellnessDays changes
   useEffect(() => {
@@ -512,27 +505,41 @@ const Statistics = () => {
 
       {/* Overview Stats - Only show after date range search */}
       {data && stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-4 text-center">
-            <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 mx-auto mb-2" />
-            <div className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalActivities}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Activities</div>
+        <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
+          <div
+            className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity mb-4"
+            onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+          >
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <BarChart2 className="h-5 w-5 text-blue-600" />
+              Activities, Time, Distance & Training Load
+            </h2>
+            {isStatsExpanded ? <ChevronUp className="h-5 w-5 text-gray-600" /> : <ChevronDown className="h-5 w-5 text-gray-600" />}
           </div>
-          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-4 text-center">
-            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mx-auto mb-2" />
-            <div className="text-lg sm:text-2xl font-bold text-gray-900">{formatHoursMinutes(stats.totalTime)}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Total Time</div>
-          </div>
-          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-4 text-center">
-            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
-            <div className="text-lg sm:text-2xl font-bold text-gray-900">{Math.round(stats.totalDistance / 1000)}km</div>
-            <div className="text-xs sm:text-sm text-gray-600">Distance</div>
-          </div>
-          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-4 text-center">
-            <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 mx-auto mb-2" />
-            <div className="text-lg sm:text-2xl font-bold text-gray-900">{Math.round(stats.totalLoad)}</div>
-            <div className="text-xs sm:text-sm text-gray-600">Training Load</div>
-          </div>
+          {isStatsExpanded && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-gray-50 rounded-xl p-3 sm:p-4 text-center">
+                <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalActivities}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Activities</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 sm:p-4 text-center">
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-2xl font-bold text-gray-900">{formatHoursMinutes(stats.totalTime)}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total Time</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 sm:p-4 text-center">
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-2xl font-bold text-gray-900">{Math.round(stats.totalDistance / 1000)}km</div>
+                <div className="text-xs sm:text-sm text-gray-600">Distance</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 sm:p-4 text-center">
+                <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 mx-auto mb-2" />
+                <div className="text-lg sm:text-2xl font-bold text-gray-900">{Math.round(stats.totalLoad)}</div>
+                <div className="text-xs sm:text-sm text-gray-600">Training Load</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -543,10 +550,6 @@ const Statistics = () => {
           top3Ftp={top3Ftp}
           top3Vo2Max={top3Vo2Max}
           COLORS={COLORS}
-          isFtpExpanded={isFtpExpanded}
-          setIsFtpExpanded={setIsFtpExpanded}
-          isVo2MaxExpanded={isVo2MaxExpanded}
-          setIsVo2MaxExpanded={setIsVo2MaxExpanded}
           athleteProfile={athleteProfile}
         />
       )}

@@ -5,8 +5,8 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Multi-Row Service Records, Strava Controls & Achievement Baselines',
-  date: '2026-06-30',
+  title: 'Collapsible Statistics Sections & Gear Improvements',
+  date: '2026-07-05',
   features: [
     {
       icon: '�',
@@ -29,9 +29,14 @@ const VERSION_NOTES = {
       description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear “already your current” message instead of Update/Skip buttons.'
     },
     {
+      icon: '�',
+      title: 'Collapsible Statistics Sections',
+      description: 'Statistics page sections are now grouped and collapsible with a single toggle. FTP Top 3 and VO2Max Top 3 share one card, Activity Type/HR Zones/Power Zones share one card, Weekly Training Volume and the summary stats (Activities, Time, Distance, Training Load) each have their own collapsible card. Preferences are saved between sessions.'
+    },
+    {
       icon: '🛠️',
-      title: 'Minor Bug Fixes',
-      description: 'Version notifier now appears at the correct position regardless of whether it is triggered automatically on login or opened manually via the version number. Service record date column width adjusted for better readability.'
+      title: 'Minor Bug Fixes & UI Improvements',
+      description: 'PDF export now works in the Android app via the share sheet. Gear page toolbar buttons are now uniform in height. Version notifier position fixed. Service record date column widened.'
     }
   ]
 };
