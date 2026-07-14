@@ -537,8 +537,8 @@ const Profile = () => {
               <h2 className="text-lg font-semibold text-gray-900">Strava Configuration</h2>
             </div>
             <p className="text-gray-600 text-sm mb-6">
-              Connect your Strava account to view activities and segments. 
-              Create an API application at <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/settings/api</a>.
+              Strava integration now requires an active Strava subscription and a registered API application to view activities and segments. 
+              Subscribe at <a href="https://www.strava.com/subscribe" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/subscribe</a> and create an API application at <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/settings/api</a>.
             </p>
 
             <div className="space-y-6">
