@@ -39,7 +39,10 @@ export const useWorkoutSteps = () => {
       } else if (intervalType?.isRamp) {
         return [{
           duration: step.duration,
-          power: { start: step.powerStart, end: step.powerEnd }
+          power: { start: step.powerStart, end: step.powerEnd },
+          // Intervals.icu flag: step ends on lap button press (Garmin/Suunto only).
+          // Zwift is unaffected - it reads the plain timed warmup from the .zwo file.
+          ...(step.type === 'warmup' && { until_lap_press: true })
         }];
       } else {
         return [{

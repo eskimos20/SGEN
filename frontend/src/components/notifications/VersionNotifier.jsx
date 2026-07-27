@@ -5,9 +5,14 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Achievement Display Improvements & Calendar Weekly Totals Fix',
+  title: 'Garmin/Suunto Lap Button for Warmup & Workout Library Updates',
   date: '2026-07-27',
   features: [
+    {
+      icon: '🏃',
+      title: 'Lap Button Press for Warmup Steps',
+      description: 'Warmup steps in workouts now end when you press the lap button on Garmin/Suunto devices. This gives you time to ride to your start location before beginning intervals. Zwift workouts are unaffected — they read the plain timed warmup from the .zwo file. All workout library files have been updated to include warmup sections.'
+    },
     {
       icon: '🏆',
       title: 'Achievement FTP/LTHR Compared to Your Current Values',

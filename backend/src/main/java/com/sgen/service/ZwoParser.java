@@ -116,6 +116,11 @@ public class ZwoParser {
                 if (low.isEmpty() || high.isEmpty()) return null;
                 power.put("start", (int) Math.round(Double.parseDouble(low) * 100));
                 power.put("end", (int) Math.round(Double.parseDouble(high) * 100));
+                if ("Warmup".equals(tagName)) {
+                    // Intervals.icu flag: step ends on lap button press (Garmin/Suunto only).
+                    // Zwift is unaffected - it reads the plain timed warmup from the .zwo file.
+                    stepNode.put("until_lap_press", true);
+                }
                 break;
             }
             case "Cooldown": {
