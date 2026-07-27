@@ -52,10 +52,8 @@ export const useWorkoutSave = (refreshCalendarData) => {
         for (let i = 0; i < step.reps; i++) {
           const power = step.power / 100;
           xml += `    <SteadyState Duration="${step.duration}" Power="${power}" pace="0"/>\n`;
-          if (i < step.reps - 1) {
-            const restPower = step.restPower / 100;
-            xml += `    <SteadyState Duration="${step.restDuration}" Power="${restPower}" pace="0"/>\n`;
-          }
+          const restPower = step.restPower / 100;
+          xml += `    <SteadyState Duration="${step.restDuration}" Power="${restPower}" pace="0"/>\n`;
         }
       } else if (intervalType?.isRamp) {
         const powerStart = step.powerStart / 100;

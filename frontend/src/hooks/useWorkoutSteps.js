@@ -28,12 +28,10 @@ export const useWorkoutSteps = () => {
             duration: step.duration,
             power: { value: step.power }
           });
-          if (i < step.reps - 1) {
-            expanded.push({
-              duration: step.restDuration,
-              power: { value: step.restPower }
-            });
-          }
+          expanded.push({
+            duration: step.restDuration,
+            power: { value: step.restPower }
+          });
         }
         return expanded;
       } else if (intervalType?.isRamp) {
