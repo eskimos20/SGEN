@@ -140,13 +140,8 @@ fi
 # 3. Klona repo
 echo "[3/7] Re-cloning repository..."
 if [ -d "$REPO_DIR" ]; then
-    if [[ "$REPO_DIR" == "/home/eskimos/SGEN" ]]; then
-        rm -rf "$REPO_DIR"
-        echo "✅ Old repo deleted"
-    else
-        echo "❌ REPO_DIR mismatch! Aborting."
-        exit 1
-    fi
+    rm -rf "$REPO_DIR"
+    echo "✅ Old repo deleted"
 fi
 
 git clone --branch "$BRANCH" "$GITHUB_REPO" "$REPO_DIR"
