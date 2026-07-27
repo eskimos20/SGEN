@@ -5,16 +5,26 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Collapsible Statistics Sections & Gear Improvements',
-  date: '2026-07-05',
+  title: 'Achievement Display Improvements & Calendar Weekly Totals Fix',
+  date: '2026-07-27',
   features: [
     {
-      icon: '�',
+      icon: '🏆',
+      title: 'Achievement FTP/LTHR Compared to Your Current Values',
+      description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear "already your current" message. This fix applies to both the Achievements page and when viewing activity details from the calendar or Statistics.'
+    },
+    {
+      icon: '📅',
+      title: 'Calendar Weekly Totals Include Today\'s Manual Events',
+      description: 'Weekly time totals in the calendar now include manually added events for today\'s date. Previously, only future manual events were counted, but now today\'s planned workouts are also included in the weekly summary.'
+    },
+    {
+      icon: '📄',
       title: 'Export Gear Maintenance to PDF',
       description: 'You can now export your gear maintenance history to PDF. Select one or more gear items from the export dialog to generate a comprehensive PDF document with all maintenance records, including service type, date, description, distance, cost, and performed by information.'
     },
     {
-      icon: '�🔧',
+      icon: '🔧',
       title: 'Add Multiple Service Records at Once',
       description: 'The "Add Service" dialog now works like a spreadsheet. Each row has its own Date, Distance, Service Type, Description, Cost and Performed By. Add as many rows as you need and save them all in one click — each row is stored as its own record.'
     },
@@ -22,21 +32,6 @@ const VERSION_NOTES = {
       icon: '⚙️',
       title: 'Enable/Disable Strava Integration',
       description: 'Profile settings now include a Strava toggle just like OpenAI. Disabling Strava clears stored OAuth tokens and stops the app from calling Strava endpoints, preventing unnecessary error logs.'
-    },
-    {
-      icon: '🏆',
-      title: 'Achievement FTP/LTHR Compared to Your Current Values',
-      description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear “already your current” message instead of Update/Skip buttons.'
-    },
-    {
-      icon: '�',
-      title: 'Collapsible Statistics Sections',
-      description: 'Statistics page sections are now grouped and collapsible with a single toggle. FTP Top 3 and VO2Max Top 3 share one card, Activity Type/HR Zones/Power Zones share one card, Weekly Training Volume and the summary stats (Activities, Time, Distance, Training Load) each have their own collapsible card. Preferences are saved between sessions.'
-    },
-    {
-      icon: '🛠️',
-      title: 'Minor Bug Fixes & UI Improvements',
-      description: 'PDF export now works in the Android app via the share sheet. Gear page toolbar buttons are now uniform in height. Version notifier position fixed. Service record date column widened.'
     }
   ]
 };

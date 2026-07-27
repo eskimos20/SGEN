@@ -204,6 +204,98 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
 
   const hrDrift = activityData.decoupling;
 
+  // Helper function to format achievement message with comparison to current FTP/LTHR
+  const formatAchievementWithComparison = (achievement) => {
+    const isFtp = achievement.type === 'FTP_UP';
+    const isLthr = achievement.type === 'LTHR_UP';
+    
+    if (!isFtp && !isLthr) {
+      // For non-FTP/LTHR achievements, use existing logic
+      if (achievement.message) return achievement.message;
+      if (achievement.type === 'BEST_POWER' && achievement.watts && achievement.secs) {
+        const minutes = Math.floor(achievement.secs / 60);
+        const seconds = achievement.secs % 60;
+        const timeStr = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+        return `Best ${timeStr} power: ${achievement.watts}w`;
+      }
+      if (achievement.type === 'BEST_PACE' && achievement.pace && achievement.distance) {
+        return `Best pace: ${achievement.pace} for ${achievement.distance}km`;
+      }
+      return achievement.type || 'Achievement';
+    }
+
+    // For FTP/LTHR, compare with current profile values
+    const currentValue = isFtp ? ftp : (athleteProfile?.athlete?.lthr || null);
+    const newValue = isFtp ? activityData.icu_rolling_ftp : (achievement.value || null);
+    
+    if (!newValue || !currentValue) {
+      // Fallback to simple message if we can't compare
+      if (isFtp && achievement.watts && achievement.secs) {
+        const minutes = Math.floor(achievement.secs / 60);
+        const seconds = achievement.secs % 60;
+        const timeStr = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+        return `FTP ${newValue}w from ${timeStr} at ${achievement.watts}w`;
+      }
+      if (isLthr && newValue) {
+        return `LTHR ${newValue} bpm`;
+      }
+      return achievement.type || 'Achievement';
+    }
+
+    // Calculate delta
+    const delta = newValue - currentValue;
+    const unit = isFtp ? 'w' : ' bpm';
+    const isAtCurrent = newValue === currentValue;
+
+    if (isAtCurrent) {
+      return `${isFtp ? 'FTP' : 'LTHR'} ${newValue}${unit} (already your current)`;
+    }
+
+    // Format message with comparison
+    if (isFtp && achievement.watts && achievement.secs) {
+      const minutes = Math.floor(achievement.secs / 60);
+      const seconds = achievement.secs % 60;
+      const timeStr = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
+      return `FTP ${newValue}w from ${timeStr} at ${achievement.watts}w`;
+    }
+
+    if (isLthr) {
+      return `LTHR ${newValue} bpm`;
+    }
+
+    return achievement.type || 'Achievement';
+  };
+
+  // Helper to get comparison text for FTP/LTHR
+  const getAchievementComparison = (achievement) => {
+    const isFtp = achievement.type === 'FTP_UP';
+    const isLthr = achievement.type === 'LTHR_UP';
+    
+    if (!isFtp && !isLthr) return null;
+
+    const currentValue = isFtp ? ftp : (athleteProfile?.athlete?.lthr || null);
+    const newValue = isFtp ? activityData.icu_rolling_ftp : (achievement.value || null);
+    
+    if (!newValue || !currentValue) return null;
+
+    const delta = newValue - currentValue;
+    const unit = isFtp ? 'w' : ' bpm';
+    const isAtCurrent = newValue === currentValue;
+
+    if (isAtCurrent) {
+      return {
+        text: `Your ${isFtp ? 'FTP' : 'LTHR'} is already your current`,
+        isAtCurrent: true
+      };
+    }
+
+    return {
+      text: `Update ${isFtp ? 'FTP' : 'LTHR'}: ${currentValue}${unit}→${newValue}${unit}(${delta > 0 ? '+' : ''}${delta}${unit})`,
+      delta,
+      isAtCurrent: false
+    };
+  };
+
   return (
     <div className="space-y-4 max-w-full overflow-hidden">
       {/* Activity Link */}
@@ -566,36 +658,8 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
           </h4>
           <div className="grid grid-cols-1 gap-2">
             {achievements.map((achievement, idx) => {
-              // Build achievement message from available data
-              let achievementMessage = achievement.message || achievement.description || achievement.name || '';
-              
-              // If no message, build one from the data
-              if (!achievementMessage && achievement.type) {
-                if (achievement.type === 'FTP_UP' && achievement.watts && achievement.secs) {
-                  const minutes = Math.floor(achievement.secs / 60);
-                  const seconds = achievement.secs % 60;
-                  const timeStr = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
-                  
-                  // Use icu_rolling_ftp and icu_rolling_ftp_delta from activity data
-                  const newFtp = activityData.icu_rolling_ftp;
-                  const ftpDelta = activityData.icu_rolling_ftp_delta;
-                  
-                  if (newFtp && ftpDelta) {
-                    achievementMessage = `FTP +${ftpDelta} to ${newFtp}w from ${timeStr} at ${achievement.watts}w`;
-                  } else {
-                    achievementMessage = `FTP increased based on ${timeStr} effort at ${achievement.watts}w`;
-                  }
-                } else if (achievement.type === 'BEST_POWER' && achievement.watts && achievement.secs) {
-                  const minutes = Math.floor(achievement.secs / 60);
-                  const seconds = achievement.secs % 60;
-                  const timeStr = seconds > 0 ? `${minutes}m${seconds}s` : `${minutes}m`;
-                  achievementMessage = `Best ${timeStr} power: ${achievement.watts}w`;
-                } else if (achievement.type === 'BEST_PACE' && achievement.pace && achievement.distance) {
-                  achievementMessage = `Best pace: ${achievement.pace} for ${achievement.distance}km`;
-                } else if (achievement.type === 'LTHR_UP' && achievement.value) {
-                  achievementMessage = `New LTHR: ${achievement.value} bpm`;
-                }
-              }
+              const achievementMessage = formatAchievementWithComparison(achievement);
+              const comparison = getAchievementComparison(achievement);
               
               return (
               <div 
@@ -608,7 +672,12 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
                     {achievement.type === 'pr' ? 'PR' : achievement.type}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">{achievementMessage || 'Achievement unlocked'}</p>
+                <p className="text-sm font-semibold text-gray-900 mb-1">{achievementMessage || 'Achievement unlocked'}</p>
+                {comparison && (
+                  <p className={`text-xs ${comparison.isAtCurrent ? 'text-gray-600' : comparison.delta > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {comparison.text}
+                  </p>
+                )}
               </div>
             );
             })}
