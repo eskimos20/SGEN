@@ -242,8 +242,8 @@ export const calculateWeeklyTotals = (year, month, weekNumber, activities, event
         if (event.isDeloadWeek) {
           isDeloadWeek = true;
         }
-        // Only count time/TSS for future dates without completed activities
-        if (dateStr > today && !activityDatesInWeek.has(dateStr)) {
+        // Only count time/TSS for future dates and today without completed activities
+        if (dateStr >= today && !activityDatesInWeek.has(dateStr)) {
           const eventSeconds = event.moving_time || 0;
           const eventTSS = event.icu_training_load || extractTSSFromName(event.name) || 0;
           const eventDistance = event.distance || 0;
@@ -279,7 +279,7 @@ export const calculateWeeklyTotals = (year, month, weekNumber, activities, event
         if (event.isDeloadWeek) {
           isDeloadWeek = true;
         }
-        if (dateStr > today && !activityDatesInWeek.has(dateStr)) {
+        if (dateStr >= today && !activityDatesInWeek.has(dateStr)) {
           const eventSeconds = event.moving_time || 0;
           const eventTSS = event.icu_training_load || extractTSSFromName(event.name) || 0;
           const eventDistance = event.distance || 0;
