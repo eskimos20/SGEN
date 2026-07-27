@@ -122,13 +122,6 @@
                         </exclude>
                     </excludes>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <!-- Frontend Maven Plugin - Downloads Node.js and builds frontend -->
             <plugin>

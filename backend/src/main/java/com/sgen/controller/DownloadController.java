@@ -1,10 +1,11 @@
 package com.sgen.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.info.BuildProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Optional;
 
 /**
  * Controller for serving downloadable files (APK, etc.)
@@ -24,21 +24,8 @@ import java.util.Optional;
 @Slf4j
 public class DownloadController {
 
-    private final BuildProperties buildProperties;
-
-    public DownloadController(Optional<BuildProperties> buildProperties) {
-        this.buildProperties = buildProperties.orElse(null);
-    }
-
-    /**
-     * Get application version from BuildProperties
-     */
-    private String getAppVersion() {
-        if (buildProperties != null) {
-            return buildProperties.getVersion();
-        }
-        return "unknown";
-    }
+    @Value("${app.version:unknown}")
+    private String appVersion;
 
     /**
      * Check if Android APK is available for download
@@ -46,14 +33,13 @@ public class DownloadController {
     @GetMapping("/android/status")
     public ResponseEntity<ApkStatusResponse> getApkStatus() {
         boolean available = isApkAvailable();
-        String version = getAppVersion();
         
         log.info("APK status check - Available: {}, Version: {}, Working dir: {}", 
-            available, version, System.getProperty("user.dir"));
+            available, appVersion, System.getProperty("user.dir"));
         
         return ResponseEntity.ok(new ApkStatusResponse(available, 
             available ? "/api/downloads/android/apk" : null,
-            available ? version : null));
+            available ? appVersion : null));
     }
 
     /**
@@ -136,11 +122,14 @@ public class DownloadController {
             return ResponseEntity.notFound().build();
         }
         
-        log.info("Serving APK download, resource: {}", resource);
+        log.info("Serving APK download, version: {}, resource: {}", appVersion, resource);
         
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sgen-android.apk\"")
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"sgen-android-" + appVersion + ".apk\"")
                 .body(resource);
     }
 

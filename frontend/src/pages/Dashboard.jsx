@@ -121,8 +121,9 @@ const Dashboard = () => {
               const appInfo = await App.getInfo();
               setInstalledApkVersion(appInfo.version);
               
-              // Only show update if server version is different from installed version
-              if (response.data.version && response.data.version !== appInfo.version) {
+              // Only show update if the server reports a real version that differs
+              const serverVersion = response.data.version;
+              if (serverVersion && serverVersion !== 'unknown' && serverVersion !== appInfo.version) {
                 setShowApkUpdate(true);
               }
             } catch (err) {
@@ -219,11 +220,13 @@ const Dashboard = () => {
                     <button
                       onClick={async () => {
                         // Download APK in-app and trigger installation
-                        const directFileUrl = `${getServerBaseUrl()}/downloads/sgen-android.apk`;
+                        // Version + timestamp make the URL unique so the WebView cannot
+                        // serve a cached copy of a previously deployed APK
+                        const directFileUrl = `${getServerBaseUrl()}/downloads/sgen-android.apk?v=${encodeURIComponent(apkVersion || 'latest')}&t=${Date.now()}`;
                         
                         try {
                           // Download the APK file
-                          const response = await fetch(directFileUrl);
+                          const response = await fetch(directFileUrl, { cache: 'no-store' });
                           if (!response.ok) {
                             throw new Error(`Download failed: ${response.status}`);
                           }
@@ -363,9 +366,10 @@ const Dashboard = () => {
                           return;
                         }
                         
-                        // Download using fetch
-                        const response = await fetch(apkUrl, {
-                          headers: { 'Authorization': `Bearer ${token}` }
+                        // Download using fetch (cache-busted so the newest build is always fetched)
+                        const response = await fetch(`${apkUrl}?t=${Date.now()}`, {
+                          headers: { 'Authorization': `Bearer ${token}` },
+                          cache: 'no-store'
                         });
                         
                         if (!response.ok) throw new Error('Download failed');
@@ -374,7 +378,7 @@ const Dashboard = () => {
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = 'sgen-android.apk';
+                        a.download = `sgen-android-${apkVersion || 'latest'}.apk`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
