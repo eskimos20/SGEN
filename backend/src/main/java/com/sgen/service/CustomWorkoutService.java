@@ -366,7 +366,9 @@ public class CustomWorkoutService {
             info.put("shortDescription", w.getShortDescription());
         }
 
-        // Override workout_doc, duration, name and shortDescription from JSON metadata if available
+        // Override workout_doc, duration and shortDescription from JSON metadata if available.
+        // Keep the generated filename-based name (e.g., "Anaerobic TSS 117 v2") so the display
+        // format matches the regular workout library.
         String jsonFilename = file.getFileName().toString().replace(".zwo", ".json");
         Path jsonFile = file.getParent().resolve(jsonFilename);
         if (Files.exists(jsonFile)) {
@@ -375,7 +377,6 @@ public class CustomWorkoutService {
                 Map<String, Object> meta = objectMapper.readValue(Files.readString(jsonFile), Map.class);
                 if (meta.containsKey("workout_doc")) info.put("workout_doc", meta.get("workout_doc"));
                 if (meta.containsKey("duration")) info.put("duration", meta.get("duration"));
-                if (meta.containsKey("name")) info.put("name", meta.get("name"));
                 if (meta.containsKey("shortDescription")) info.put("shortDescription", meta.get("shortDescription"));
             } catch (Exception e) {
                 log.warn("Failed to load metadata from {}: {}", jsonFilename, e.getMessage());
