@@ -12,8 +12,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
 /**
  * Controller for serving downloadable files (APK, etc.)
@@ -27,18 +30,57 @@ public class DownloadController {
     private String appVersion;
 
     /**
+     * Get application version from JAR manifest as fallback
+     */
+    private String getVersionFromManifest() {
+        try {
+            // Try to get version from MANIFEST.MF
+            ClassPathResource manifestResource = new ClassPathResource("META-INF/MANIFEST.MF");
+            if (manifestResource.exists()) {
+                Manifest manifest = new Manifest(manifestResource.getInputStream());
+                Attributes attributes = manifest.getMainAttributes();
+                String version = attributes.getValue("Implementation-Version");
+                if (version != null && !version.isEmpty()) {
+                    return version;
+                }
+            }
+        } catch (IOException e) {
+            log.warn("Failed to read version from manifest", e);
+        }
+        return null;
+    }
+
+    /**
+     * Get the effective version (from config or manifest)
+     */
+    private String getEffectiveVersion() {
+        // If config version is set and not the placeholder, use it
+        if (appVersion != null && !appVersion.equals("unknown") && !appVersion.startsWith("@")) {
+            return appVersion;
+        }
+        // Fallback to manifest
+        String manifestVersion = getVersionFromManifest();
+        if (manifestVersion != null) {
+            return manifestVersion;
+        }
+        // Final fallback
+        return appVersion;
+    }
+
+    /**
      * Check if Android APK is available for download
      */
     @GetMapping("/android/status")
     public ResponseEntity<ApkStatusResponse> getApkStatus() {
         boolean available = isApkAvailable();
+        String effectiveVersion = getEffectiveVersion();
         
-        log.info("APK status check - Available: {}, Version: {}, Working dir: {}", 
-            available, appVersion, System.getProperty("user.dir"));
+        log.info("APK status check - Available: {}, Version: {}, Config version: {}, Working dir: {}", 
+            available, effectiveVersion, appVersion, System.getProperty("user.dir"));
         
         return ResponseEntity.ok(new ApkStatusResponse(available, 
             available ? "/api/downloads/android/apk" : null,
-            available ? appVersion : null));
+            available ? effectiveVersion : null));
     }
 
     /**
