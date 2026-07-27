@@ -44,10 +44,10 @@ export const parseWorkoutName = (name) => {
 
 /**
  * Calculate workout metrics from workout_doc
- * Note: TSS/icu_training_load is NOT calculated here - use extractTSSFromName() instead
+ * Uses normalized power (4th root of the average 4th powers) for intensity/TSS alignment with the backend.
  * @param {Object} workoutDoc - Workout document with steps
  * @param {number} ftp - Functional Threshold Power
- * @returns {Object|null} Metrics { moving_time, average_watts, icu_intensity, work }
+ * @returns {Object|null} Metrics { moving_time, average_watts, icu_intensity, work, tss }
  */
 export const calculateWorkoutMetrics = (workoutDoc, ftp) => {
   if (!workoutDoc?.steps || !ftp) {
@@ -57,34 +57,50 @@ export const calculateWorkoutMetrics = (workoutDoc, ftp) => {
   const steps = flattenSteps(workoutDoc.steps);
   let totalDuration = 0;
   let totalWork = 0;
+  let totalWeightedPower = 0;
 
   for (const step of steps) {
     const duration = step.duration || 0;
+    if (duration === 0) continue;
     totalDuration += duration;
 
-    let stepPower = 0;
+    // Average power for the step as percentage of FTP, truncated to integer
+    // to match Java backend (asInt() / integer division).
+    let powerPercent = 50;
     if (step.power?.start !== undefined && step.power?.end !== undefined) {
-      // Ramp - average power
-      const startPower = (step.power.start / 100) * ftp;
-      const endPower = (step.power.end / 100) * ftp;
-      stepPower = (startPower + endPower) / 2;
+      const startInt = Math.trunc(step.power.start);
+      const endInt = Math.trunc(step.power.end);
+      powerPercent = Math.trunc((startInt + endInt) / 2);
     } else if (step.power?.value !== undefined) {
-      // Steady state
-      stepPower = (step.power.value / 100) * ftp;
+      powerPercent = Math.trunc(step.power.value);
     }
 
-    totalWork += stepPower * duration;
+    // Work in joules for average power
+    const watts = (powerPercent / 100) * ftp;
+    totalWork += watts * duration;
+
+    // Normalized power weighting: duration * (powerPercent/100)^4
+    totalWeightedPower += duration * Math.pow(powerPercent / 100, 4);
   }
 
   const avgPower = totalDuration > 0 ? totalWork / totalDuration : 0;
-  const intensity = ftp > 0 ? avgPower / ftp : 0;
+  const normalizedPower = totalDuration > 0
+    ? Math.pow(totalWeightedPower / totalDuration, 0.25) * 100
+    : 0;
+  const intensity = ftp > 0 ? normalizedPower / 100 : 0;
   const workKJ = totalWork / 1000; // Convert to kJ
+
+  // TSS = (duration_hours * intensity^2 * 100), rounded to integer
+  const tss = totalDuration > 0
+    ? Math.round((totalDuration / 3600) * Math.pow(intensity, 2) * 100)
+    : 0;
 
   return {
     moving_time: totalDuration,
     average_watts: Math.round(avgPower),
-    icu_intensity: Math.round(intensity * 100) / 100,
-    work: Math.round(workKJ)
+    icu_intensity: intensity,
+    work: Math.round(workKJ),
+    tss
   };
 };
 

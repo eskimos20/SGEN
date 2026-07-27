@@ -93,14 +93,8 @@ const WorkoutCreator = () => {
       return { tss: 0, duration: 0, totalDuration: 0, moving_time: 0 };
     }
     
-    // Calculate TSS from intensity and duration
-    // TSS = (duration_hours * intensity^2 * 100)
-    const durationHours = metrics.moving_time / 3600;
-    const tss = durationHours * Math.pow(metrics.icu_intensity, 2) * 100;
-    
     return {
       ...metrics,
-      tss,
       duration: metrics.moving_time,
       totalDuration: metrics.moving_time
     };
