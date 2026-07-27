@@ -16,10 +16,36 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Stable signing key supplied by deploy-to-server.sh. Falls back to the default
+    // debug keystore when unset, so local builds keep working unchanged.
+    def sgenKeystorePath = System.getenv("ANDROID_KEYSTORE")
+    def sgenKeystoreFile = sgenKeystorePath ? file(sgenKeystorePath) : null
+
+    if (sgenKeystoreFile != null && sgenKeystoreFile.exists()) {
+        signingConfigs {
+            sgen {
+                storeFile sgenKeystoreFile
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            def sgenSigningConfig = signingConfigs.findByName("sgen")
+            if (sgenSigningConfig != null) {
+                signingConfig sgenSigningConfig
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            def sgenSigningConfig = signingConfigs.findByName("sgen")
+            if (sgenSigningConfig != null) {
+                signingConfig sgenSigningConfig
+            }
         }
     }
 }

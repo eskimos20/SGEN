@@ -31,6 +31,14 @@ REPO_DIR="/root/SGEN"
 # GitHub repository URL
 GITHUB_REPO="https://github.com/eskimos20/SGEN.git"
 
+# Android signing keystore
+# Must live OUTSIDE REPO_DIR, since the repo is deleted and re-cloned on every deploy.
+# Generated automatically on first run. Keep a backup - if this file is lost, the app
+# must be uninstalled before the next update can be installed.
+ANDROID_KEYSTORE="${ANDROID_KEYSTORE:-$HOME/.sgen/sgen-signing.keystore}"
+ANDROID_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD:-sgen-android}"
+ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS:-sgen}"
+
 # JWT Secret (change for production!)
 JWT_SECRET="${JWT_SECRET:-default-local-secret-key-do-not-use-in-production}"
 
@@ -220,6 +228,28 @@ if [ -d "$ANDROID_SDK_ROOT" ]; then
     # Also install/update the required components explicitly
     echo "Installing/updating SDK components..."
     "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" --channel=0 2>&1 || true
+    
+    # Stable signing key. Without this, Gradle falls back to ~/.android/debug.keystore,
+    # which differs per user/machine - Android then refuses to install the update over
+    # an existing install and the old app silently stays in place.
+    if [ ! -f "$ANDROID_KEYSTORE" ]; then
+        echo "Creating Android signing keystore: $ANDROID_KEYSTORE"
+        mkdir -p "$(dirname "$ANDROID_KEYSTORE")"
+        keytool -genkeypair -noprompt \
+            -keystore "$ANDROID_KEYSTORE" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -keyalg RSA -keysize 2048 -validity 10950 \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEYSTORE_PASSWORD" \
+            -dname "CN=SGEN, OU=SGEN, O=SGEN, L=Stockholm, ST=Stockholm, C=SE"
+        if [ $? -ne 0 ]; then
+            echo "❌ Failed to create keystore!"
+            exit 1
+        fi
+        echo "✅ Keystore created - back this file up"
+    fi
+    export ANDROID_KEYSTORE ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS
+    echo "🔑 Signing APK with: $ANDROID_KEYSTORE"
     
     cd frontend
     npx cap sync android
