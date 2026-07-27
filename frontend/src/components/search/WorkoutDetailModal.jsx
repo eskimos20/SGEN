@@ -31,7 +31,7 @@ const WorkoutDetailModal = ({
     ? (athleteProfile?.runningFtp || 240)
     : sportSettings.ftp;
 
-  const durationSeconds = workout.duration || 0;
+  const durationSeconds = (workout.duration || 0) * 60;
   const metrics = workout.workout_doc ? calculateWorkoutMetrics(workout.workout_doc, ftp) : null;
   const estimatedKcal = metrics?.work ? workKjToKcal(metrics.work) : 0;
 

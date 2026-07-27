@@ -102,18 +102,19 @@ export const useWorkoutSave = (refreshCalendarData) => {
       const zwoContent = generateZwoContent(steps, selectedCategory, description, shortDescription, sportType, tss, INTERVAL_TYPES);
       
       // Create workout_doc for Intervals.icu
-      const workoutDoc = { 
+      const workoutDoc = {
         steps: workoutSteps,
         sport_type: sportType === 'Run' ? 'run' : 'bike'
       };
-      
+
       const durationSeconds = workoutMetrics.totalDuration;
-      
+      const durationMinutes = Math.round(durationSeconds / 60);
+
       // Build workout name with shortDescription: "Category TSS## shortDescription"
-      const workoutName = shortDescription 
+      const workoutName = shortDescription
         ? `${selectedCategory} TSS${tss} ${shortDescription}`
         : `${selectedCategory} TSS${tss}`;
-      
+
       // Save workout
       const response = await api.post('/statistics/custom-workouts', {
         category: selectedCategory,
@@ -123,7 +124,7 @@ export const useWorkoutSave = (refreshCalendarData) => {
         shortDescription: shortDescription || '',
         zwoContent: zwoContent,
         workoutDoc: workoutDoc,
-        duration: durationSeconds
+        duration: durationMinutes
       });
 
       // Schedule if checkbox is checked
