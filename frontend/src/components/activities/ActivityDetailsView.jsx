@@ -205,16 +205,40 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   const hrDrift = activityData.decoupling;
 
   // Helper to format achievement type for display
-  const formatAchievementType = (type) => {
-    if (!type) return 'Achievement';
-    const typeMap = {
-      'FTP_UP': 'FTP Updated',
-      'LTHR_UP': 'LTHR Updated',
-      'BEST_POWER': 'Best Power',
-      'BEST_PACE': 'Best Pace',
-      'pr': 'PR'
-    };
-    return typeMap[type] || type.replace(/_/g, ' ');
+  const formatAchievementType = (achievement) => {
+    if (!achievement.type) return 'Achievement';
+    
+    const isFtp = achievement.type === 'FTP_UP';
+    const isLthr = achievement.type === 'LTHR_UP';
+    
+    // For non-FTP/LTHR achievements, use simple mapping
+    if (!isFtp && !isLthr) {
+      const typeMap = {
+        'BEST_POWER': 'Best Power',
+        'BEST_PACE': 'Best Pace',
+        'pr': 'PR'
+      };
+      return typeMap[achievement.type] || achievement.type.replace(/_/g, ' ');
+    }
+    
+    // For FTP/LTHR, compare with current profile value
+    const currentValue = isFtp ? ftp : (athleteProfile?.athlete?.lthr || null);
+    const newValue = isFtp ? activityData.icu_rolling_ftp : (achievement.value || null);
+    
+    if (!newValue || !currentValue) {
+      // Fallback if we can't compare
+      return isFtp ? 'FTP Updated' : 'LTHR Updated';
+    }
+    
+    const delta = newValue - currentValue;
+    
+    if (delta > 0) {
+      return isFtp ? 'FTP Increased' : 'LTHR Increased';
+    } else if (delta < 0) {
+      return isFtp ? 'FTP Decreased' : 'LTHR Decreased';
+    } else {
+      return isFtp ? 'FTP Already Current' : 'LTHR Already Current';
+    }
   };
 
   // Helper function to format achievement message with comparison to current FTP/LTHR
@@ -682,7 +706,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
                 <div className="flex items-center gap-1 mb-1">
                   <Trophy className="h-3 w-3 text-yellow-500" />
                   <span className="text-xs font-medium text-yellow-700">
-                    {formatAchievementType(achievement.type)}
+                    {formatAchievementType(achievement)}
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-gray-900 mb-1">{achievementMessage || 'Achievement unlocked'}</p>
