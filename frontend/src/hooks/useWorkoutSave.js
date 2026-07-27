@@ -17,7 +17,10 @@ export const useWorkoutSave = (refreshCalendarData) => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveAndSchedule, setSaveAndSchedule] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleDate, setScheduleDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   // Generate .zwo XML content
   const generateZwoContent = useCallback((steps, selectedCategory, description, shortDescription, sportType, tss, INTERVAL_TYPES) => {
