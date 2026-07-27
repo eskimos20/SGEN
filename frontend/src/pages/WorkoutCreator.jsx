@@ -176,7 +176,7 @@ const WorkoutCreator = () => {
         onCancel: null
       });
     }
-  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps]);
+  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, shortDescription, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
