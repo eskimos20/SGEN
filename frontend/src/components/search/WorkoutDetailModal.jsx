@@ -100,7 +100,6 @@ const WorkoutDetailModal = ({
               <WorkoutZoneDistribution
                 workoutDoc={workout.workout_doc}
                 totalTime={durationSeconds}
-                powerZones={sportSettings.powerZones}
               />
             </div>
           )}
@@ -112,7 +111,6 @@ const WorkoutDetailModal = ({
               <WorkoutChart
                 workoutDoc={workout.workout_doc}
                 ftp={ftp}
-                powerZones={sportSettings.powerZones}
                 height="h-32"
                 showTooltip={true}
               />

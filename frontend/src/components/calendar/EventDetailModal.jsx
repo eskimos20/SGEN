@@ -472,7 +472,6 @@ const EventDetailModal = ({
                 <WorkoutZoneDistribution 
                   workoutDoc={selectedEvent.workout_doc} 
                   totalTime={selectedEvent.moving_time}
-                  powerZones={sportSettings.powerZones}
                 />
               </div>
             );
@@ -495,7 +494,6 @@ const EventDetailModal = ({
                 <WorkoutChart 
                   workoutDoc={selectedEvent.workout_doc} 
                   ftp={ftp}
-                  powerZones={sportSettings.powerZones}
                   height="h-32"
                   showTooltip={true}
                 />
