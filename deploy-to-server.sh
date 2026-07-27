@@ -25,8 +25,8 @@ SGEN_BACKEND_PORT="8084"
 SGEN_EXTERNAL_PORT="8084"
 
 # Server directories
-SERVER_DIR="/home/eskimos/SERVER/SGEN"
-REPO_DIR="/home/eskimos/SGEN"
+SERVER_DIR="/root/SERVER/SGEN"
+REPO_DIR="/root/SGEN"
 
 # GitHub repository URL
 GITHUB_REPO="https://github.com/eskimos20/SGEN.git"
