@@ -232,6 +232,15 @@ if [ -d "$ANDROID_SDK_ROOT" ]; then
     # Stable signing key. Without this, Gradle falls back to ~/.android/debug.keystore,
     # which differs per user/machine - Android then refuses to install the update over
     # an existing install and the old app silently stays in place.
+    # Defaults are repeated here so this works even if the config block at the top
+    # of the script is missing (e.g. a hand-edited copy).
+    ANDROID_KEYSTORE="${ANDROID_KEYSTORE:-${HOME:-/root}/.sgen/sgen-signing.keystore}"
+    ANDROID_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD:-sgen-android}"
+    ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS:-sgen}"
+    if [ ${#ANDROID_KEYSTORE_PASSWORD} -lt 6 ]; then
+        echo "❌ ANDROID_KEYSTORE_PASSWORD must be at least 6 characters!"
+        exit 1
+    fi
     if [ ! -f "$ANDROID_KEYSTORE" ]; then
         echo "Creating Android signing keystore: $ANDROID_KEYSTORE"
         mkdir -p "$(dirname "$ANDROID_KEYSTORE")"
