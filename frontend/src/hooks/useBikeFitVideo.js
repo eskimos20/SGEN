@@ -10,7 +10,7 @@ export const useBikeFitVideo = () => {
   
   const videoRef = useRef(null);
 
-  const loadVideo = (url) => {
+  const loadVideo = (url, expectedFps) => {
     const video = document.createElement('video');
     video.src = url;
     video.onloadedmetadata = () => {
@@ -18,11 +18,11 @@ export const useBikeFitVideo = () => {
       const height = video.videoHeight;
       const duration = video.duration;
 
-      // The real frame rate cannot be reliably read from a file/blob, and it is
-      // not needed for the angle analysis. Keep numeric controls disabled rather
-      // than pretending the video is 30 fps.
-      const actualFps = null;
+      // The browser cannot reliably extract the real fps from a blob/file.
+      // If the caller already knows it (e.g. from a recording), use that value.
       const finiteDuration = Number.isFinite(duration) ? duration : null;
+      const actualFps =
+        Number.isFinite(expectedFps) && expectedFps > 0 ? expectedFps : null;
 
       setFps(actualFps);
       setTotalFrames(finiteDuration && actualFps ? Math.floor(finiteDuration * actualFps) : null);
@@ -30,7 +30,7 @@ export const useBikeFitVideo = () => {
 
       setVideoMetadata({
         resolution: width > 0 && height > 0 ? `${width} × ${height}` : 'Unknown',
-        fps: 'Unknown',
+        fps: actualFps ? actualFps.toString() : 'Unknown',
         duration: finiteDuration ? `${finiteDuration.toFixed(2)}s` : 'Unknown',
         totalFrames: finiteDuration && actualFps ? Math.floor(finiteDuration * actualFps).toString() : 'Unknown'
       });

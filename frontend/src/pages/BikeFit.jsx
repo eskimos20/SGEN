@@ -49,9 +49,9 @@ const BikeFit = () => {
   
   const recordingHook = useBikeFitRecording(
     videoHook.videoRef,
-    (url) => {
+    (url, recordedFps) => {
       videoHook.setVideoUrl(url);
-      videoHook.loadVideo(url);
+      videoHook.loadVideo(url, recordedFps);
       setActiveTab('analyze');
     }
   );

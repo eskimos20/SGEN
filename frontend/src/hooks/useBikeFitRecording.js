@@ -413,7 +413,7 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
 
       setIsRecording(false);
 
-      onRecordingComplete?.(url);
+      onRecordingComplete?.(url, selectedProfile?.fps);
     };
 
     recorder.start(100);
