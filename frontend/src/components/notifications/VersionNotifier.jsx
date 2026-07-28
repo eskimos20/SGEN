@@ -5,9 +5,14 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Workout Sharing, Copy/Edit & Smart Duplicate Handling',
+  title: 'Performance Optimizations, Workout Sharing, Copy/Edit & Smart Duplicate Handling',
   date: '2026-07-28',
   features: [
+    {
+      icon: '🚀',
+      title: 'Performance & Reliability Improvements',
+      description: 'Optimized Intervals.icu data fetching with parallel requests and improved rate limiting to prevent 429 errors. OpenAI rate limiter now uses non-blocking waits, while frontend timers and scroll handlers are properly cleaned up. Logout also uses soft navigation without a full page reload.'
+    },
     {
       icon: '🔁',
       title: 'Share Workouts with Other Users',

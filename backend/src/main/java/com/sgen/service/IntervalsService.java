@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,7 +45,7 @@ public class IntervalsService {
     private final IntervalsClientFactory clientFactory;
     private final IntervalsActivityAnalysisService analysisService;
 
-    private static final int PARALLEL_REQUESTS = 5;
+    private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
 
     @PreDestroy
@@ -64,93 +65,118 @@ public class IntervalsService {
         ApiContext ctx = getValidatedContext(username);
         String athleteId = ctx.user.getIntervalsAthleteId();
         WebClient client = ctx.client;
-        Map<String, Object> allData = new HashMap<>();
+        Map<String, Object> allData = new ConcurrentHashMap<>();
 
-        // Activities
-        try {
-            String activitiesJson = client.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
-                            .queryParam("oldest", oldest).queryParam("newest", newest)
-                            .build(athleteId))
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode activitiesNode = objectMapper.readTree(activitiesJson);
+        // Activities (with per-activity intervals fetched concurrently)
+        CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                rateLimiter.acquire();
+                String activitiesJson = client.get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                                .queryParam("oldest", oldest).queryParam("newest", newest)
+                                .build(athleteId))
+                        .retrieve().bodyToMono(String.class).block();
+                JsonNode activitiesNode = objectMapper.readTree(activitiesJson);
 
-            if (activitiesNode.isArray()) {
-                log.info("Fetching interval data for {} activities", activitiesNode.size());
-                for (JsonNode activity : activitiesNode) {
-                    String activityId = activity.path("id").asText();
-                    String name = activity.path("name").asText("");
-                    String type = activity.path("type").asText("");
-                    String source = activity.path("source").asText("");
-                    if (name.isEmpty() && type.isEmpty() && "STRAVA".equals(source)) {
-                        ((com.fasterxml.jackson.databind.node.ObjectNode) activity).put("_strava_restricted", true);
-                        continue;
-                    }
-                    if (activityId != null && !activityId.isEmpty()) {
-                        try {
-                            rateLimiter.acquire();
-                            String detailJson = client.get()
-                                    .uri(uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
-                                            .queryParam("intervals", "true").build(activityId))
-                                    .retrieve().bodyToMono(String.class).block();
-                            JsonNode details = objectMapper.readTree(detailJson);
-                            if (details.has("icu_intervals")) {
-                                ((com.fasterxml.jackson.databind.node.ObjectNode) activity)
-                                        .set("icu_intervals", details.get("icu_intervals"));
-                            }
-                            if (details.has("icu_max_watts") && !activity.has("icu_max_watts")) {
-                                ((com.fasterxml.jackson.databind.node.ObjectNode) activity)
-                                        .set("icu_max_watts", details.get("icu_max_watts"));
-                            }
-                        } catch (Exception e) {
-                            log.warn("Failed to fetch intervals for activity {}: {}", activityId, e.getMessage());
+                if (activitiesNode.isArray()) {
+                    log.info("Fetching interval data for {} activities", activitiesNode.size());
+                    List<CompletableFuture<Void>> intervalFutures = new ArrayList<>();
+                    for (JsonNode activity : activitiesNode) {
+                        String activityId = activity.path("id").asText();
+                        String name = activity.path("name").asText("");
+                        String type = activity.path("type").asText("");
+                        String source = activity.path("source").asText("");
+                        if (name.isEmpty() && type.isEmpty() && "STRAVA".equals(source)) {
+                            ((com.fasterxml.jackson.databind.node.ObjectNode) activity).put("_strava_restricted", true);
+                            continue;
                         }
+                        if (activityId == null || activityId.isEmpty()) {
+                            continue;
+                        }
+                        final JsonNode currentActivity = activity;
+                        final String currentActivityId = activityId;
+                        intervalFutures.add(CompletableFuture.runAsync(() -> {
+                            try {
+                                rateLimiter.acquire();
+                                String detailJson = client.get()
+                                        .uri(uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
+                                                .queryParam("intervals", "true").build(currentActivityId))
+                                        .retrieve().bodyToMono(String.class).block();
+                                JsonNode details = objectMapper.readTree(detailJson);
+                                if (details.has("icu_intervals")) {
+                                    ((com.fasterxml.jackson.databind.node.ObjectNode) currentActivity)
+                                            .set("icu_intervals", details.get("icu_intervals"));
+                                }
+                                if (details.has("icu_max_watts") && !currentActivity.has("icu_max_watts")) {
+                                    ((com.fasterxml.jackson.databind.node.ObjectNode) currentActivity)
+                                            .set("icu_max_watts", details.get("icu_max_watts"));
+                                }
+                            } catch (Exception e) {
+                                log.warn("Failed to fetch intervals for activity {}: {}", currentActivityId, e.getMessage());
+                            }
+                        }, executorService));
                     }
+                    CompletableFuture.allOf(intervalFutures.toArray(new CompletableFuture[0])).join();
+                    log.info("Completed fetching interval data for all activities");
                 }
-                log.info("Completed fetching interval data for all activities");
+                return activitiesNode;
+            } catch (Exception e) {
+                log.error("Failed to fetch activities: {}", e.getMessage(), e);
+                return null;
             }
-            allData.put("activities", activitiesNode);
-        } catch (Exception e) {
-            log.error("Failed to fetch activities: {}", e.getMessage(), e);
-            allData.put("activities", null);
-            allData.put("activitiesError", e.getMessage());
-        }
+        }, executorService);
 
         // Athlete profile
-        try {
-            rateLimiter.acquire();
-            String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
-                    .retrieve().bodyToMono(String.class).block();
-            allData.put("athlete", objectMapper.readTree(athleteJson));
-        } catch (Exception e) {
-            log.error("Failed to fetch athlete profile: {}", e.getMessage(), e);
-            allData.put("athlete", null);
-            allData.put("athleteError", e.getMessage());
-        }
+        CompletableFuture<JsonNode> athleteFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                rateLimiter.acquire();
+                String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
+                        .retrieve().bodyToMono(String.class).block();
+                return objectMapper.readTree(athleteJson);
+            } catch (Exception e) {
+                log.error("Failed to fetch athlete profile: {}", e.getMessage(), e);
+                return null;
+            }
+        }, executorService);
 
         // Sport settings
-        try {
-            rateLimiter.acquire();
-            String sportSettingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
-                    .retrieve().bodyToMono(String.class).block();
-            allData.put("sportSettings", objectMapper.readTree(sportSettingsJson));
-        } catch (Exception e) {
-            log.error("Failed to fetch sport settings: {}", e.getMessage(), e);
-            allData.put("sportSettings", null);
-        }
+        CompletableFuture<JsonNode> sportSettingsFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                rateLimiter.acquire();
+                String sportSettingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
+                        .retrieve().bodyToMono(String.class).block();
+                return objectMapper.readTree(sportSettingsJson);
+            } catch (Exception e) {
+                log.error("Failed to fetch sport settings: {}", e.getMessage(), e);
+                return null;
+            }
+        }, executorService);
 
         // Events
+        CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                rateLimiter.acquire();
+                String eventsJson = client.get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
+                                .queryParam("oldest", oldest).queryParam("newest", newest)
+                                .build(athleteId))
+                        .retrieve().bodyToMono(String.class).block();
+                return objectMapper.readTree(eventsJson);
+            } catch (Exception e) {
+                log.error("Failed to fetch events: {}", e.getMessage(), e);
+                return null;
+            }
+        }, executorService);
+
+        // Wait for all four independent top-level fetches
         try {
-            rateLimiter.acquire();
-            String eventsJson = client.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
-                            .queryParam("oldest", oldest).queryParam("newest", newest)
-                            .build(athleteId))
-                    .retrieve().bodyToMono(String.class).block();
-            allData.put("events", objectMapper.readTree(eventsJson));
+            CompletableFuture.allOf(activitiesFuture, athleteFuture, sportSettingsFuture, eventsFuture).join();
+            allData.put("activities", activitiesFuture.getNow(null));
+            allData.put("athlete", athleteFuture.getNow(null));
+            allData.put("sportSettings", sportSettingsFuture.getNow(null));
+            allData.put("events", eventsFuture.getNow(null));
         } catch (Exception e) {
-            log.error("Failed to fetch events: {}", e.getMessage(), e);
-            allData.put("events", null);
+            log.error("Failed to fetch dashboard data: {}", e.getMessage(), e);
         }
 
         // FTP / VO2Max calculation via parallel activity processing

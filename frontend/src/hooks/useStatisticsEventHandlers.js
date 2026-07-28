@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import { buildMinimalData, fetchPerformanceData as fetchPerformanceDataAPI } from '../utils/statisticsUtils';
 import { analyzeData as analyzeDataAPI, fetchActivityDetails, fetchStatisticsData } from '../services/statisticsService';
@@ -48,6 +48,17 @@ export const useStatisticsEventHandlers = ({
   fetchCalendarData,
   getUpcomingWorkouts
 }) => {
+  const copyTimeoutRef = useRef(null);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
   // Handle drag start for chat window
   const handleChatDragStart = useCallback((e) => {
     if (e.target.closest('button')) return;
@@ -243,7 +254,10 @@ export const useStatisticsEventHandlers = ({
   const copyAnalysis = useCallback(() => {
     navigator.clipboard.writeText(analysis);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) setCopied(false);
+    }, 2000);
   }, [analysis, setCopied]);
 
   // Copy data to clipboard
@@ -258,7 +272,10 @@ export const useStatisticsEventHandlers = ({
     
     navigator.clipboard.writeText(formattedData);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) setCopied(false);
+    }, 2000);
   }, [data, weeklyData, activityStats, wellnessData, getUpcomingWorkouts, setCopied]);
 
   return {

@@ -159,7 +159,28 @@ public class CustomWorkoutService {
                             .collect(Collectors.toList())) {
                         try {
                             WorkoutTemplate w = zwoParser.parse(file, categoryName);
-                            if (w != null) workouts.add(w);
+                            if (w != null) {
+                                Path jsonFile = file.getParent().resolve(w.getOriginalFileName() + ".json");
+                                if (Files.exists(jsonFile)) {
+                                    try {
+                                        Map<String, Object> meta = objectMapper.readValue(Files.readString(jsonFile), Map.class);
+                                        if (meta.containsKey("shortDescription")) {
+                                            w.setShortDescription((String) meta.get("shortDescription"));
+                                        }
+                                        if (meta.containsKey("duration")) {
+                                            int minutes = ((Number) meta.get("duration")).intValue();
+                                            w.setDurationMinutes(minutes);
+                                            w.setDurationSeconds(minutes * 60);
+                                        }
+                                        if (meta.containsKey("workout_doc") && meta.get("workout_doc") != null) {
+                                            w.setWorkoutDoc(objectMapper.valueToTree(meta.get("workout_doc")));
+                                        }
+                                    } catch (Exception metaEx) {
+                                        log.debug("Failed to load metadata for {}: {}", file.getFileName(), metaEx.getMessage());
+                                    }
+                                }
+                                workouts.add(w);
+                            }
                         } catch (Exception e) {
                             log.debug("Failed to parse {}: {}", file.getFileName(), e.getMessage());
                         }
@@ -372,7 +393,7 @@ public class CustomWorkoutService {
         return true;
     }
 
-    private Map<String, Object> buildWorkoutInfo(Path file, WorkoutTemplate w, String categoryName) throws Exception {
+    private Map<String, Object> buildWorkoutInfo(Path file, WorkoutTemplate w, String categoryName) {
         Map<String, Object> info = new HashMap<>();
         info.put("filename", file.getFileName().toString());
         info.put("zwoFilePath", file.toString());
@@ -384,27 +405,7 @@ public class CustomWorkoutService {
         info.put("workout_doc", w.getWorkoutDoc());
         info.put("sportType", w.getSportType());
         info.put("source", "custom");
-        info.put("zwoContent", Files.readString(file));
-        if (w.getShortDescription() != null) {
-            info.put("shortDescription", w.getShortDescription());
-        }
-
-        // Override workout_doc, duration and shortDescription from JSON metadata if available.
-        // Keep the generated filename-based name (e.g., "Anaerobic TSS 117 v2") so the display
-        // format matches the regular workout library.
-        String jsonFilename = file.getFileName().toString().replace(".zwo", ".json");
-        Path jsonFile = file.getParent().resolve(jsonFilename);
-        if (Files.exists(jsonFile)) {
-            try {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> meta = objectMapper.readValue(Files.readString(jsonFile), Map.class);
-                if (meta.containsKey("workout_doc")) info.put("workout_doc", meta.get("workout_doc"));
-                if (meta.containsKey("duration")) info.put("duration", meta.get("duration"));
-                if (meta.containsKey("shortDescription")) info.put("shortDescription", meta.get("shortDescription"));
-            } catch (Exception e) {
-                log.warn("Failed to load metadata from {}: {}", jsonFilename, e.getMessage());
-            }
-        }
+        info.put("shortDescription", w.getShortDescription());
         return info;
     }
 

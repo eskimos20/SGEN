@@ -5,6 +5,7 @@ import '../../assets/leaflet-clean.css';
 const ActivityMap = ({ mapData, className = "h-64" }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const resizeTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!mapData?.latlngs || !Array.isArray(mapData.latlngs) || mapData.latlngs.length === 0) return;
@@ -79,9 +80,10 @@ const ActivityMap = ({ mapData, className = "h-64" }) => {
     // Handle resize to ensure map renders correctly when container changes
     const resizeObserver = new ResizeObserver(() => {
       if (mapInstanceRef.current) {
-        setTimeout(() => {
-          mapInstanceRef.current.invalidateSize();
-          mapInstanceRef.current.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+        if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+        resizeTimeoutRef.current = setTimeout(() => {
+          mapInstanceRef.current?.invalidateSize();
+          mapInstanceRef.current?.fitBounds(polyline.getBounds(), { padding: [20, 20] });
         }, 100);
       }
     });
@@ -90,6 +92,7 @@ const ActivityMap = ({ mapData, className = "h-64" }) => {
 
     // Cleanup on unmount
     return () => {
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
       resizeObserver.disconnect();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();

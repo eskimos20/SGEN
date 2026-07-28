@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { initToken, setToken, removeToken } from '../services/tokenService.js';
 import { isCapacitor } from '../config/api.config.js';
@@ -40,6 +41,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasIntervalsConfig, setHasIntervalsConfig] = useState(false);
@@ -54,11 +56,11 @@ export const AuthProvider = ({ children }) => {
     const token = await initToken(); // Get fresh token from storage
     if (token && isTokenExpired(token)) {
       await clearAuth();
-      window.location.href = '/login';
+      navigate('/login', { replace: true });
       return false;
     }
     return true;
-  }, [clearAuth]);
+  }, [clearAuth, navigate]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -144,7 +146,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     await removeToken();
     setUser(null);
-    window.location.href = '/login';
+    navigate('/login', { replace: true });
   };
 
   const changePassword = async (currentPassword, newPassword) => {

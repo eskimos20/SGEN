@@ -13,7 +13,7 @@ const CAPACITOR_API_URL = import.meta.env.VITE_API_URL || 'http://YOUR_SERVER_IP
 export const isCapacitor = typeof window !== 'undefined' && 
   (window.location.protocol === 'capacitor:' || 
    window.location.protocol === 'file:' ||
-   (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()));
+   !!(window.Capacitor?.isNativePlatform?.()));
 
 // Get the appropriate API base URL
 export const getApiBaseUrl = () => {

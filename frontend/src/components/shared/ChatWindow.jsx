@@ -31,34 +31,50 @@ const ChatWindow = ({
   useLockBodyScroll(showAIModal && !isMinimized);
   
   const prevMessageCountRef = useRef(chatMessages.length);
+  const scrollTimeoutRef = useRef([]);
+  const analyzingTimeoutRef = useRef(null);
 
   // Auto-scroll: when a new user message appears, scroll it to the top of the chat area.
   // When the AI response arrives, scroll so the user's question is at the top with the answer below.
   useEffect(() => {
+    scrollTimeoutRef.current.forEach(clearTimeout);
+    scrollTimeoutRef.current = [];
+
     if (chatMessages.length > prevMessageCountRef.current) {
       const lastMessage = chatMessages[chatMessages.length - 1];
       if (lastMessage?.role === 'user' && lastUserMessageRef?.current) {
-        // New user message: scroll it to the top of the visible area
-        setTimeout(() => {
+        const id = setTimeout(() => {
           lastUserMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50);
+        scrollTimeoutRef.current.push(id);
       } else if (lastMessage?.role === 'assistant' && lastUserMessageRef?.current) {
-        // AI response arrived: scroll so the user's question is at the top
-        setTimeout(() => {
+        const id = setTimeout(() => {
           lastUserMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50);
+        scrollTimeoutRef.current.push(id);
       }
     }
     prevMessageCountRef.current = chatMessages.length;
+
+    return () => {
+      scrollTimeoutRef.current.forEach(clearTimeout);
+      scrollTimeoutRef.current = [];
+    };
   }, [chatMessages, lastUserMessageRef]);
 
   // Also scroll when analyzing starts (to show "AI is thinking...")
   useEffect(() => {
+    if (analyzingTimeoutRef.current) clearTimeout(analyzingTimeoutRef.current);
+
     if (analyzing && lastUserMessageRef?.current) {
-      setTimeout(() => {
+      analyzingTimeoutRef.current = setTimeout(() => {
         lastUserMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
     }
+
+    return () => {
+      if (analyzingTimeoutRef.current) clearTimeout(analyzingTimeoutRef.current);
+    };
   }, [analyzing, lastUserMessageRef]);
 
   if (!showAIModal) return null;

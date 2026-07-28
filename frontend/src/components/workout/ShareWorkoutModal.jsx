@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Search, Share2, Loader2, Calendar } from 'lucide-react';
 import api from '../../api/axios';
 
@@ -11,6 +11,13 @@ const ShareWorkoutModal = ({ isOpen, onClose, workout, onShared }) => {
   const [scheduledDate, setScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [addToOwnerCalendar, setAddToOwnerCalendar] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const closeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -74,7 +81,11 @@ const ShareWorkoutModal = ({ isOpen, onClose, workout, onShared }) => {
       await api.post('/workout-shares', payload);
       setMessage({ type: 'success', text: 'Workout shared successfully!' });
       if (onShared) onShared();
-      setTimeout(() => onClose(), 1000);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = setTimeout(() => {
+        closeTimeoutRef.current = null;
+        onClose();
+      }, 1000);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to share workout' });
     } finally {

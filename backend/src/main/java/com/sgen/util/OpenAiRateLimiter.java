@@ -5,6 +5,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,10 +30,12 @@ public class OpenAiRateLimiter {
     // Global rate limiter
     private final ConcurrentLinkedQueue<Long> requestTimestamps = new ConcurrentLinkedQueue<>();
     private final Lock globalLock = new ReentrantLock();
+    private final Condition globalCanProceed = globalLock.newCondition();
 
     // Per-user rate limiters
     private final ConcurrentLinkedQueue<UserRequest> userRequestTimestamps = new ConcurrentLinkedQueue<>();
     private final Lock userLock = new ReentrantLock();
+    private final Condition userCanProceed = userLock.newCondition();
 
     private static class UserRequest {
         final String username;
@@ -57,13 +61,14 @@ public class OpenAiRateLimiter {
     private void acquireGlobal() {
         globalLock.lock();
         try {
-            long now = Instant.now().toEpochMilli();
-            cleanupOldTimestamps(now);
-
             while (true) {
+                long now = Instant.now().toEpochMilli();
+                cleanupOldTimestamps(now);
+
                 int requestsInLastMinute = countRequestsInWindow(now, MINUTE_WINDOW_MILLIS);
 
                 if (requestsInLastMinute < MAX_REQUESTS_PER_MINUTE) {
+                    requestTimestamps.offer(now);
                     break;
                 }
 
@@ -76,16 +81,12 @@ public class OpenAiRateLimiter {
                         timeToWait, requestsInLastMinute);
 
                 try {
-                    Thread.sleep(Math.max(timeToWait, 100));
+                    globalCanProceed.awaitNanos(TimeUnit.MILLISECONDS.toNanos(Math.max(timeToWait, 1)));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Rate limiter interrupted", e);
                 }
-                now = Instant.now().toEpochMilli();
-                cleanupOldTimestamps(now);
             }
-
-            requestTimestamps.offer(now);
         } finally {
             globalLock.unlock();
         }
@@ -94,13 +95,14 @@ public class OpenAiRateLimiter {
     private void acquirePerUser(String username) {
         userLock.lock();
         try {
-            long now = Instant.now().toEpochMilli();
-            cleanupOldUserRequests(now);
-
             while (true) {
+                long now = Instant.now().toEpochMilli();
+                cleanupOldUserRequests(now);
+
                 int userRequestsInLastMinute = countUserRequestsInWindow(username, now, MINUTE_WINDOW_MILLIS);
 
                 if (userRequestsInLastMinute < MAX_REQUESTS_PER_USER_PER_MINUTE) {
+                    userRequestTimestamps.offer(new UserRequest(username, now));
                     break;
                 }
 
@@ -113,16 +115,12 @@ public class OpenAiRateLimiter {
                         username, timeToWait, userRequestsInLastMinute);
 
                 try {
-                    Thread.sleep(Math.max(timeToWait, 100));
+                    userCanProceed.awaitNanos(TimeUnit.MILLISECONDS.toNanos(Math.max(timeToWait, 1)));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Rate limiter interrupted", e);
                 }
-                now = Instant.now().toEpochMilli();
-                cleanupOldUserRequests(now);
             }
-
-            userRequestTimestamps.offer(new UserRequest(username, now));
         } finally {
             userLock.unlock();
         }
@@ -156,7 +154,7 @@ public class OpenAiRateLimiter {
         long windowStart = now - windowSize;
         int count = 0;
         for (Long timestamp : requestTimestamps) {
-            if (timestamp != null && timestamp >= windowStart) {
+            if (timestamp != null && timestamp > windowStart) {
                 count++;
             }
         }
@@ -167,7 +165,7 @@ public class OpenAiRateLimiter {
         long windowStart = now - windowSize;
         int count = 0;
         for (UserRequest req : userRequestTimestamps) {
-            if (req.username.equals(username) && req.timestamp >= windowStart) {
+            if (req.username.equals(username) && req.timestamp > windowStart) {
                 count++;
             }
         }
@@ -178,7 +176,7 @@ public class OpenAiRateLimiter {
         long windowStart = now - windowSize;
         Long oldest = null;
         for (Long timestamp : requestTimestamps) {
-            if (timestamp != null && timestamp >= windowStart) {
+            if (timestamp != null && timestamp > windowStart) {
                 if (oldest == null || timestamp < oldest) {
                     oldest = timestamp;
                 }
@@ -191,7 +189,7 @@ public class OpenAiRateLimiter {
         long windowStart = now - windowSize;
         Long oldest = null;
         for (UserRequest req : userRequestTimestamps) {
-            if (req.username.equals(username) && req.timestamp >= windowStart) {
+            if (req.username.equals(username) && req.timestamp > windowStart) {
                 if (oldest == null || req.timestamp < oldest) {
                     oldest = req.timestamp;
                 }
@@ -227,6 +225,8 @@ public class OpenAiRateLimiter {
         try {
             requestTimestamps.clear();
             userRequestTimestamps.clear();
+            globalCanProceed.signalAll();
+            userCanProceed.signalAll();
             log.debug("OpenAI rate limiter reset");
         } finally {
             userLock.unlock();
