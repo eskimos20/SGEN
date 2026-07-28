@@ -183,10 +183,10 @@ const WorkoutItemCard = ({
             <Clock className={`${isMobile ? 'h-3' : 'h-2.5'} w-${isMobile ? '3' : '2.5'}`} />
             {formatDuration(item.moving_time)}
           </span>
-          {(extractTSSFromName(item.name) || item.icu_training_load) && (
+          {((!item.isCompleted && extractTSSFromName(item.name)) || (item.isCompleted && item.icu_training_load)) && (
             <span className="flex items-center gap-1">
               <Zap className={`${isMobile ? 'h-3' : 'h-2.5'} w-${isMobile ? '3' : '2.5'}`} />
-              Load {extractTSSFromName(item.name) || Math.round(item.icu_training_load)}
+              Load {item.isCompleted ? Math.round(item.icu_training_load) : extractTSSFromName(item.name)}
             </span>
           )}
           {item.isCompleted && getActivityKcal(item) > 0 && (
