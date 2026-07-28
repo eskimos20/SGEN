@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
 import ConfirmDialog from '../components/modals/ConfirmDialog';
@@ -10,18 +10,21 @@ import StepEditorModal from '../components/workout/StepEditorModal';
 import SaveWorkoutDialog from '../components/workout/SaveWorkoutDialog';
 import { useWorkoutSteps, INTERVAL_TYPES } from '../hooks/useWorkoutSteps';
 import { useWorkoutSave } from '../hooks/useWorkoutSave';
-import { calculateWorkoutMetrics } from '../utils/workoutUtils';
+import { calculateWorkoutMetrics, buildShortDescription, parseWorkoutDocToSteps } from '../utils/workoutUtils';
 import api from '../api/axios';
 
 const WorkoutCreator = () => {
   useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { refreshCalendarData } = useCalendar();
-  
-  const [selectedCategory, setSelectedCategory] = useState('Threshold');
-  const [sportType, setSportType] = useState('Ride');
-  const [description, setDescription] = useState('');
+  const [editingWorkout] = useState(() => location.state?.workout);
+
+  const [selectedCategory, setSelectedCategory] = useState(editingWorkout?.category || 'Threshold');
+  const [sportType, setSportType] = useState(editingWorkout?.sportType === 'run' ? 'Run' : 'Ride');
+  const [description, setDescription] = useState(editingWorkout?.description || '');
   const [shortDescription, setShortDescription] = useState('');
+  const [editingFilename, setEditingFilename] = useState(editingWorkout?.source === 'custom' ? editingWorkout.filename : null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [ftp, setFtp] = useState(280);
   
@@ -41,9 +44,22 @@ const WorkoutCreator = () => {
     handleDrop,
     handleDragEnd,
     removeInterval,
+    copyStep,
     openEditModal,
     saveEditedStep
-  } = useWorkoutSteps();
+  } = useWorkoutSteps(selectedCategory);
+
+  // Auto-generate short description from visible steps (skip warmup/cooldown)
+  useEffect(() => {
+    setShortDescription(buildShortDescription(steps));
+  }, [steps, setShortDescription]);
+
+  // Populate steps when editing an existing workout
+  useEffect(() => {
+    if (editingWorkout?.workout_doc) {
+      setSteps(parseWorkoutDocToSteps(editingWorkout.workout_doc));
+    }
+  }, [editingWorkout, setSteps]);
 
   // Workout save management
   const {
@@ -146,7 +162,8 @@ const WorkoutCreator = () => {
         shortDescription,
         sportType,
         autoWorkoutName,
-        INTERVAL_TYPES
+        INTERVAL_TYPES,
+        editingFilename
       );
 
       setConfirmDialog({
@@ -225,6 +242,7 @@ const WorkoutCreator = () => {
           onStepDragStart={handleStepDragStart}
           onEditStep={openEditModal}
           onRemoveStep={removeInterval}
+          onCopyStep={copyStep}
           formatDuration={formatDuration}
         />
       </div>

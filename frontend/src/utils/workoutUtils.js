@@ -147,8 +147,166 @@ export const getWorkoutColor = (event) => {
   return 'bg-gray-400';
 };
 
+/**
+ * Format seconds in a compact workout notation.
+ * Short durations (< 2 min) are shown as seconds (30sec, 90sec);
+ * longer durations use minutes (4min, 5min, 4:30min).
+ */
+const formatDurationShort = (seconds) => {
+  const totalSeconds = Math.round(seconds);
+  if (totalSeconds < 120) return `${totalSeconds}sec`;
+  const min = Math.floor(totalSeconds / 60);
+  const sec = totalSeconds % 60;
+  if (sec === 0) return `${min}min`;
+  return `${min}:${sec.toString().padStart(2, '0')}min`;
+};
+
+const stepsEqual = (a, b) => {
+  return (
+    a.type === b.type &&
+    Math.round(a.duration || 0) === Math.round(b.duration || 0) &&
+    Math.round(a.power ?? 0) === Math.round(b.power ?? 0) &&
+    (a.reps || 1) === (b.reps || 1) &&
+    Math.round(a.restDuration || 0) === Math.round(b.restDuration || 0) &&
+    Math.round(a.restPower ?? 0) === Math.round(b.restPower ?? 0) &&
+    Math.round(a.powerStart ?? 0) === Math.round(b.powerStart ?? 0) &&
+    Math.round(a.powerEnd ?? 0) === Math.round(b.powerEnd ?? 0)
+  );
+};
+
+const formatIntervalBlock = (step, nested = false) => {
+  const work = formatDurationShort(step.duration || 0);
+  const power = Math.round(step.power ?? 0);
+  const reps = step.reps || 1;
+
+  if (step.restDuration > 0) {
+    const rest = formatDurationShort(step.restDuration);
+    if (nested) {
+      return `${reps}x(${work}/${rest})@${power}%`;
+    }
+    return `${reps}x((${work}/${rest})@${power}%)`;
+  }
+
+  return `${reps}x(${work}@${power}%)`;
+};
+
+const formatSingleStep = (step) => {
+  const duration = formatDurationShort(step.duration || 0);
+
+  if (step.powerStart !== undefined && step.powerEnd !== undefined) {
+    const start = Math.round(step.powerStart);
+    const end = Math.round(step.powerEnd);
+    const powerRange = start === end ? `${start}%` : `${start}-${end}%`;
+    return `${duration}@${powerRange}`;
+  }
+
+  return `${duration}@${Math.round(step.power ?? 0)}%`;
+};
+
+const isRestStep = (step) => step.type === 'recovery';
+
+/**
+ * Build a short description from the visible workout steps.
+ * - Skips warmup and cooldown.
+ * - Includes interval rest inside each rep.
+ * - Collapses two identical interval sets separated by a recovery.
+ */
+export const buildShortDescription = (steps) => {
+  if (!steps || steps.length === 0) return '';
+
+  const visibleSteps = steps.filter(step => step.type !== 'warmup' && step.type !== 'cooldown');
+  const parts = [];
+
+  for (let i = 0; i < visibleSteps.length; i++) {
+    const step = visibleSteps[i];
+
+    if (
+      step.type === 'interval' &&
+      i + 2 < visibleSteps.length &&
+      visibleSteps[i + 2].type === 'interval' &&
+      stepsEqual(step, visibleSteps[i + 2]) &&
+      isRestStep(visibleSteps[i + 1])
+    ) {
+      parts.push(`2x(${formatIntervalBlock(step, true)})`);
+      parts.push(`${formatSingleStep(visibleSteps[i + 1])} rest between sets`);
+      i += 2;
+    } else {
+      parts.push(step.type === 'interval' ? formatIntervalBlock(step, false) : formatSingleStep(step));
+    }
+  }
+
+  return parts.join(' + ');
+};
+
+const getStepPowerValue = (step) => {
+  const power = step?.power || {};
+  if (power.value !== undefined) return Math.round(Number(power.value));
+  if (power.start !== undefined && power.end !== undefined) {
+    return Math.round((Number(power.start) + Number(power.end)) / 2);
+  }
+  return 0;
+};
+
+/**
+ * Convert a backend workout_doc into Workout Creator steps.
+ * Handles Warmup/Cooldown/Ramp, SteadyState/Recovery and grouped IntervalsT.
+ */
+export const parseWorkoutDocToSteps = (workoutDoc) => {
+  if (!workoutDoc?.steps || !Array.isArray(workoutDoc.steps)) return [];
+
+  return workoutDoc.steps.map((step, index) => {
+    const base = { id: Date.now() + index };
+    const nested = step.steps;
+
+    if (step.reps && Array.isArray(nested) && nested.length >= 2) {
+      const work = nested[0];
+      const rest = nested[1];
+      return {
+        ...base,
+        type: 'interval',
+        reps: Number(step.reps) || 1,
+        duration: Number(work.duration) || 0,
+        power: getStepPowerValue(work),
+        restDuration: Number(rest.duration) || 0,
+        restPower: getStepPowerValue(rest)
+      };
+    }
+
+    const power = step.power || {};
+    if (power.start !== undefined && power.end !== undefined) {
+      const start = Math.round(Number(power.start));
+      const end = Math.round(Number(power.end));
+      let type = 'ramp';
+      if (step.until_lap_press) type = 'warmup';
+      else if (start > end) type = 'cooldown';
+      return {
+        ...base,
+        type,
+        duration: Number(step.duration) || 0,
+        powerStart: start,
+        powerEnd: end
+      };
+    }
+
+    if (power.value !== undefined) {
+      const value = Math.round(Number(power.value));
+      const type = value < 70 ? 'recovery' : 'steady';
+      return {
+        ...base,
+        type,
+        duration: Number(step.duration) || 0,
+        power: value
+      };
+    }
+
+    return null;
+  }).filter(Boolean);
+};
+
 export default {
   calculateWorkoutMetrics,
   flattenSteps,
-  getWorkoutColor
+  getWorkoutColor,
+  buildShortDescription,
+  parseWorkoutDocToSteps
 };

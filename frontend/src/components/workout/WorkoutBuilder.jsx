@@ -15,6 +15,7 @@ const WorkoutBuilder = ({
   onStepDragStart,
   onEditStep,
   onRemoveStep,
+  onCopyStep,
   formatDuration
 }) => {
   if (steps.length === 0) {
@@ -93,6 +94,7 @@ const WorkoutBuilder = ({
                   onDragStart={onStepDragStart}
                   onEdit={onEditStep}
                   onRemove={onRemoveStep}
+                  onCopy={onCopyStep}
                   formatDuration={formatDuration}
                 />
               </React.Fragment>

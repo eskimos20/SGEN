@@ -1,4 +1,4 @@
-import { GripVertical, Trash2, Edit2 } from 'lucide-react';
+import { GripVertical, Trash2, Edit2, Copy } from 'lucide-react';
 import { INTERVAL_TYPES } from '../../hooks/useWorkoutSteps';
 
 const WorkoutStepCard = ({
@@ -8,6 +8,7 @@ const WorkoutStepCard = ({
   onDragStart,
   onEdit,
   onRemove,
+  onCopy,
   formatDuration
 }) => {
   const intervalType = INTERVAL_TYPES.find(t => t.id === step.type);
@@ -32,6 +33,13 @@ const WorkoutStepCard = ({
             title="Edit"
           >
             <Edit2 className="h-3.5 w-3.5 text-gray-600" />
+          </button>
+          <button
+            onClick={() => onCopy(step)}
+            className="p-1 hover:bg-blue-100 rounded transition-colors"
+            title="Copy"
+          >
+            <Copy className="h-3.5 w-3.5 text-blue-600" />
           </button>
           <button
             onClick={() => onRemove(step.id)}

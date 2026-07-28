@@ -22,6 +22,7 @@ import {
   Activity 
 } from 'lucide-react';
 import VersionNotifier from '../notifications/VersionNotifier';
+import WorkoutShareNotifier from '../notifications/WorkoutShareNotifier';
 
 import api from '../../api/axios';
 
@@ -279,6 +280,8 @@ const Layout = () => {
           </nav>
         </div>
       )}
+
+      <WorkoutShareNotifier />
 
       <div className="flex">
         {/* Desktop Sidebar - visible on all pages including change-password */}

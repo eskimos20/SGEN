@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink } from 'lucide-react';
+import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 import { openStravaAuthPopup } from '../utils/stravaOAuth';
 
 const Profile = () => {
@@ -34,6 +34,10 @@ const Profile = () => {
   const [exchangingStrava, setExchangingStrava] = useState(false);
   const [savingStrava, setSavingStrava] = useState(false);
 
+  // Workout sharing state
+  const [shareWorkoutsEnabled, setShareWorkoutsEnabled] = useState(false);
+  const [shareWorkoutsMessage, setShareWorkoutsMessage] = useState({ type: '', text: '' });
+
   useEffect(() => {
     loadProfile();
   }, []);
@@ -57,6 +61,7 @@ const Profile = () => {
         setStravaAuthUrl(response.data.stravaAuthorizationUrl || '');
       }
       setHasStravaToken(response.data.hasStravaToken || false);
+      setShareWorkoutsEnabled(response.data.shareWorkoutsEnabled || false);
     } catch (err) {
       // Silently fail
     }
@@ -192,6 +197,25 @@ const Profile = () => {
            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
            `&response_type=code` +
            `&scope=read,activity:read_all,profile:read_all`;
+  };
+
+  // Workout sharing handlers
+  const toggleShareWorkouts = async (enabled) => {
+    try {
+      setShareWorkoutsMessage({ type: '', text: '' });
+      await api.put('/user/profile', { shareWorkoutsEnabled: enabled });
+      setShareWorkoutsEnabled(enabled);
+      const userResponse = await api.get('/user/me');
+      if (userResponse.data) {
+        window.dispatchEvent(new CustomEvent('userUpdated', { detail: userResponse.data }));
+      }
+      setShareWorkoutsMessage({
+        type: 'success',
+        text: enabled ? 'Workout sharing enabled.' : 'Workout sharing disabled.'
+      });
+    } catch (err) {
+      setShareWorkoutsMessage({ type: 'error', text: 'Failed to update sharing setting' });
+    }
   };
 
   // Strava handlers
@@ -566,7 +590,7 @@ const Profile = () => {
                 <span className="font-medium text-gray-900">Enable Strava Integration</span>
               </label>
 
-              {stravaEnabled && (
+          {stravaEnabled && (
                 <>
                   <div>
                     <label htmlFor="stravaClientId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
@@ -667,6 +691,43 @@ const Profile = () => {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* Workout Sharing Configuration */}
+          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Share2 className="h-5 w-5 text-teal-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Workout Sharing</h2>
+            </div>
+            <p className="text-gray-600 text-sm mb-6">
+              Enable this to allow other users to share workouts with you, and to share workouts from the workout library or your custom workouts to other users.
+            </p>
+
+            <div className="space-y-6">
+              {shareWorkoutsMessage.text && (
+                <div className={`p-3 rounded-xl text-sm ${
+                  shareWorkoutsMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {shareWorkoutsMessage.text}
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div
+                  onClick={() => toggleShareWorkouts(!shareWorkoutsEnabled)}
+                  className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                    shareWorkoutsEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                  }`}
+                >
+                  {shareWorkoutsEnabled && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="font-medium text-gray-900">Share/Receive Workouts</span>
+              </label>
             </div>
           </div>
         </div>

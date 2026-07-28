@@ -2,10 +2,13 @@ package com.sgen.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.sgen.entity.WorkoutShare;
 import com.sgen.model.WorkoutTemplate;
+import com.sgen.repository.WorkoutShareRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
@@ -27,6 +30,10 @@ public class CustomWorkoutService {
 
     private final ObjectMapper objectMapper;
     private final ZwoParser zwoParser;
+    private final WorkoutShareRepository workoutShareRepository;
+
+    @Value("${workout.library.path:./workout-library}")
+    private String workoutLibraryPath;
 
     private static final String CUSTOM_LIBRARY_BASE = "./custom-workout-library/";
     private static final List<String> ALL_CATEGORIES = Arrays.asList(
@@ -72,27 +79,33 @@ public class CustomWorkoutService {
     }
 
     public String saveCustomWorkout(String username, String category, Integer tss, String name,
-                                    String description, String shortDescription, String zwoContent, Object workoutDoc, Object duration) throws Exception {
+                                    String description, String shortDescription, String zwoContent, Object workoutDoc, Object duration,
+                                    String overwriteFilename) throws Exception {
         Path categoryPath = Paths.get(CUSTOM_LIBRARY_BASE + username).resolve(category);
         if (!Files.exists(categoryPath)) {
             Files.createDirectories(categoryPath);
             log.info("Created custom workout category directory: {}", categoryPath);
         }
 
-        String baseFilename = category + "_TSS_" + tss;
-        int version = 1;
         String filename;
         Path filePath;
-        do {
-            filename = baseFilename + "_v" + version + ".zwo";
+        if (overwriteFilename != null && !overwriteFilename.isEmpty()) {
+            filename = overwriteFilename.toLowerCase().endsWith(".zwo") ? overwriteFilename : overwriteFilename + ".zwo";
             filePath = categoryPath.resolve(filename);
-            version++;
-        } while (Files.exists(filePath));
+        } else {
+            String baseFilename = category + "_TSS_" + tss;
+            int version = 1;
+            do {
+                filename = baseFilename + "_v" + version + ".zwo";
+                filePath = categoryPath.resolve(filename);
+                version++;
+            } while (Files.exists(filePath));
+        }
 
         Files.writeString(filePath, zwoContent);
 
         if (workoutDoc != null) {
-            String jsonFilename = baseFilename + "_v" + (version - 1) + ".json";
+            String jsonFilename = filename.replace(".zwo", ".json");
             Map<String, Object> metadata = new HashMap<>();
             metadata.put("workout_doc", workoutDoc);
             if (duration != null) metadata.put("duration", duration);
@@ -107,14 +120,14 @@ public class CustomWorkoutService {
         }
 
         log.info("Saved custom workout: {}", filename);
-        
+
         // Invalidate cache for this user to force reload on next access
         invalidateUserCache(username);
-        
+
         return filename;
     }
 
-    private void invalidateUserCache(String username) {
+    public void invalidateUserCache(String username) {
         customWorkoutCache.remove(username);
         userCacheLoaded.remove(username);
         log.debug("Invalidated custom workout cache for user: {}", username);
@@ -323,7 +336,16 @@ public class CustomWorkoutService {
                         Files.delete(jsonFilePath);
                         log.info("Deleted custom workout metadata: {}/{}", categoryDir.getFileName(), jsonFilename);
                     }
-                    
+
+                    // Remove pending notifications/shares that were sent from this source file by this user
+                    String sourcePath = filePath.toAbsolutePath().normalize().toString();
+                    java.util.List<WorkoutShare> pendingShares = workoutShareRepository
+                            .findByFromUsernameAndSourcePathAndStatus(username, sourcePath, WorkoutShare.Status.PENDING);
+                    if (!pendingShares.isEmpty()) {
+                        workoutShareRepository.deleteAll(pendingShares);
+                        log.info("Deleted {} pending share notification(s) for source {}", pendingShares.size(), sourcePath);
+                    }
+
                     // Invalidate cache for this user
                     invalidateUserCache(username);
                     
@@ -353,6 +375,7 @@ public class CustomWorkoutService {
     private Map<String, Object> buildWorkoutInfo(Path file, WorkoutTemplate w, String categoryName) throws Exception {
         Map<String, Object> info = new HashMap<>();
         info.put("filename", file.getFileName().toString());
+        info.put("zwoFilePath", file.toString());
         info.put("category", categoryName);
         info.put("name", w.getGeneratedName());
         info.put("tss", w.getEstimatedTSS());
@@ -405,13 +428,68 @@ public class CustomWorkoutService {
         if (zwoFilePath == null || zwoFilePath.isEmpty()) {
             throw new IllegalArgumentException("ZWO file path is required");
         }
-        
+
         // Validate the path is within the user's directory (security check)
         String userDir = CUSTOM_LIBRARY_BASE + username + "/";
         if (!zwoFilePath.startsWith(userDir)) {
             throw new SecurityException("Invalid ZWO file path");
         }
-        
+
         return Files.readString(Path.of(zwoFilePath));
+    }
+
+    public String copyWorkout(String username, String source, String category, String filename) throws Exception {
+        String safeFilename = filename.replaceAll("[^a-zA-Z0-9._-]", "");
+        if (!safeFilename.toLowerCase().endsWith(".zwo")) {
+            safeFilename += ".zwo";
+        }
+
+        Path sourceBase = "library".equalsIgnoreCase(source)
+                ? Paths.get(workoutLibraryPath, category)
+                : Paths.get(CUSTOM_LIBRARY_BASE, username, category);
+
+        Path sourcePath = sourceBase.resolve(safeFilename).toAbsolutePath().normalize();
+        Path allowedBase = Paths.get("library".equalsIgnoreCase(source) ? workoutLibraryPath : CUSTOM_LIBRARY_BASE + username)
+                .toAbsolutePath().normalize();
+        if (!sourcePath.startsWith(allowedBase)) {
+            throw new SecurityException("Invalid source path");
+        }
+        if (!Files.exists(sourcePath)) {
+            throw new IllegalArgumentException("Source workout not found");
+        }
+
+        Path targetCategoryPath = Paths.get(CUSTOM_LIBRARY_BASE, username, category);
+        if (!Files.exists(targetCategoryPath)) {
+            Files.createDirectories(targetCategoryPath);
+        }
+
+        String sourceBaseName = safeFilename.substring(0, safeFilename.length() - 4);
+        String baseName = sourceBaseName;
+        int sourceVersion = 1;
+
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("^(.*)_v(\\d+)$").matcher(sourceBaseName);
+        if (matcher.find()) {
+            baseName = matcher.group(1);
+            sourceVersion = Integer.parseInt(matcher.group(2));
+        }
+
+        int version = sourceVersion;
+        Path targetZwo;
+        do {
+            targetZwo = targetCategoryPath.resolve(baseName + "_v" + version + ".zwo");
+            version++;
+        } while (Files.exists(targetZwo) && version < sourceVersion + 1000);
+
+        Files.copy(sourcePath, targetZwo, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        Path sourceJson = sourcePath.resolveSibling(sourceBaseName + ".json");
+        if (Files.exists(sourceJson)) {
+            Path targetJson = targetZwo.resolveSibling(baseName + "_v" + (version - 1) + ".json");
+            Files.copy(sourceJson, targetJson, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        invalidateUserCache(username);
+        log.info("Copied workout {} to user {} custom library as {}", sourcePath, username, targetZwo.getFileName());
+        return targetZwo.getFileName().toString();
     }
 }

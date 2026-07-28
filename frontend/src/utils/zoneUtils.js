@@ -4,8 +4,9 @@ const DEFAULT_POWER_ZONES = [
   { name: 'Z2', label: 'Endurance', min: 56, max: 75, color: '#3b82f6' },
   { name: 'Z3', label: 'Tempo', min: 76, max: 90, color: '#22c55e' },
   { name: 'Z4', label: 'Threshold', min: 91, max: 105, color: '#eab308' },
-  { name: 'Z5', label: 'VO2max', min: 106, max: 120, color: '#f97316' },
-  { name: 'Z6', label: 'Anaerobic', min: 121, max: 150, color: '#ef4444' }
+  { name: 'Z5', label: 'VO2max', min: 106, max: 120, color: '#ef4444' },
+  { name: 'Z6', label: 'Anaerobic', min: 121, max: 150, color: '#c026d3' },
+  { name: 'Z7', label: 'Sprint', min: 151, max: 200, color: '#5b21b6' }
 ];
 
 // Default HR zones (% of LTHR or Max HR) - used when no athlete zones available
@@ -23,8 +24,9 @@ export const ZONE_COLORS = {
   Z2: { bg: 'bg-blue-500', hex: '#3b82f6', label: 'Endurance' },
   Z3: { bg: 'bg-green-500', hex: '#22c55e', label: 'Tempo' },
   Z4: { bg: 'bg-yellow-500', hex: '#eab308', label: 'Threshold' },
-  Z5: { bg: 'bg-orange-500', hex: '#f97316', label: 'VO2max' },
-  Z6: { bg: 'bg-red-500', hex: '#ef4444', label: 'Anaerobic' },
+  Z5: { bg: 'bg-red-500', hex: '#ef4444', label: 'VO2max' },
+  Z6: { bg: 'bg-fuchsia-600', hex: '#c026d3', label: 'Anaerobic' },
+  Z7: { bg: 'bg-violet-800', hex: '#5b21b6', label: 'Sprint' },
   SS: { bg: 'bg-orange-400', hex: '#fb923c', label: 'Sweet Spot' }
 };
 
@@ -42,7 +44,7 @@ export const parsePowerZones = (powerZones) => {
 
   const zones = [];
   const zoneNames = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Z6', 'Z7'];
-  const zoneColors = ['#9ca3af', '#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444', '#dc2626'];
+  const zoneColors = ['#9ca3af', '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#c026d3', '#5b21b6'];
 
   let prevMax = 0;
   for (let i = 0; i < powerZones.length; i++) {

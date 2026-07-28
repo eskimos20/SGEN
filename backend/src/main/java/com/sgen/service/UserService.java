@@ -198,6 +198,9 @@ public class UserService {
         if (request.getStravaClientSecret() != null) {
             user.setStravaClientSecret(request.getStravaClientSecret());
         }
+        if (request.getShareWorkoutsEnabled() != null) {
+            user.setShareWorkoutsEnabled(request.getShareWorkoutsEnabled());
+        }
         userRepository.save(user);
     }
 
@@ -235,6 +238,7 @@ public class UserService {
                 .hasStravaToken(user.getStravaAccessToken() != null || user.getStravaRefreshToken() != null)
                 .stravaClientId(user.getStravaClientId())
                 .stravaAuthorizationUrl(buildStravaAuthUrl(user, redirectUri))
+                .shareWorkoutsEnabled(user.getShareWorkoutsEnabled())
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
                 .build();

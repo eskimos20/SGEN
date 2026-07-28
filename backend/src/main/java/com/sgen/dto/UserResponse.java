@@ -32,6 +32,8 @@ public class UserResponse {
     private String stravaClientId;
     private String stravaAuthorizationUrl;
 
+    private Boolean shareWorkoutsEnabled;
+
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
 }

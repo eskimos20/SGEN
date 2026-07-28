@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Trash2 } from 'lucide-react';
+import { Calendar, Trash2, Share2, Copy, Pencil } from 'lucide-react';
 import WorkoutChart from '../workout/WorkoutChart';
 import { getSportEmoji } from '../../utils/sportTypeUtils';
 
@@ -11,6 +11,10 @@ const WorkoutCard = ({
   onSchedule,
   onView,
   onDelete,
+  onShare,
+  onCopy,
+  onEdit,
+  canShare,
   getFtpForWorkout,
   getSportType,
   getSportTypeDisplayName
@@ -46,12 +50,46 @@ const WorkoutCard = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                onEdit(workout);
+              }}
+              className="flex items-center justify-center p-2 bg-white border border-gray-200 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+              title="Edit workout"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy(workout);
+            }}
+            className="flex items-center justify-center p-2 bg-white border border-gray-200 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors shadow-sm"
+            title="Copy to my custom library"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          {workout.source === 'custom' && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
                 onDelete(workout);
               }}
               className="flex items-center justify-center p-2 bg-white border border-gray-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
               title="Delete workout"
             >
               <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+          {canShare && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare(workout);
+              }}
+              className="flex items-center justify-center p-2 bg-white border border-gray-200 text-teal-600 rounded-lg hover:bg-teal-50 transition-colors shadow-sm"
+              title="Share workout"
+            >
+              <Share2 className="h-4 w-4" />
             </button>
           )}
         </div>

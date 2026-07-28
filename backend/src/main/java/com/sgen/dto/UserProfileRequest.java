@@ -22,4 +22,6 @@ public class UserProfileRequest {
     private Boolean stravaEnabled;
     private String stravaClientId;
     private String stravaClientSecret;
+
+    private Boolean shareWorkoutsEnabled;
 }

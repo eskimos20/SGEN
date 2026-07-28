@@ -144,12 +144,31 @@ public class WorkoutController {
             String zwoContent = (String) request.get("zwoContent");
             Object workoutDoc = request.get("workoutDoc");
             Object duration = request.get("duration");
+            String overwriteFilename = (String) request.get("filename");
             String filename = customWorkoutService.saveCustomWorkout(
-                    authentication.getName(), category, tss, name, description, shortDescription, zwoContent, workoutDoc, duration);
+                    authentication.getName(), category, tss, name, description, shortDescription, zwoContent, workoutDoc, duration, overwriteFilename);
             log.info("User {} saved custom workout: {}", authentication.getName(), filename);
             return ResponseEntity.ok(Map.of("filename", filename));
         } catch (Exception e) {
             log.error("Failed to save custom workout for {}: {}", authentication.getName(), e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/custom-workouts/copy")
+    public ResponseEntity<?> copyCustomWorkout(
+            Authentication authentication,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String source = (String) request.get("source");
+            String category = (String) request.get("category");
+            String filename = (String) request.get("filename");
+            String copiedFilename = customWorkoutService.copyWorkout(
+                    authentication.getName(), source, category, filename);
+            log.info("User {} copied workout from {}: {}", authentication.getName(), source, copiedFilename);
+            return ResponseEntity.ok(Map.of("filename", copiedFilename));
+        } catch (Exception e) {
+            log.error("Failed to copy workout for {}: {}", authentication.getName(), e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

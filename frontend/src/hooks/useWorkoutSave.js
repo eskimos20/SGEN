@@ -88,7 +88,8 @@ export const useWorkoutSave = (refreshCalendarData) => {
     shortDescription,
     sportType,
     autoWorkoutName,
-    INTERVAL_TYPES
+    INTERVAL_TYPES,
+    overwriteFilename
   ) => {
     if (saveAndSchedule && !scheduleDate) {
       throw new Error('Please select a date to schedule your workout.');
@@ -122,7 +123,8 @@ export const useWorkoutSave = (refreshCalendarData) => {
         shortDescription: shortDescription || '',
         zwoContent: zwoContent,
         workoutDoc: workoutDoc,
-        duration: durationMinutes
+        duration: durationMinutes,
+        ...(overwriteFilename ? { filename: overwriteFilename } : {})
       });
 
       // Schedule if checkbox is checked

@@ -5,38 +5,38 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Garmin/Suunto Lap Button for Warmup & Workout Library Updates',
-  date: '2026-07-27',
+  title: 'Workout Sharing, Copy/Edit & Smart Duplicate Handling',
+  date: '2026-07-28',
   features: [
     {
-      icon: '🏃',
-      title: 'Lap Button Press for Warmup Steps',
-      description: 'Warmup steps in workouts now end when you press the lap button on Garmin/Suunto devices. This gives you time to ride to your start location before beginning intervals. Zwift workouts are unaffected — they read the plain timed warmup from the .zwo file. All workout library files have been updated to include warmup sections.'
+      icon: '🔁',
+      title: 'Share Workouts with Other Users',
+      description: 'Share workouts from the global or custom library with users who have sharing enabled. Recipients get a notification where they can accept or decline, and the workout can be scheduled directly on the recipient calendar.'
     },
     {
-      icon: '🏆',
-      title: 'Achievement FTP/LTHR Compared to Your Current Values',
-      description: 'FTP and LTHR achievements now compare against your actual current profile values instead of the historic per-activity values from Intervals.icu. This means you see the real delta (e.g. 291 → 284 = -7), and when the suggested value already matches your current setting you get a clear "already your current" message. This fix applies to both the Achievements page and when viewing activity details from the calendar or Statistics.'
+      icon: '📋',
+      title: 'Copy Workouts to Your Custom Library',
+      description: 'Copy any workout from the workout library or your custom library into your own custom folder. If a workout with the same name already exists, a new version is created automatically (v1, v2, etc.).'
     },
     {
-      icon: '📅',
-      title: 'Calendar Weekly Totals Include Today\'s Manual Events',
-      description: 'Weekly time totals in the calendar now include manually added events for today\'s date. Previously, only future manual events were counted, but now today\'s planned workouts are also included in the weekly summary.'
+      icon: '✏️',
+      title: 'Edit Custom Workouts',
+      description: 'Open a custom workout in the Workout Creator to edit its intervals, category, sport type and description. Saving overwrites the original file, making it easy to iterate on your own workouts.'
     },
     {
-      icon: '📄',
-      title: 'Export Gear Maintenance to PDF',
-      description: 'You can now export your gear maintenance history to PDF. Select one or more gear items from the export dialog to generate a comprehensive PDF document with all maintenance records, including service type, date, description, distance, cost, and performed by information.'
+      icon: '⚡',
+      title: 'Smarter Workout Creator Defaults',
+      description: 'New intervals and ramps get category-specific default power and durations. The short description is now auto-generated from the step structure, including rest and collapsed identical sets.'
     },
     {
-      icon: '🔧',
-      title: 'Add Multiple Service Records at Once',
-      description: 'The "Add Service" dialog now works like a spreadsheet. Each row has its own Date, Distance, Service Type, Description, Cost and Performed By. Add as many rows as you need and save them all in one click — each row is stored as its own record.'
+      icon: '♻️',
+      title: 'Smart Accept for Shared Workouts',
+      description: 'When accepting a shared workout, the backend checks if an identical ZWO already exists and reuses it. If the structure is different, it creates the next available version instead of overwriting.'
     },
     {
-      icon: '⚙️',
-      title: 'Enable/Disable Strava Integration',
-      description: 'Profile settings now include a Strava toggle just like OpenAI. Disabling Strava clears stored OAuth tokens and stops the app from calling Strava endpoints, preventing unnecessary error logs.'
+      icon: '🧹',
+      title: 'Clean Up Notifications on Delete',
+      description: 'Deleting a custom workout removes only the pending notifications that were sent from that specific file by you. Shares sent by other users are not affected.'
     }
   ]
 };

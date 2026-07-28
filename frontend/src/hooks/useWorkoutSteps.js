@@ -1,15 +1,29 @@
 import { useState, useCallback, useMemo } from 'react';
 
 export const INTERVAL_TYPES = [
-  { id: 'warmup', name: 'Warm Up', icon: '🔥', defaultPowerStart: 50, defaultPowerEnd: 75, defaultDuration: 600, isRamp: true },
-  { id: 'steady', name: 'Steady', icon: '📊', defaultPower: 75, defaultDuration: 300 },
+  { id: 'warmup', name: 'Warm Up', icon: '🔥', defaultPowerStart: 50, defaultPowerEnd: 60, defaultDuration: 600, isRamp: true },
+  { id: 'steady', name: 'Steady', icon: '📊', defaultPower: 65, defaultDuration: 300 },
   { id: 'interval', name: 'Interval', icon: '⚡', defaultPower: 100, defaultDuration: 480, defaultReps: 4, defaultRestDuration: 120, defaultRestPower: 40 },
   { id: 'recovery', name: 'Recovery', icon: '💤', defaultPower: 40, defaultDuration: 180 },
   { id: 'ramp', name: 'Ramp', icon: '📈', defaultPowerStart: 50, defaultPowerEnd: 100, defaultDuration: 300, isRamp: true },
-  { id: 'cooldown', name: 'Cool Down', icon: '❄️', defaultPowerStart: 60, defaultPowerEnd: 40, defaultDuration: 600, isRamp: true }
+  { id: 'cooldown', name: 'Cool Down', icon: '❄️', defaultPowerStart: 60, defaultPowerEnd: 50, defaultDuration: 600, isRamp: true }
 ];
 
-export const useWorkoutSteps = () => {
+const CATEGORY_INTERVAL_DEFAULTS = {
+  Endurance: { power: 70, restPower: 40, duration: 900, reps: 3, restDuration: 120 },
+  Tempo: { power: 85, restPower: 50, duration: 720, reps: 3, restDuration: 120 },
+  SweetSpot: { power: 92, restPower: 55, duration: 600, reps: 3, restDuration: 120 },
+  Threshold: { power: 100, restPower: 60, duration: 600, reps: 4, restDuration: 120 },
+  VO2Max: { power: 115, restPower: 60, duration: 240, reps: 5, restDuration: 180 },
+  Anaerobic: { power: 135, restPower: 65, duration: 60, reps: 6, restDuration: 300 },
+  Sprint: { power: 160, restPower: 70, duration: 30, reps: 6, restDuration: 360 }
+};
+
+const getCategoryIntervalDefaults = (category) => {
+  return CATEGORY_INTERVAL_DEFAULTS[category] || CATEGORY_INTERVAL_DEFAULTS.Threshold;
+};
+
+export const useWorkoutSteps = (selectedCategory = 'Threshold') => {
   const [steps, setSteps] = useState([]);
   const [draggedType, setDraggedType] = useState(null);
   const [draggedStepIndex, setDraggedStepIndex] = useState(null);
@@ -77,6 +91,7 @@ export const useWorkoutSteps = () => {
     if (draggedType) {
       // Adding new interval from palette
       const intervalType = INTERVAL_TYPES.find(t => t.id === draggedType);
+      const categoryDefaults = getCategoryIntervalDefaults(selectedCategory);
       const newStep = {
         id: Date.now(),
         type: draggedType,
@@ -85,13 +100,13 @@ export const useWorkoutSteps = () => {
           powerEnd: intervalType.defaultPowerEnd,
           duration: intervalType.defaultDuration
         } : {
-          power: intervalType.defaultPower,
-          duration: intervalType.defaultDuration
+          power: draggedType === 'interval' ? categoryDefaults.power : intervalType.defaultPower,
+          duration: draggedType === 'interval' ? categoryDefaults.duration : intervalType.defaultDuration
         }),
         ...(draggedType === 'interval' && {
-          reps: intervalType.defaultReps,
-          restDuration: intervalType.defaultRestDuration,
-          restPower: intervalType.defaultRestPower
+          reps: categoryDefaults.reps,
+          restDuration: categoryDefaults.restDuration,
+          restPower: categoryDefaults.restPower
         })
       };
       
@@ -114,7 +129,7 @@ export const useWorkoutSteps = () => {
     setDraggedType(null);
     setDraggedStepIndex(null);
     setDropTargetIndex(null);
-  }, [draggedType, draggedStepIndex]);
+  }, [draggedType, draggedStepIndex, selectedCategory]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedType(null);
@@ -125,6 +140,11 @@ export const useWorkoutSteps = () => {
   // Remove interval
   const removeInterval = useCallback((id) => {
     setSteps(prev => prev.filter(step => step.id !== id));
+  }, []);
+
+  // Copy interval to the end
+  const copyStep = useCallback((step) => {
+    setSteps(prev => [...prev, { ...step, id: Date.now() }]);
   }, []);
 
   // Open edit modal
@@ -157,6 +177,7 @@ export const useWorkoutSteps = () => {
     handleDrop,
     handleDragEnd,
     removeInterval,
+    copyStep,
     openEditModal,
     saveEditedStep
   };

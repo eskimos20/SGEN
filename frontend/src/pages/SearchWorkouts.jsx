@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
 import { Search } from 'lucide-react';
@@ -7,16 +8,20 @@ import SearchFilters from '../components/search/SearchFilters';
 import WorkoutCard from '../components/search/WorkoutCard';
 import ScheduleWorkoutModal from '../components/search/ScheduleWorkoutModal';
 import WorkoutDetailModal from '../components/search/WorkoutDetailModal';
+import ShareWorkoutModal from '../components/workout/ShareWorkoutModal';
 import { useWorkoutSearch } from '../hooks/useWorkoutSearch';
 import { useWorkoutSchedule } from '../hooks/useWorkoutSchedule';
+import api from '../api/axios';
 
 const SearchWorkouts = () => {
-  useAuth();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { refreshCalendarData } = useCalendar();
   
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, workout: null, filename: '' });
   const [detailWorkout, setDetailWorkout] = useState(null);
+  const [shareWorkout, setShareWorkout] = useState(null);
   const [athleteProfile, setAthleteProfile] = useState(null);
   
   const {
@@ -110,6 +115,42 @@ const SearchWorkouts = () => {
     }
   };
 
+  const onShareWorkout = (workout) => {
+    setShareWorkout(workout);
+  };
+
+  const onCopyWorkout = async (workout) => {
+    try {
+      const response = await api.post('/statistics/custom-workouts/copy', {
+        source: workout.source,
+        filename: workout.filename,
+        category: workout.category
+      });
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Copied',
+        message: `Workout copied as ${response.data.filename}`,
+        confirmText: 'OK',
+        onConfirm: () => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null }),
+        onCancel: null
+      });
+    } catch (err) {
+      console.error('Failed to copy workout:', err);
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Copy Failed',
+        message: 'Failed to copy workout. Please try again.',
+        confirmText: 'OK',
+        onConfirm: () => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null }),
+        onCancel: null
+      });
+    }
+  };
+
+  const onEditWorkout = (workout) => {
+    navigate('/workout-creator', { state: { workout } });
+  };
+
   const onScheduleWorkout = async () => {
     try {
       const workoutName = await handleScheduleWorkout();
@@ -200,6 +241,10 @@ const SearchWorkouts = () => {
                 onView={handleViewWorkout}
                 onSchedule={openScheduleModal}
                 onDelete={onDeleteWorkout}
+                onShare={onShareWorkout}
+                onCopy={onCopyWorkout}
+                onEdit={onEditWorkout}
+                canShare={user?.shareWorkoutsEnabled === true}
                 getFtpForWorkout={getFtpForWorkout}
                 getSportType={getSportType}
                 getSportTypeDisplayName={getSportTypeDisplayName}
@@ -234,6 +279,12 @@ const SearchWorkouts = () => {
         onSchedule={onScheduleWorkout}
         onClose={closeScheduleModal}
         getSportTypeDisplayName={getSportTypeDisplayName}
+      />
+
+      <ShareWorkoutModal
+        isOpen={!!shareWorkout}
+        onClose={() => setShareWorkout(null)}
+        workout={shareWorkout}
       />
 
       {/* Confirm Dialog */}

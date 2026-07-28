@@ -62,6 +62,10 @@ public class User {
     @Builder.Default
     private Boolean stravaEnabled = false;
 
+    @Column(name = "share_workouts_enabled", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean shareWorkoutsEnabled = false;
+
     @Column(name = "strava_client_id")
     private String stravaClientId;
 
