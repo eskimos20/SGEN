@@ -49,7 +49,14 @@ const BikeFitAnalyzeTabNew = ({
   const warmedUpRef = useRef(false);
   useEffect(() => {
     warmedUpRef.current = false;
-  }, [videoUrl]);
+    resetPose();
+    resetAngles();
+    // Clear any stale overlay on the composited canvas.
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
+  }, [videoUrl, resetPose, resetAngles]);
 
   useEffect(() => {
     const video = videoRef.current;

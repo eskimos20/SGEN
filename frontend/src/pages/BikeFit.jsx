@@ -28,7 +28,6 @@ const BikeFit = () => {
         // In Capacitor app, request camera permissions
         const requestCameraPermission = async () => {
           try {
-            const { Camera } = await import('@capacitor/camera');
             const { Camera: CapCamera } = await import('@capacitor/camera');
             const permission = await CapCamera.requestPermissions({ permissions: ['camera'] });
             if (permission.camera !== 'granted') {
@@ -69,7 +68,7 @@ const BikeFit = () => {
   // opens the Record tab. Avoids turning on the camera for upload/analyze flows.
   useEffect(() => {
     if (activeTab === 'record') {
-      recordingHook.initCamera();
+      recordingHook.initCamera().catch(err => setError(err.message));
     }
   }, [activeTab, recordingHook.initCamera]);
 

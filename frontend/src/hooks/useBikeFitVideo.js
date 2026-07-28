@@ -14,21 +14,25 @@ export const useBikeFitVideo = () => {
     const video = document.createElement('video');
     video.src = url;
     video.onloadedmetadata = () => {
-      const duration = video.duration;
       const width = video.videoWidth;
       const height = video.videoHeight;
-      
-      const estimatedFps = 30;
-      
-      setFps(estimatedFps);
-      setTotalFrames(Math.floor(duration * estimatedFps));
+      const duration = video.duration;
+
+      // The real frame rate cannot be reliably read from a file/blob, and it is
+      // not needed for the angle analysis. Keep numeric controls disabled rather
+      // than pretending the video is 30 fps.
+      const actualFps = null;
+      const finiteDuration = Number.isFinite(duration) ? duration : null;
+
+      setFps(actualFps);
+      setTotalFrames(finiteDuration && actualFps ? Math.floor(finiteDuration * actualFps) : null);
       setCurrentFrame(0);
-      
+
       setVideoMetadata({
-        resolution: `${width} × ${height}`,
-        fps: estimatedFps,
-        duration: `${duration.toFixed(2)}s`,
-        totalFrames: Math.floor(duration * estimatedFps)
+        resolution: width > 0 && height > 0 ? `${width} × ${height}` : 'Unknown',
+        fps: 'Unknown',
+        duration: finiteDuration ? `${finiteDuration.toFixed(2)}s` : 'Unknown',
+        totalFrames: finiteDuration && actualFps ? Math.floor(finiteDuration * actualFps).toString() : 'Unknown'
       });
     };
   };
@@ -57,14 +61,14 @@ export const useBikeFitVideo = () => {
   };
 
   const seekToFrame = (frameNumber) => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !fps) return;
     const time = frameNumber / fps;
     videoRef.current.currentTime = time;
     setCurrentFrame(frameNumber);
   };
 
   const nextFrame = () => {
-    if (currentFrame < totalFrames - 1) {
+    if (typeof totalFrames === 'number' && currentFrame < totalFrames - 1) {
       seekToFrame(currentFrame + 1);
     }
   };

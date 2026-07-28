@@ -146,6 +146,8 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const countdownIntervalRef = useRef(null);
+  const recordingIntervalRef = useRef(null);
 
   const profileCacheRef = useRef({});
   const detectingRef = useRef(false);
@@ -173,6 +175,7 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
     } catch (err) {
       initRef.current = false; // allow retry on failure
       console.error(err);
+      throw err;
     }
   }, []);
 
@@ -181,6 +184,9 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
   ================================= */
   const checkCameras = async () => {
     try {
+      if (!navigator.mediaDevices) {
+        throw new Error('Camera access is unavailable over plain HTTP. Please access this page via HTTPS or localhost.');
+      }
       // First enumerate without permission to see device count
       const devicesBeforePerm = await navigator.mediaDevices.enumerateDevices();
       const camsBeforePerm = devicesBeforePerm.filter(d => d.kind === 'videoinput');
@@ -231,25 +237,8 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
           }
         }
         
-        // Strategy 3: Request each deviceId we know about
-        if (cams.length === 1) {
-          const allDeviceIds = [...new Set(camsBeforePerm.map(d => d.deviceId))];
-          
-          for (const deviceId of allDeviceIds) {
-            try {
-              const idStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { deviceId: { exact: deviceId } } 
-              });
-              stopStream(idStream);
-              await sleep(100);
-            } catch (err) {
-              // deviceId failed
-            }
-          }
-          
-          devices = await navigator.mediaDevices.enumerateDevices();
-          cams = devices.filter(d => d.kind === 'videoinput');
-        }
+        // Further deviceId probing is redundant: the permission prompt and
+        // facingMode attempts above already expose all labeled cameras.
       }
 
       if (cams.length === 0) {
@@ -320,6 +309,10 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
   const startCamera = useCallback(async () => {
     stopCamera();
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera access requires a secure context. Please use HTTPS or localhost.');
+    }
+
     const constraints = {
       video: {
         deviceId: selectedCamera ? { exact: selectedCamera } : undefined
@@ -349,8 +342,17 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
      STOP CAMERA
   ================================= */
   const stopCamera = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
     if (stream) stopStream(stream);
     setStream(null);
+    setIsRecording(false);
   };
 
   /* ================================
@@ -359,14 +361,18 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
   const startRecording = () => {
     if (!stream) return;
 
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+
     setCountdown(startDelay);
     setRecordingTime(0);
     setIsRecording(true);
 
-    const timer = setInterval(() => {
+    countdownIntervalRef.current = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(timer);
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
           startActualRecording();
           return 0;
         }
@@ -391,6 +397,15 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
     };
 
     recorder.onstop = () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
 
@@ -405,19 +420,32 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
 
     const start = Date.now();
 
-    const interval = setInterval(() => {
+    recordingIntervalRef.current = setInterval(() => {
       const sec = Math.floor((Date.now() - start) / 1000);
       setRecordingTime(sec);
 
       if (sec >= recordingDuration) {
-        clearInterval(interval);
-        recorder.stop();
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+        if (recorder.state !== 'inactive') {
+          recorder.stop();
+        }
       }
     }, 1000);
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     setIsRecording(false);
   };
 

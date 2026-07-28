@@ -1,8 +1,10 @@
 package com.sgen.controller;
 
+import com.sgen.dto.BikeFitAnalysisRequestDTO;
 import com.sgen.dto.BikeFitSettingsDTO;
 import com.sgen.service.BikeFitService;
 import com.sgen.service.BikeFitAnalysisService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -51,13 +53,9 @@ public class BikeFitController {
     }
 
     @PostMapping("/ai-analysis")
-    public ResponseEntity<Map<String, Object>> getAIAnalysis(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> getAIAnalysis(@Valid @RequestBody BikeFitAnalysisRequestDTO request) {
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Number> angles = (Map<String, Number>) request.get("angles");
-            String ridingStyle = (String) request.get("ridingStyle");
-            
-            String analysis = bikeFitAnalysisService.generatePersonalizedRecommendations(angles, ridingStyle);
+            String analysis = bikeFitAnalysisService.generatePersonalizedRecommendations(request.getAngles(), request.getRidingStyle());
             
             Map<String, Object> response = new HashMap<>();
             response.put("analysis", analysis);

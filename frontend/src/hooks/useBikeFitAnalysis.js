@@ -26,6 +26,8 @@ const SIDE_VOTE_FRAMES = 20;
 // Minimum samples before a metric is reported (avoids noisy early values).
 const MIN_KNEE_SAMPLES = 20;
 const MIN_SAMPLES = 12;
+// Cap per-metric sample buffers to keep memory usage bounded (~3 min @ 30 fps).
+const MAX_SAMPLES = 6000;
 
 // MediaPipe Pose landmark indices per side.
 const SIDE_LANDMARKS = {
@@ -74,6 +76,12 @@ const emptyAngles = () => ({
 });
 
 const emptySamples = () => ({ knee: [], hip: [], ankle: [], back: [], elbow: [] });
+
+const pushSample = (arr, value) => {
+  if (value === null || value === undefined) return;
+  if (arr.length >= MAX_SAMPLES) arr.shift();
+  arr.push(value);
+};
 
 export const useBikeFitAnalysis = (landmarks, videoSize) => {
   const [angles, setAngles] = useState(emptyAngles());
@@ -145,29 +153,29 @@ export const useBikeFitAnalysis = (landmarks, videoSize) => {
     // ---- Leg/hip require shoulder, hip, knee, ankle with good confidence ----
     if (hasConf(shoulder) && hasConf(hip) && hasConf(knee) && hasConf(ankle)) {
       const kneeAngle = angleAt(hip, knee, ankle);
-      if (kneeAngle !== null) samples.knee.push(kneeAngle);
+      pushSample(samples.knee, kneeAngle);
 
       // Hip flexion = interior angle torso(hip->shoulder) vs thigh(hip->knee).
       const hipAngle = angleAt(shoulder, hip, knee);
-      if (hipAngle !== null) samples.hip.push(hipAngle);
+      pushSample(samples.hip, hipAngle);
 
       // Back angle from the horizontal (0deg flat, 90deg upright).
       const dx = shoulder.X - hip.X;
       const dy = shoulder.Y - hip.Y;
       const backAngle = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
-      samples.back.push(backAngle);
+      pushSample(samples.back, backAngle);
 
       // Ankle angle: prefer toe (foot index); fall back to heel.
       let ankleAngle = null;
       if (hasConf(foot)) ankleAngle = angleAt(knee, ankle, foot);
       else if (hasConf(heel)) ankleAngle = angleAt(knee, ankle, heel);
-      if (ankleAngle !== null) samples.ankle.push(ankleAngle);
+      pushSample(samples.ankle, ankleAngle);
     }
 
     // ---- Elbow requires shoulder, elbow, wrist ----
     if (hasConf(shoulder) && hasConf(elbow) && hasConf(wrist)) {
       const elbowAngle = angleAt(shoulder, elbow, wrist);
-      if (elbowAngle !== null) samples.elbow.push(elbowAngle);
+      pushSample(samples.elbow, elbowAngle);
     }
 
     // ---- Aggregate robustly ----

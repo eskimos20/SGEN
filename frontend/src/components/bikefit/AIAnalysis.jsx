@@ -41,7 +41,7 @@ const AIAnalysis = ({ angles, ridingStyle, isVideoProcessing }) => {
     // Check if angles have actually changed significantly (to prevent unnecessary re-analysis)
     const currentAnglesStr = JSON.stringify(angles);
     const lastAnglesStr = JSON.stringify(lastAnglesRef.current);
-    
+
     if (currentAnglesStr === lastAnglesStr) {
       return; // No change, don't re-analyze
     }
@@ -50,12 +50,6 @@ const AIAnalysis = ({ angles, ridingStyle, isVideoProcessing }) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-
-    // Debounce analysis generation
-    debounceTimer.current = setTimeout(() => {
-      generateAnalysis();
-      lastAnglesRef.current = { ...angles };
-    }, 2000); // Wait 2 seconds after last angle update
 
     const generateAnalysis = async () => {
       setLoading(true);
@@ -78,6 +72,7 @@ const AIAnalysis = ({ angles, ridingStyle, isVideoProcessing }) => {
         });
 
         setAnalysis(response.data.analysis);
+        lastAnglesRef.current = { ...angles };
       } catch (err) {
         setError(
           err.response?.data?.message || err.message || 'Failed to generate AI analysis'
@@ -86,6 +81,11 @@ const AIAnalysis = ({ angles, ridingStyle, isVideoProcessing }) => {
         setLoading(false);
       }
     };
+
+    // Debounce analysis generation
+    debounceTimer.current = setTimeout(() => {
+      generateAnalysis();
+    }, 2000); // Wait 2 seconds after last angle update
   }, [angles, ridingStyle, isVideoProcessing]);
 
   const formatAnalysis = (text) => {
