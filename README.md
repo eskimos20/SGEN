@@ -21,6 +21,8 @@ Watch the application in action on YouTube: [SGEN App Demo](https://www.youtube.
   - `/backend/custom-workout-library/` (custom user workouts - **personal to each user**)
 - **Workout Creator**: Visual drag-and-drop workout builder with real-time TSS calculation and power zones
 - **Workout Scheduling**: Schedule workouts directly to your training calendar
+- **Workout Sharing**: Share workouts from either library with other users; recipients can accept or decline the share
+- **Copy & Edit Workouts**: Copy any workout to your custom library (auto-versioning on duplicates) or edit existing custom workouts in the Workout Creator
 
 #### Shared Workout Library (Global Access)
 
@@ -68,7 +70,7 @@ workout-library/
 ## Tech Stack
 
 ### Backend
-- **Java**: 21 (LTS)
+- **Java**: 17 (LTS)
 - **Spring Boot**: 3.5.13
 - **Database**: H2 (file-based, `./data/sgen`)
 - **ORM**: Hibernate / Spring Data JPA
@@ -98,6 +100,10 @@ workout-library/
 - **Supported Models**: GPT-4, GPT-4o, GPT-5 series, o1, o3, o4-mini, and more
 
 ### Performance Optimizations
+- **API Rate Limiting**: Non-blocking `Condition.awaitNanos()` based limiters for Intervals.icu and OpenAI that avoid holding locks while waiting
+- **Parallel Data Fetching**: Intervals.icu activities and per-activity intervals are fetched concurrently while respecting rate limits
+- **File I/O Caching**: Custom workout metadata is loaded once and cached, avoiding repeated ZWO/JSON reads during searches
+- **Frontend Cleanup**: Pending timeouts and intervals are cleared on unmount; logout uses soft navigation without a full page reload
 - React.memo for component memoization
 - useMemo/useCallback for expensive calculations
 - Calendar data caching with Context API
@@ -477,6 +483,13 @@ sudo systemctl start sgen.service
 - `DELETE /api/workouts/custom/{filename}` - Delete custom workout
 - `GET /api/workouts/categories` - Get workout categories
 
+### Workout Sharing
+- `GET /api/workout-shares/sharable-users` - Get users you can share workouts with
+- `POST /api/workout-shares` - Share a workout with selected users
+- `GET /api/workout-shares/pending` - List pending incoming workout shares
+- `POST /api/workout-shares/{id}/accept` - Accept a shared workout (creates or reuses the ZWO file)
+- `POST /api/workout-shares/{id}/decline` - Decline a shared workout
+
 ### BikeFit
 - `GET /api/bikefit/settings` - Get camera settings
 - `POST /api/bikefit/settings` - Save camera settings
@@ -485,7 +498,10 @@ sudo systemctl start sgen.service
 - `POST /api/bikefit/generate-recommendations` - Generate recommendations from angles
 
 ### Downloads & Version
-- `GET /api/version` - Get application version
+- `GET /api/version` - Get application version and server start time
+- `GET /api/statistics/current-version` - Get current app version for the version notifier
+- `POST /api/statistics/version-seen` - Mark a version as seen by the current user
+- `GET /api/statistics/version-seen/{version}` - Check if a user has seen a specific version
 - `GET /downloads/sgen-android.apk` - Download Android APK
 
 ## Android App
