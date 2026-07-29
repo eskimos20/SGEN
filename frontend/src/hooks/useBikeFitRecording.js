@@ -72,52 +72,61 @@ const detectSupportedProfiles = async (deviceId) => {
     tempStream = await navigator.mediaDevices.getUserMedia({
       video: { deviceId: { exact: deviceId } }
     });
-
-    const track = tempStream.getVideoTracks()[0];
-
-    let capabilities = {};
+  } catch (err) {
+    // Exact deviceId can fail if the device is busy or the platform rejects
+    // it. Try an ideal constraint as a fallback.
+    console.warn('Exact deviceId failed, trying ideal:', err);
     try {
-      capabilities = (track.getCapabilities && track.getCapabilities()) || {};
-    } catch (err) {
-      console.error('Failed to get camera capabilities:', err);
+      tempStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { ideal: deviceId } }
+      });
+    } catch (err2) {
+      console.error('Failed to open camera for capability check:', err2);
     }
-    const settings = track.getSettings ? track.getSettings() : {};
+  }
 
-    stopStream(tempStream);
-    tempStream = null;
+  if (!tempStream) return profiles;
 
-    const maxW = capabilities.width?.max || settings.width || 1280;
-    const maxH = capabilities.height?.max || settings.height || 720;
-    const minW = capabilities.width?.min || 0;
-    const minH = capabilities.height?.min || 0;
-    const maxFps = Math.floor(capabilities.frameRate?.max || settings.frameRate || 30);
-    const minFps = Math.ceil(capabilities.frameRate?.min || 0);
+  const track = tempStream.getVideoTracks()[0];
 
-    // Build the resolution list: native max + standard sizes within range.
-    const resolutions = [{ w: maxW, h: maxH }];
-    for (const res of STANDARD_RESOLUTIONS) {
-      if (res.w <= maxW && res.h <= maxH && res.w >= minW && res.h >= minH) {
-        resolutions.push(res);
-      }
-    }
-
-    // Build the fps list within the supported range.
-    const fpsValues = [];
-    for (const fps of [120, 90, 60, 30, 24]) {
-      if (fps <= maxFps && fps >= minFps) fpsValues.push(fps);
-    }
-    if (!fpsValues.includes(maxFps) && maxFps > 0) fpsValues.push(maxFps);
-    if (fpsValues.length === 0) fpsValues.push(maxFps || 30);
-
-    for (const res of resolutions) {
-      for (const fps of fpsValues) {
-        profiles.push({ width: res.w, height: res.h, fps });
-      }
-    }
+  let capabilities = {};
+  try {
+    capabilities = (track.getCapabilities && track.getCapabilities()) || {};
   } catch (err) {
     console.error('Failed to get camera capabilities:', err);
-  } finally {
-    if (tempStream) stopStream(tempStream);
+  }
+  const settings = track.getSettings ? track.getSettings() : {};
+
+  stopStream(tempStream);
+  tempStream = null;
+
+  const maxW = capabilities.width?.max || settings.width || 1280;
+  const maxH = capabilities.height?.max || settings.height || 720;
+  const minW = capabilities.width?.min || 0;
+  const minH = capabilities.height?.min || 0;
+  const maxFps = Math.floor(capabilities.frameRate?.max || settings.frameRate || 30);
+  const minFps = Math.ceil(capabilities.frameRate?.min || 0);
+
+  // Build the resolution list: native max + standard sizes within range.
+  const resolutions = [{ w: maxW, h: maxH }];
+  for (const res of STANDARD_RESOLUTIONS) {
+    if (res.w <= maxW && res.h <= maxH && res.w >= minW && res.h >= minH) {
+      resolutions.push(res);
+    }
+  }
+
+  // Build the fps list within the supported range.
+  const fpsValues = [];
+  for (const fps of [120, 90, 60, 30, 24]) {
+    if (fps <= maxFps && fps >= minFps) fpsValues.push(fps);
+  }
+  if (!fpsValues.includes(maxFps) && maxFps > 0) fpsValues.push(maxFps);
+  if (fpsValues.length === 0) fpsValues.push(maxFps || 30);
+
+  for (const res of resolutions) {
+    for (const fps of fpsValues) {
+      profiles.push({ width: res.w, height: res.h, fps });
+    }
   }
 
   return uniqueProfiles(profiles);
@@ -151,6 +160,8 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
 
   const profileCacheRef = useRef({});
   const detectingRef = useRef(false);
+  const latestCameraRef = useRef(selectedCamera);
+  latestCameraRef.current = selectedCamera;
   const initRef = useRef(false);
 
   /* ================================
@@ -276,27 +287,38 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
     if (!selectedCamera) return;
 
     const run = async () => {
-      if (detectingRef.current) return;
+      const deviceId = latestCameraRef.current;
+      if (!deviceId) return;
+      if (detectingRef.current) return; // current run will re-check after it finishes
       detectingRef.current = true;
 
       try {
-        if (profileCacheRef.current[selectedCamera]) {
-          setSupportedProfiles(profileCacheRef.current[selectedCamera]);
+        setSupportedProfiles([]);
+        setSelectedProfile(null);
+
+        const cached = profileCacheRef.current[deviceId];
+        if (cached && cached.length > 0) {
+          setSupportedProfiles(cached);
+          setSelectedProfile(cached[0] || null);
           return;
         }
 
-        const profiles = await detectSupportedProfiles(selectedCamera);
-
-        profileCacheRef.current[selectedCamera] = profiles;
-
-        setSupportedProfiles(profiles);
-
+        const profiles = await detectSupportedProfiles(deviceId);
         if (profiles.length > 0) {
-          setSelectedProfile(profiles[0]);
+          profileCacheRef.current[deviceId] = profiles;
         }
 
+        // Only apply results if this is still the selected camera
+        if (latestCameraRef.current === deviceId) {
+          setSupportedProfiles(profiles);
+          setSelectedProfile(profiles[0] || null);
+        }
       } finally {
         detectingRef.current = false;
+        // If the user switched camera while we were detecting, run for the latest one
+        if (latestCameraRef.current !== deviceId) {
+          run();
+        }
       }
     };
 
