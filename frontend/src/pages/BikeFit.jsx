@@ -34,7 +34,7 @@ const BikeFit = () => {
               setError('⚠️ Camera permission is required for video recording. Please enable it in app settings.');
             }
           } catch (err) {
-            console.log('Camera plugin not available, falling back to web API');
+            // Camera plugin not available, fall back to web API
           }
         };
         requestCameraPermission();

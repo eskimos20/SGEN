@@ -1,21 +1,23 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CalendarProvider } from './context/CalendarContext';
-import Login from './pages/Login';
-import ChangePassword from './pages/ChangePassword';
-import Dashboard from './pages/Dashboard';
-import AdminPanel from './pages/AdminPanel';
-import Profile from './pages/Profile';
-import Statistics from './pages/Statistics';
-import Gear from './pages/Gear';
-import Calendar from './pages/Calendar';
-import WorkoutCreator from './pages/WorkoutCreator';
-import SearchWorkouts from './pages/SearchWorkouts';
-import BikeFit from './pages/BikeFit';
-import Achievements from './pages/Achievements';
-import Nutrition from './pages/Nutrition';
-import Monitoring from './pages/Monitoring';
 import Layout from './components/shared/Layout';
+
+const Login = lazy(() => import('./pages/Login'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Statistics = lazy(() => import('./pages/Statistics'));
+const Gear = lazy(() => import('./pages/Gear'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const WorkoutCreator = lazy(() => import('./pages/WorkoutCreator'));
+const SearchWorkouts = lazy(() => import('./pages/SearchWorkouts'));
+const BikeFit = lazy(() => import('./pages/BikeFit'));
+const Achievements = lazy(() => import('./pages/Achievements'));
+const Nutrition = lazy(() => import('./pages/Nutrition'));
+const Monitoring = lazy(() => import('./pages/Monitoring'));
 
 const ProtectedRoute = ({ children, adminOnly = false, userOnly = false, allowChangePassword = false }) => {
   const { user, loading } = useAuth();
@@ -143,7 +145,15 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <CalendarProvider>
-          <AppRoutes />
+          <Suspense
+            fallback={
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              </div>
+            }
+          >
+            <AppRoutes />
+          </Suspense>
         </CalendarProvider>
       </AuthProvider>
     </BrowserRouter>

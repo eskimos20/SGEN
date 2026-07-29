@@ -127,7 +127,6 @@ const Dashboard = () => {
                 setShowApkUpdate(true);
               }
             } catch (err) {
-              console.log('Could not get app version:', err);
               // If we can't determine version, show update just in case
               setShowApkUpdate(true);
             }

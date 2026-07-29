@@ -74,7 +74,6 @@ export const usePoseDetection = (onResultsDraw) => {
         try {
           pose.setOptions(options);
           await pose.initialize();
-          console.log('MediaPipe initialized successfully - GPU mode');
         } catch (initializationError) {
           console.warn('MediaPipe initialization failed:', initializationError.message);
           
@@ -100,7 +99,6 @@ export const usePoseDetection = (onResultsDraw) => {
               });
               await pose.initialize();
               usedCPUFallback = true;
-              console.log('Successfully initialized MediaPipe in CPU-only mode');
             } catch (fallbackError) {
               // If even CPU fallback fails, provide comprehensive error message
               const isCompleteWebGLFailure = initializationError.message.includes('FEATURE_FAILURE_EGL_NO_CONFIG') ||

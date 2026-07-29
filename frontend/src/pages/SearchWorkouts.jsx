@@ -66,9 +66,7 @@ const SearchWorkouts = () => {
   } = useWorkoutSchedule(refreshCalendarData, getSportType);
 
   React.useEffect(() => {
-    import('../api/axios').then(({ default: api }) => {
-      api.get('/statistics/athlete-profile').then(r => setAthleteProfile(r.data)).catch(() => {});
-    });
+    api.get('/statistics/athlete-profile').then(r => setAthleteProfile(r.data)).catch(() => {});
   }, []);
   
   const handleWorkoutHover = (workout) => {
