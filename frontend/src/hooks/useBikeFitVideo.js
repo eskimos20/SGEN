@@ -10,7 +10,7 @@ export const useBikeFitVideo = () => {
   
   const videoRef = useRef(null);
 
-  const loadVideo = (url, expectedFps) => {
+  const loadVideo = (url, expectedFps, expectedDuration) => {
     const video = document.createElement('video');
     video.src = url;
     video.onloadedmetadata = () => {
@@ -20,7 +20,9 @@ export const useBikeFitVideo = () => {
 
       // The browser cannot reliably extract the real fps from a blob/file.
       // If the caller already knows it (e.g. from a recording), use that value.
-      const finiteDuration = Number.isFinite(duration) ? duration : null;
+      const fallbackDuration =
+        Number.isFinite(expectedDuration) && expectedDuration > 0 ? expectedDuration : null;
+      const finiteDuration = Number.isFinite(duration) ? duration : fallbackDuration;
       const actualFps =
         Number.isFinite(expectedFps) && expectedFps > 0 ? expectedFps : null;
 

@@ -157,6 +157,7 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
   const chunksRef = useRef([]);
   const countdownIntervalRef = useRef(null);
   const recordingIntervalRef = useRef(null);
+  const recordingStartRef = useRef(0);
 
   const profileCacheRef = useRef({});
   const detectingRef = useRef(false);
@@ -435,12 +436,14 @@ export const useBikeFitRecording = (videoRef, onRecordingComplete) => {
 
       setIsRecording(false);
 
-      onRecordingComplete?.(url, selectedProfile?.fps);
+      const recordedDuration = (Date.now() - recordingStartRef.current) / 1000;
+      onRecordingComplete?.(url, selectedProfile?.fps, recordedDuration);
     };
 
     recorder.start(100);
 
     const start = Date.now();
+    recordingStartRef.current = start;
 
     recordingIntervalRef.current = setInterval(() => {
       const sec = Math.floor((Date.now() - start) / 1000);
