@@ -27,6 +27,7 @@ const WorkoutCreator = () => {
   const [editingFilename, setEditingFilename] = useState(editingWorkout?.source === 'custom' ? editingWorkout.filename : null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [ftp, setFtp] = useState(280);
+  const [ftpMissing, setFtpMissing] = useState(false);
   const [usePace, setUsePace] = useState(() => editingWorkout?.workout_doc?.steps?.some(s => s.pace) || false);
   const [thresholdPace, setThresholdPace] = useState(null);
   const [paceZones, setPaceZones] = useState(null);
@@ -93,10 +94,12 @@ const WorkoutCreator = () => {
             setting.types && setting.types.some(type => type === sportKey)
           );
           
-          if (sportSetting && sportSetting.ftp) {
+          if (sportSetting && sportSetting.ftp > 0) {
             setFtp(sportSetting.ftp);
+            setFtpMissing(false);
           } else {
             setFtp(sportType === 'Run' ? 240 : 275);
+            setFtpMissing(true);
           }
 
           if (sportType === 'Run' && sportSetting?.threshold_pace > 0) {
@@ -107,12 +110,12 @@ const WorkoutCreator = () => {
             setThresholdPace(null);
             setPaceZones(null);
             setPaceUnits(null);
-            setUsePace(false);
           }
         }
       } catch (err) {
         console.error('Failed to fetch FTP:', err);
         setFtp(sportType === 'Run' ? 240 : 275);
+        setFtpMissing(true);
       } finally {
         setPaceSettingsLoading(false);
       }
@@ -140,6 +143,12 @@ const WorkoutCreator = () => {
     const tss = Math.round(workoutMetrics.tss);
     return `${selectedCategory} TSS ${tss}`;
   }, [selectedCategory, workoutMetrics.tss]);
+
+  const paceLoadedAvailable = !paceSettingsLoading && thresholdPace > 0 && !!paceZones;
+  const builderLocked = paceSettingsLoading || (sportType === 'Run'
+    ? (usePace ? !paceLoadedAvailable : ftpMissing)
+    : ftpMissing);
+  const saveDisabled = builderLocked;
 
   // Open save dialog
   const handleSave = useCallback(() => {
@@ -256,6 +265,8 @@ const WorkoutCreator = () => {
           usePace={usePace}
           setUsePace={setUsePace}
           paceAvailable={paceSettingsLoading || !!(thresholdPace > 0 && paceZones)}
+          saveDisabled={saveDisabled}
+          ftpMissing={ftpMissing}
         />
 
         {/* Drag Items Palette */}
@@ -263,6 +274,7 @@ const WorkoutCreator = () => {
           onDragStart={handlePaletteDragStart}
           onDragEnd={handleDragEnd}
           formatDuration={formatDuration}
+          disabled={builderLocked}
         />
 
         {/* Workout Builder */}
@@ -284,6 +296,7 @@ const WorkoutCreator = () => {
           usePace={usePace && sportType === 'Run'}
           thresholdPace={thresholdPace}
           paceUnits={paceUnits}
+          disabled={builderLocked}
         />
       </div>
 

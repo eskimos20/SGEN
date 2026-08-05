@@ -19,17 +19,18 @@ const WorkoutBuilder = ({
   formatDuration,
   usePace = false,
   thresholdPace = null,
-  paceUnits = null
+  paceUnits = null,
+  disabled = false
 }) => {
   if (steps.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className={`bg-white rounded-xl shadow-sm p-6 ${disabled ? 'opacity-60' : ''}`}>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Workout Builder (0 intervals)
         </h2>
         <div
-          onDragOver={(e) => onDragOver(e, 0)}
-          onDrop={(e) => onDrop(e, 0)}
+          onDragOver={disabled ? undefined : (e) => onDragOver(e, 0)}
+          onDrop={disabled ? undefined : (e) => onDrop(e, 0)}
           className="h-80 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
         >
           <p className="text-gray-500 text-lg font-medium">Drop intervals here to start building</p>
@@ -53,14 +54,14 @@ const WorkoutBuilder = ({
       <div className="relative">
         {/* Workout Chart Preview */}
         <div 
-          className="mb-16 h-32 bg-gray-50 rounded-lg relative"
-          onDragOver={(e) => {
+          className={`mb-16 h-32 bg-gray-50 rounded-lg relative ${disabled ? 'opacity-60' : ''}`}
+          onDragOver={disabled ? undefined : (e) => {
             if (draggedType || draggedStepIndex !== null) {
               e.preventDefault();
               e.stopPropagation();
             }
           }}
-          onDrop={(e) => {
+          onDrop={disabled ? undefined : (e) => {
             e.preventDefault();
             e.stopPropagation();
             onDrop(e, steps.length);
@@ -105,6 +106,7 @@ const WorkoutBuilder = ({
                   usePace={usePace}
                   thresholdPace={thresholdPace}
                   paceUnits={paceUnits}
+                  disabled={disabled}
                 />
               </React.Fragment>
             ))}

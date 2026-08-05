@@ -13,7 +13,8 @@ const WorkoutStepCard = ({
   formatDuration,
   usePace = false,
   thresholdPace = null,
-  paceUnits = null
+  paceUnits = null,
+  disabled = false
 }) => {
   const intervalType = INTERVAL_TYPES.find(t => t.id === step.type);
   const intensity = (pct) => usePace && thresholdPace > 0
@@ -22,10 +23,12 @@ const WorkoutStepCard = ({
 
   return (
     <div
-      draggable
-      onDragStart={(e) => onDragStart(e, index)}
-      className={`flex-shrink-0 w-48 bg-white border-2 rounded-lg p-3 cursor-move transition-all ${
-        isDragging ? 'opacity-50 scale-95' : 'hover:shadow-md'
+      draggable={!disabled}
+      onDragStart={disabled ? undefined : (e) => onDragStart(e, index)}
+      className={`flex-shrink-0 w-48 bg-white border-2 rounded-lg p-3 transition-all ${
+        disabled
+          ? 'opacity-60 cursor-not-allowed'
+          : `cursor-move ${isDragging ? 'opacity-50 scale-95' : 'hover:shadow-md'}`
       }`}
     >
       <div className="flex items-start justify-between mb-2">
@@ -35,22 +38,25 @@ const WorkoutStepCard = ({
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onEdit(step)}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            onClick={() => !disabled && onEdit(step)}
+            disabled={disabled}
+            className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-40"
             title="Edit"
           >
             <Edit2 className="h-3.5 w-3.5 text-gray-600" />
           </button>
           <button
-            onClick={() => onCopy(step)}
-            className="p-1 hover:bg-blue-100 rounded transition-colors"
+            onClick={() => !disabled && onCopy(step)}
+            disabled={disabled}
+            className="p-1 hover:bg-blue-100 rounded transition-colors disabled:opacity-40"
             title="Copy"
           >
             <Copy className="h-3.5 w-3.5 text-blue-600" />
           </button>
           <button
-            onClick={() => onRemove(step.id)}
-            className="p-1 hover:bg-red-100 rounded transition-colors"
+            onClick={() => !disabled && onRemove(step.id)}
+            disabled={disabled}
+            className="p-1 hover:bg-red-100 rounded transition-colors disabled:opacity-40"
             title="Remove"
           >
             <Trash2 className="h-3.5 w-3.5 text-red-600" />

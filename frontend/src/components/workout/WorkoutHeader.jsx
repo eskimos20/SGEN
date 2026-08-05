@@ -26,7 +26,9 @@ const WorkoutHeader = ({
   hasSteps,
   usePace,
   setUsePace,
-  paceAvailable
+  paceAvailable,
+  saveDisabled,
+  ftpMissing
 }) => {
   return (
     <>
@@ -82,6 +84,11 @@ const WorkoutHeader = ({
                   </span>
                 )}
               </>
+            )}
+            {ftpMissing && !usePace && (
+              <span className="block text-xs text-red-500 mt-1">
+                No FTP set - go to Statistics → Sport Settings → {sportType} to add it
+              </span>
             )}
           </div>
 
@@ -145,7 +152,7 @@ const WorkoutHeader = ({
             </div>
             <button
               onClick={onSave}
-              disabled={isSaving || !hasSteps}
+              disabled={isSaving || !hasSteps || saveDisabled}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors text-sm font-medium"
             >
               <Save className="w-4 h-4" />
