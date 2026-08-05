@@ -1,5 +1,6 @@
 package com.sgen.security;
 
+import com.sgen.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -79,6 +82,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    // Track last activity for online-status in admin panel
+                    try {
+                        userRepository.updateLastActivityByUsername(username, LocalDateTime.now());
+                    } catch (Exception ex) {
+                        // Don't fail the request if activity tracking fails
+                    }
                 }
             }
         } catch (Exception e) {

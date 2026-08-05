@@ -3,7 +3,7 @@ import api from '../../api/axios';
 import { Plus, Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ConfirmDialog from '../modals/ConfirmDialog';
 
-const UsersTab = () => {
+const UsersTab = ({ onLastUpdate }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newUsername, setNewUsername] = useState('');
@@ -12,17 +12,52 @@ const UsersTab = () => {
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, userId: null, username: '' });
 
   useEffect(() => {
-    loadUsers();
+    let interval = null;
+
+    const startPolling = () => {
+      // Initial fetch with loading indicator
+      loadUsers(false);
+      // Refresh every 3 seconds like Monitoring
+      interval = setInterval(() => loadUsers(true), 3000);
+    };
+
+    const stopPolling = () => {
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        startPolling();
+      }
+    };
+
+    if (!document.hidden) {
+      startPolling();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await api.get('/admin/users');
       setUsers(response.data);
+      if (onLastUpdate) onLastUpdate(new Date());
     } catch (err) {
       // Silently fail
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -35,7 +70,7 @@ const UsersTab = () => {
       await api.post('/admin/users', { username: newUsername });
       setNewUsername('');
       setMessage({ type: 'success', text: `User "${newUsername}" created with default password "password"` });
-      loadUsers();
+      loadUsers(true);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to create user' });
     } finally {
@@ -50,7 +85,7 @@ const UsersTab = () => {
     try {
       await api.delete(`/admin/users/${userId}`);
       setMessage({ type: 'success', text: `User "${username}" deleted` });
-      loadUsers();
+      loadUsers(true);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to delete user' });
     }
@@ -87,7 +122,7 @@ const UsersTab = () => {
 
       <div className="card-mobile">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Users</h2>
-        
+
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
@@ -105,6 +140,7 @@ const UsersTab = () => {
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">OpenAI</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Created</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Last Login</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Online</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
@@ -140,6 +176,22 @@ const UsersTab = () => {
                       {user.lastLogin
                         ? new Date(user.lastLogin).toLocaleString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '')
                         : '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {(() => {
+                        const isOnline = user.lastActivity && (Date.now() - new Date(user.lastActivity).getTime() < 5 * 60 * 1000);
+                        return isOnline ? (
+                          <span className="inline-flex items-center gap-1 text-green-600 text-sm">
+                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                            Online
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-gray-400 text-sm">
+                            <span className="w-2 h-2 rounded-full bg-gray-300" />
+                            Offline
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button

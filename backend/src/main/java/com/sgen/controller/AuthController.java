@@ -37,6 +37,14 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(Authentication authentication) {
+        if (authentication != null) {
+            userService.logout(authentication.getName());
+        }
+        return ResponseEntity.ok(Map.of("message", "Logged out"));
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             Authentication authentication,

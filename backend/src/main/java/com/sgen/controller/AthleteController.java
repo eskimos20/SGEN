@@ -23,7 +23,14 @@ public class AthleteController {
 
     @GetMapping("/athlete-profile")
     public ResponseEntity<Map<String, Object>> getAthleteProfile(Authentication authentication) {
-        return ResponseEntity.ok(athleteService.getAthleteProfile(authentication.getName()));
+        try {
+            return ResponseEntity.ok(athleteService.getAthleteProfile(authentication.getName()));
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Intervals.icu credentials not configured")) {
+                return ResponseEntity.ok(Map.of("notConfigured", true));
+            }
+            throw e;
+        }
     }
 
     @PutMapping("/athlete/profile")

@@ -58,6 +58,7 @@ public class UserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         user.setLastLogin(java.time.LocalDateTime.now());
+        user.setLastActivity(user.getLastLogin());
         userRepository.save(user);
 
         UserDetails userDetails = new org.springframework.security.core.userdetails.User(
@@ -82,6 +83,15 @@ public class UserService {
                 .role(user.getRole().name())
                 .mustChangePassword(user.isMustChangePassword())
                 .build();
+    }
+
+    @Transactional
+    public void logout(String username) {
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user != null) {
+            user.setLastActivity(null);
+            userRepository.save(user);
+        }
     }
 
     @Transactional
@@ -241,6 +251,7 @@ public class UserService {
                 .shareWorkoutsEnabled(user.getShareWorkoutsEnabled())
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
+                .lastActivity(user.getLastActivity())
                 .build();
     }
 

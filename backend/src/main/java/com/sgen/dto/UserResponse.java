@@ -36,4 +36,5 @@ public class UserResponse {
 
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
+    private LocalDateTime lastActivity;
 }

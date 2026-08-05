@@ -144,6 +144,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      // Ignore network errors, still clear local session
+    }
     await removeToken();
     setUser(null);
     navigate('/login', { replace: true });
