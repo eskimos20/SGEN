@@ -1,87 +1,11 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Search, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import NumberInput from '../shared/NumberInput';
 import { ComposedChart, Area, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceArea } from 'recharts';
 import api from '../../api/axios';
 
-const SpinnerInput = ({ value, onChange, min = 0, max = 999, padStart = false, label }) => {
-  const intervalRef = useRef(null);
-  const timeoutRef = useRef(null);
-  const isTouchRef = useRef(false);
-
-  const step = useCallback((dir) => {
-    onChange(prev => {
-      const next = prev + dir;
-      if (next < min) return max;
-      if (next > max) return min;
-      return next;
-    });
-  }, [onChange, min, max]);
-
-  const startPress = useCallback((dir) => {
-    step(dir);
-    timeoutRef.current = setTimeout(() => {
-      intervalRef.current = setInterval(() => step(dir), 200);
-    }, 800);
-  }, [step]);
-
-  const stopPress = useCallback(() => {
-    clearTimeout(timeoutRef.current);
-    clearInterval(intervalRef.current);
-  }, []);
-
-  useEffect(() => () => stopPress(), [stopPress]);
-
-  const display = padStart ? String(value).padStart(2, '0') : String(value);
-
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      {label && <span className="text-xs font-medium text-gray-600 self-start mb-0.5">{label}</span>}
-      {/* Mobile: vertical spinner */}
-      <div className="flex sm:hidden flex-col items-center border border-gray-300 rounded-lg overflow-hidden bg-white w-16">
-        <button
-          type="button"
-          className="w-full h-9 flex items-center justify-center bg-gray-50 active:bg-gray-200 border-b border-gray-300 select-none touch-none"
-          onMouseDown={() => { if (!isTouchRef.current) startPress(1); }}
-          onMouseUp={stopPress}
-          onMouseLeave={stopPress}
-          onTouchStart={(e) => { e.preventDefault(); isTouchRef.current = true; startPress(1); }}
-          onTouchEnd={() => { stopPress(); setTimeout(() => { isTouchRef.current = false; }, 300); }}
-          onTouchCancel={() => { stopPress(); setTimeout(() => { isTouchRef.current = false; }, 300); }}
-        >
-          <ChevronUp className="h-4 w-4 text-gray-600" />
-        </button>
-        <div className="py-2 text-base font-semibold text-gray-900 text-center w-full select-none" style={{ fontSize: '18px' }}>
-          {display}
-        </div>
-        <button
-          type="button"
-          className="w-full h-9 flex items-center justify-center bg-gray-50 active:bg-gray-200 border-t border-gray-300 select-none touch-none"
-          onMouseDown={() => { if (!isTouchRef.current) startPress(-1); }}
-          onMouseUp={stopPress}
-          onMouseLeave={stopPress}
-          onTouchStart={(e) => { e.preventDefault(); isTouchRef.current = true; startPress(-1); }}
-          onTouchEnd={() => { stopPress(); setTimeout(() => { isTouchRef.current = false; }, 300); }}
-          onTouchCancel={() => { stopPress(); setTimeout(() => { isTouchRef.current = false; }, 300); }}
-        >
-          <ChevronDown className="h-4 w-4 text-gray-600" />
-        </button>
-      </div>
-      {/* Desktop: plain number input */}
-      <input
-        type="number"
-        value={display}
-        onChange={(e) => {
-          const parsed = parseInt(e.target.value);
-          if (!isNaN(parsed)) onChange(() => Math.max(min, Math.min(max, parsed)));
-        }}
-        className="hidden sm:block w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-        style={{ fontSize: '16px' }}
-        min={min}
-        max={max}
-      />
-    </div>
-  );
-};
+const intervalCls = "w-20 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-center";
+const durationCls = "w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-center";
 
 const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -322,39 +246,50 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
           </div>
 
           {/* Number of intervals + Duration + Search */}
-          <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-start gap-2 sm:gap-3">
             <div className="flex-shrink-0">
-              <SpinnerInput
-                label="Intervals"
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Intervals</label>
+              <NumberInput
                 value={intervalCount}
-                onChange={(fn) => setIntervalCount(typeof fn === 'function' ? fn(intervalCount) : fn)}
+                onChange={(e) => setIntervalCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
                 min={1}
                 max={20}
+                className={intervalCls}
+                style={{ fontSize: '16px' }}
+                sublabel="intervals"
+                wrapperClassName="w-20"
               />
             </div>
             <div className="flex-shrink-0">
               <label className="text-xs font-medium text-gray-600 mb-1 block">Duration (mm:ss)</label>
               <div className="flex items-center gap-1">
-                <SpinnerInput
+                <NumberInput
                   value={durationMinutes}
-                  onChange={(fn) => setDurationMinutes(typeof fn === 'function' ? fn(durationMinutes) : fn)}
+                  onChange={(e) => setDurationMinutes(Math.max(0, Math.min(999, parseInt(e.target.value) || 0)))}
                   min={0}
                   max={999}
+                  className={durationCls}
+                  style={{ fontSize: '16px' }}
+                  sublabel="min"
+                  wrapperClassName="w-20"
                 />
-                <span className="text-gray-500 font-bold text-sm">:</span>
-                <SpinnerInput
-                  value={durationSeconds}
-                  onChange={(fn) => setDurationSeconds(typeof fn === 'function' ? fn(durationSeconds) : fn)}
+                <span className="text-gray-500 font-bold text-sm mb-3">:</span>
+                <NumberInput
+                  value={String(durationSeconds).padStart(2, '0')}
+                  onChange={(e) => setDurationSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
                   min={0}
                   max={59}
-                  padStart
+                  className={durationCls}
+                  style={{ fontSize: '16px' }}
+                  sublabel="sec"
+                  wrapperClassName="w-20"
                 />
               </div>
             </div>
             <button
               onClick={handleSearch}
               disabled={isSearching || ((durationMinutes || 0) * 60 + (durationSeconds || 0) <= 0)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium whitespace-nowrap flex-shrink-0"
+              className="px-4 py-2 sm:mt-5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium whitespace-nowrap flex-shrink-0"
             >
               {isSearching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -366,49 +301,69 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
           </div>
 
           {/* Skip Warmup Option */}
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={skipWarmup}
-                onChange={(e) => setSkipWarmup(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Skip warmup</span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap w-36">
+              <div
+                onClick={() => setSkipWarmup(!skipWarmup)}
+                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                  skipWarmup ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                }`}
+              >
+                {skipWarmup && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm font-medium text-gray-700">Skip warmup</span>
             </label>
             {skipWarmup && (
               <div className="flex items-center gap-2">
-                <SpinnerInput
+                <NumberInput
                   value={warmupMinutes}
-                  onChange={(fn) => setWarmupMinutes(typeof fn === 'function' ? fn(warmupMinutes) : fn)}
+                  onChange={(e) => setWarmupMinutes(Math.max(0, Math.min(999, parseInt(e.target.value) || 0)))}
                   min={0}
                   max={999}
+                  className={intervalCls}
+                  style={{ fontSize: '16px' }}
+                  pickerTitle="Warmup minutes"
+                  wrapperClassName="w-20"
                 />
-                <span className="text-xs text-gray-500">minutes</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">minutes</span>
               </div>
             )}
           </div>
 
           {/* Skip Cooldown Option */}
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={skipCooldown}
-                onChange={(e) => setSkipCooldown(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Skip cooldown</span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap w-36">
+              <div
+                onClick={() => setSkipCooldown(!skipCooldown)}
+                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                  skipCooldown ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                }`}
+              >
+                {skipCooldown && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm font-medium text-gray-700">Skip cooldown</span>
             </label>
             {skipCooldown && (
               <div className="flex items-center gap-2">
-                <SpinnerInput
+                <NumberInput
                   value={cooldownMinutes}
-                  onChange={(fn) => setCooldownMinutes(typeof fn === 'function' ? fn(cooldownMinutes) : fn)}
+                  onChange={(e) => setCooldownMinutes(Math.max(0, Math.min(999, parseInt(e.target.value) || 0)))}
                   min={0}
                   max={999}
+                  className={intervalCls}
+                  style={{ fontSize: '16px' }}
+                  pickerTitle="Cooldown minutes"
+                  wrapperClassName="w-20"
                 />
-                <span className="text-xs text-gray-500">minutes</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">minutes</span>
               </div>
             )}
           </div>

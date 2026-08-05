@@ -62,15 +62,21 @@ const WorkoutHeader = ({
             {sportType === 'Run' && (
               <>
                 <label
-                  className="flex items-center gap-2 mt-2 text-sm text-gray-700 cursor-pointer"
+                  className="flex items-center gap-2 mt-2 text-sm font-medium text-gray-700 cursor-pointer flex-shrink-0"
                   title={paceAvailable ? '' : 'You need a Run Threshold Pace set in Statistics → Sport Settings to create pace-based workouts'}
                 >
-                  <input
-                    type="checkbox"
-                    checked={usePace}
-                    onChange={(e) => setUsePace(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
+                  <div
+                    onClick={() => setUsePace(!usePace)}
+                    className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                      usePace ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                    }`}
+                  >
+                    {usePace && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
                   Use pace instead of Watt
                 </label>
                 {usePace && !paceAvailable && (

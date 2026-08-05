@@ -1,25 +1,9 @@
 import { X } from 'lucide-react';
+import NumberInput from '../shared/NumberInput';
 import { INTERVAL_TYPES } from '../../hooks/useWorkoutSteps';
 import { formatPaceFromVelocity } from '../../utils/zoneUtils';
 
 const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center";
-
-const NumberInput = ({ label, sublabel, value, onChange, min = 0, max, placeholder }) => (
-  <div className="flex-1">
-    <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <input
-      type="number"
-      value={value}
-      onChange={onChange}
-      className={inputCls}
-      style={{ fontSize: '16px' }}
-      min={min}
-      max={max}
-      placeholder={placeholder}
-    />
-    <span className="block text-center text-xs text-gray-400 mt-0.5">{sublabel || '\u00A0'}</span>
-  </div>
-);
 
 const DurationInput = ({ label, totalSeconds, onChange }) => {
   const mins = Math.floor(totalSeconds / 60);
@@ -38,31 +22,25 @@ const DurationInput = ({ label, totalSeconds, onChange }) => {
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <input
-            type="number"
-            value={mins}
-            onChange={handleMins}
-            className={inputCls}
-            style={{ fontSize: '16px' }}
-            min="0"
-            max="99"
-          />
-          <span className="block text-center text-xs text-gray-400 mt-0.5">min</span>
-        </div>
+        <NumberInput
+          sublabel="min"
+          value={mins}
+          onChange={handleMins}
+          className={inputCls}
+          style={{ fontSize: '16px' }}
+          min={0}
+          max={99}
+        />
         <span className="text-gray-500 font-bold text-lg mb-4">:</span>
-        <div className="flex-1">
-          <input
-            type="number"
-            value={String(secs).padStart(2, '0')}
-            onChange={handleSecs}
-            className={inputCls}
-            style={{ fontSize: '16px' }}
-            min="0"
-            max="59"
-          />
-          <span className="block text-center text-xs text-gray-400 mt-0.5">sec</span>
-        </div>
+        <NumberInput
+          sublabel="sec"
+          value={String(secs).padStart(2, '0')}
+          onChange={handleSecs}
+          className={inputCls}
+          style={{ fontSize: '16px' }}
+          min={0}
+          max={59}
+        />
       </div>
     </div>
   );
@@ -108,6 +86,9 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                   value={editingStep.reps}
                   onChange={(e) => setEditingStep({...editingStep, reps: parseInt(e.target.value) || 1})}
                   min={1}
+                  max={99}
+                  className={inputCls}
+                  style={{ fontSize: '16px' }}
                 />
                 <div className="flex-1" />
               </div>
@@ -128,6 +109,8 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                   onChange={(e) => setEditingStep({...editingStep, power: parseInt(e.target.value) || 0})}
                   min={0}
                   max={200}
+                  className={inputCls}
+                  style={{ fontSize: '16px' }}
                   placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
@@ -149,6 +132,8 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                   onChange={(e) => setEditingStep({...editingStep, restPower: parseInt(e.target.value) || 0})}
                   min={0}
                   max={100}
+                  className={inputCls}
+                  style={{ fontSize: '16px' }}
                   placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
