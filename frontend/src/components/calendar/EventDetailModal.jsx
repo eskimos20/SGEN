@@ -485,9 +485,14 @@ const EventDetailModal = ({
             );
             // Use same activity type detection as WorkoutItemCard
             const activityType = selectedEvent.workout_doc?.sport_type || selectedEvent.activityType || selectedEvent.sport_type || selectedEvent.type || 'Cycling';
-            const ftp = (activityType === 'Running' || activityType === 'Run' || activityType === 'run') 
+            const isRun = activityType === 'Running' || activityType === 'Run' || activityType === 'run';
+            const ftp = isRun 
               ? (athleteProfile?.runningFtp || 240) 
               : sportSettings.ftp;
+            const hasPaceSteps = selectedEvent.workout_doc?.steps?.some(s => s.pace);
+            const usePace = selectedEvent.target === 'PACE' || selectedEvent.workout_doc?.target === 'PACE' || (isRun && hasPaceSteps);
+            const thresholdPace = selectedEvent.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
+            const paceUnits = selectedEvent.workout_doc?.pace_units || sportSettings?.paceUnits || 'MINS_KM';
             return (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Workout Profile</h3>
@@ -496,6 +501,9 @@ const EventDetailModal = ({
                   ftp={ftp}
                   height="h-32"
                   showTooltip={true}
+                  usePace={usePace}
+                  thresholdPace={thresholdPace}
+                  paceUnits={paceUnits}
                 />
               </div>
             );

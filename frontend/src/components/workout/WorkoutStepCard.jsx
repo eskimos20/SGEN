@@ -1,5 +1,6 @@
 import { GripVertical, Trash2, Edit2, Copy } from 'lucide-react';
 import { INTERVAL_TYPES } from '../../hooks/useWorkoutSteps';
+import { formatPaceFromVelocity } from '../../utils/zoneUtils';
 
 const WorkoutStepCard = ({
   step,
@@ -9,10 +10,16 @@ const WorkoutStepCard = ({
   onEdit,
   onRemove,
   onCopy,
-  formatDuration
+  formatDuration,
+  usePace = false,
+  thresholdPace = null,
+  paceUnits = null
 }) => {
   const intervalType = INTERVAL_TYPES.find(t => t.id === step.type);
-  
+  const intensity = (pct) => usePace && thresholdPace > 0
+    ? formatPaceFromVelocity(thresholdPace * pct / 100, paceUnits)
+    : `${pct}% FTP`;
+
   return (
     <div
       draggable
@@ -58,18 +65,18 @@ const WorkoutStepCard = ({
       <div className="text-xs text-gray-600 space-y-0.5">
         {intervalType?.isRamp ? (
           <>
-            <div>{step.powerStart}% → {step.powerEnd}% FTP</div>
+            <div>{intensity(step.powerStart)} → {intensity(step.powerEnd)}</div>
             <div>{formatDuration(step.duration)}</div>
           </>
         ) : step.type === 'interval' ? (
           <>
-            <div>{step.reps}x {step.power}% FTP</div>
+            <div>{step.reps}x {intensity(step.power)}</div>
             <div>{formatDuration(step.duration)} work</div>
-            <div>{formatDuration(step.restDuration)} rest @ {step.restPower}%</div>
+            <div>{formatDuration(step.restDuration)} rest @ {intensity(step.restPower)}</div>
           </>
         ) : (
           <>
-            <div>{step.power}% FTP</div>
+            <div>{intensity(step.power)}</div>
             <div>{formatDuration(step.duration)}</div>
           </>
         )}

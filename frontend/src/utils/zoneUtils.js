@@ -126,7 +126,9 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
       lthr: 165,
       maxHr: 190,
       powerZones: DEFAULT_POWER_ZONES,
-      hrZones: DEFAULT_HR_ZONES
+      hrZones: DEFAULT_HR_ZONES,
+      thresholdPace: 0,
+      paceUnits: 'MINS_KM'
     };
   }
 
@@ -156,7 +158,9 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
       lthr: defaultSettings?.lthr || 165,
       maxHr: defaultSettings?.max_hr || defaultSettings?.maxHr || 190,
       powerZones: parsePowerZones(defaultSettings?.power_zones || defaultSettings?.powerZones),
-      hrZones: parseHrZones(defaultSettings?.hr_zones || defaultSettings?.hrZones)
+      hrZones: parseHrZones(defaultSettings?.hr_zones || defaultSettings?.hrZones),
+      thresholdPace: defaultSettings?.threshold_pace || defaultSettings?.thresholdPace || 0,
+      paceUnits: defaultSettings?.pace_units || defaultSettings?.paceUnits || 'MINS_KM'
     };
   }
 
@@ -165,7 +169,9 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
     lthr: settings.lthr || 165,
     maxHr: settings.max_hr || settings.maxHr || 190,
     powerZones: parsePowerZones(settings.power_zones || settings.powerZones),
-    hrZones: parseHrZones(settings.hr_zones || settings.hrZones)
+    hrZones: parseHrZones(settings.hr_zones || settings.hrZones),
+    thresholdPace: settings.threshold_pace || settings.thresholdPace || 0,
+    paceUnits: settings.pace_units || settings.paceUnits || 'MINS_KM'
   };
 };
 
@@ -197,6 +203,80 @@ export const getZoneColorForPower = (powerPercent, zones = DEFAULT_POWER_ZONES) 
     bg: zoneInfo.bg,
     hex: zone.color || zoneInfo.hex
   };
+};
+
+/**
+ * Get the reference distance (in meters) used by a given Intervals.icu pace unit.
+ * @param {string} paceUnits - e.g. 'MINS_KM', 'MINS_MI', 'SECS_100M'
+ * @returns {number} Distance in meters
+ */
+export const getPaceDistanceMeters = (paceUnits) => {
+  switch (paceUnits) {
+    case 'MINS_MI': return 1609.34;
+    case 'SECS_100M': return 100;
+    case 'SECS_100Y': return 91.44;
+    case 'SECS_400M': return 400;
+    case 'MINS_KM':
+    default: return 1000;
+  }
+};
+
+/**
+ * Get the display suffix for a given Intervals.icu pace unit.
+ * @param {string} paceUnits
+ * @returns {string} e.g. '/km', '/mi', '/100m'
+ */
+export const getPaceUnitSuffix = (paceUnits) => {
+  switch (paceUnits) {
+    case 'MINS_MI': return '/mi';
+    case 'SECS_100M': return '/100m';
+    case 'SECS_100Y': return '/100y';
+    case 'SECS_400M': return '/400m';
+    case 'MINS_KM':
+    default: return '/km';
+  }
+};
+
+/**
+ * Convert a velocity (m/s) into a bare "mm:ss" pace value (no unit suffix).
+ * Useful as the value of an editable pace input field.
+ * @param {number} velocityMs - Speed in meters/second
+ * @param {string} paceUnits - Intervals.icu pace unit (e.g. 'MINS_KM')
+ * @returns {string} "mm:ss", or '' if invalid
+ */
+export const formatPaceValue = (velocityMs, paceUnits) => {
+  if (!velocityMs || velocityMs <= 0) return '';
+  const distance = getPaceDistanceMeters(paceUnits);
+  const totalSeconds = Math.round(distance / velocityMs);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Convert a velocity (m/s) into a formatted pace string (e.g. "5:30/km").
+ * @param {number} velocityMs - Speed in meters/second
+ * @param {string} paceUnits - Intervals.icu pace unit (e.g. 'MINS_KM')
+ * @returns {string} Formatted pace string, or '--:--' if invalid
+ */
+export const formatPaceFromVelocity = (velocityMs, paceUnits) => {
+  const value = formatPaceValue(velocityMs, paceUnits);
+  return value ? `${value}${getPaceUnitSuffix(paceUnits)}` : '--:--';
+};
+
+/**
+ * Parse a "mm:ss" pace string into a velocity (m/s), given the reference pace unit.
+ * @param {string} paceString - e.g. "5:30"
+ * @param {string} paceUnits - Intervals.icu pace unit (e.g. 'MINS_KM')
+ * @returns {number|null} Velocity in m/s, or null if invalid
+ */
+export const parsePaceToVelocity = (paceString, paceUnits) => {
+  if (!paceString) return null;
+  const match = String(paceString).trim().match(/^(\d+):([0-5]?\d)$/);
+  if (!match) return null;
+  const totalSeconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+  if (totalSeconds <= 0) return null;
+  return getPaceDistanceMeters(paceUnits) / totalSeconds;
 };
 
 export { DEFAULT_POWER_ZONES, DEFAULT_HR_ZONES };

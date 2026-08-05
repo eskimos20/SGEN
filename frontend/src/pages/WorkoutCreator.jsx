@@ -27,7 +27,12 @@ const WorkoutCreator = () => {
   const [editingFilename, setEditingFilename] = useState(editingWorkout?.source === 'custom' ? editingWorkout.filename : null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [ftp, setFtp] = useState(280);
-  
+  const [usePace, setUsePace] = useState(() => editingWorkout?.workout_doc?.steps?.some(s => s.pace) || false);
+  const [thresholdPace, setThresholdPace] = useState(null);
+  const [paceZones, setPaceZones] = useState(null);
+  const [paceUnits, setPaceUnits] = useState(null);
+  const [paceSettingsLoading, setPaceSettingsLoading] = useState(true);
+
   // Workout steps management
   const {
     steps,
@@ -47,14 +52,14 @@ const WorkoutCreator = () => {
     copyStep,
     openEditModal,
     saveEditedStep
-  } = useWorkoutSteps(selectedCategory);
+  } = useWorkoutSteps(selectedCategory, usePace && sportType === 'Run', paceZones);
 
   // Auto-generate short description from visible steps (skip warmup/cooldown)
   useEffect(() => {
     setShortDescription(buildShortDescription(steps));
   }, [steps, setShortDescription]);
 
-  // Populate steps when editing an existing workout
+  // Populate steps when editing an existing workout.
   useEffect(() => {
     if (editingWorkout?.workout_doc) {
       setSteps(parseWorkoutDocToSteps(editingWorkout.workout_doc));
@@ -74,9 +79,10 @@ const WorkoutCreator = () => {
     resetSaveState
   } = useWorkoutSave(refreshCalendarData);
   
-  // Fetch FTP based on sport type
+  // Fetch FTP (and pace zones for Run) based on sport type
   useEffect(() => {
-    const fetchFtp = async () => {
+    const fetchSportSettings = async () => {
+      setPaceSettingsLoading(true);
       try {
         const response = await api.get('/statistics/athlete-profile');
         const sportSettings = response.data.sportSettings;
@@ -92,14 +98,27 @@ const WorkoutCreator = () => {
           } else {
             setFtp(sportType === 'Run' ? 240 : 275);
           }
+
+          if (sportType === 'Run' && sportSetting?.threshold_pace > 0) {
+            setThresholdPace(sportSetting.threshold_pace);
+            setPaceZones(sportSetting.pace_zones || null);
+            setPaceUnits(sportSetting.pace_units || null);
+          } else {
+            setThresholdPace(null);
+            setPaceZones(null);
+            setPaceUnits(null);
+            setUsePace(false);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch FTP:', err);
         setFtp(sportType === 'Run' ? 240 : 275);
+      } finally {
+        setPaceSettingsLoading(false);
       }
     };
     
-    fetchFtp();
+    fetchSportSettings();
   }, [sportType]);
 
   // Calculate workout metrics
@@ -135,8 +154,20 @@ const WorkoutCreator = () => {
       });
       return;
     }
+    if (usePace && sportType === 'Run' && !(thresholdPace > 0)) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Threshold Pace Required',
+        message: 'You need to set a Run Threshold Pace in Statistics → Sport Settings before you can create pace-based workouts.',
+        confirmText: 'OK',
+        confirmStyle: 'danger',
+        onConfirm: () => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null }),
+        onCancel: null
+      });
+      return;
+    }
     setShowSaveDialog(true);
-  }, [steps]);
+  }, [steps, usePace, sportType, thresholdPace]);
 
   // Confirm save
   const handleConfirmSave = useCallback(async () => {
@@ -163,7 +194,10 @@ const WorkoutCreator = () => {
         sportType,
         autoWorkoutName,
         INTERVAL_TYPES,
-        editingFilename
+        editingFilename,
+        usePace && sportType === 'Run',
+        thresholdPace,
+        paceUnits
       );
 
       setConfirmDialog({
@@ -193,7 +227,7 @@ const WorkoutCreator = () => {
         onCancel: null
       });
     }
-  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, shortDescription, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps]);
+  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, shortDescription, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps, usePace, thresholdPace, paceUnits]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -219,6 +253,9 @@ const WorkoutCreator = () => {
           onSave={handleSave}
           isSaving={isSaving}
           hasSteps={steps.length > 0}
+          usePace={usePace}
+          setUsePace={setUsePace}
+          paceAvailable={paceSettingsLoading || !!(thresholdPace > 0 && paceZones)}
         />
 
         {/* Drag Items Palette */}
@@ -244,6 +281,9 @@ const WorkoutCreator = () => {
           onRemoveStep={removeInterval}
           onCopyStep={copyStep}
           formatDuration={formatDuration}
+          usePace={usePace && sportType === 'Run'}
+          thresholdPace={thresholdPace}
+          paceUnits={paceUnits}
         />
       </div>
 
@@ -254,6 +294,9 @@ const WorkoutCreator = () => {
         onSave={saveEditedStep}
         onCancel={() => setEditingStep(null)}
         ftp={ftp}
+        usePace={usePace && sportType === 'Run'}
+        thresholdPace={thresholdPace}
+        paceUnits={paceUnits}
       />
 
       {/* Save Dialog */}

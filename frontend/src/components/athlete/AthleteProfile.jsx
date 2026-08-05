@@ -1,6 +1,7 @@
 import { Loader2, ChevronDown, ChevronUp, Trophy, Settings, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { calculateAge, getSportColorClasses, getSportCategory } from '../../utils/athleteUtils';
+import { formatPaceValue } from '../../utils/zoneUtils';
 import { fetchAvailableActivityTypes } from '../../utils/fitnessService';
 import { useProfileEdit } from '../../hooks/useProfileEdit';
 import { useAthleteSports } from '../../hooks/useAthleteSports';
@@ -87,9 +88,13 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
     .map(settings => ({ settings, category: getSportCategory(settings.types) }))
     .filter(item => item.category !== null);
 
+  const PACE_SPORT_TYPES = ['Run', 'VirtualRun', 'TrailRun', 'Walk', 'Hike'];
+
   const handleEditSport = async (settings, category) => {
     const ftp = settings.ftp;
     const supportsPower = ftp > 0;
+    const isPaceSport = (settings.types || []).some(t => PACE_SPORT_TYPES.includes(t));
+    const thresholdPace = settings.threshold_pace;
     
     setIsEditModalOpen(true);
     setEditForm({
@@ -102,6 +107,11 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
       sportPowerZones: settings.power_zones || [],
       supportsPower: supportsPower,
       originalSupportsPower: supportsPower,
+      isPaceSport: isPaceSport,
+      sportThresholdPace: thresholdPace > 0 ? formatPaceValue(thresholdPace, settings.pace_units || 'MINS_KM') : '',
+      originalHasThresholdPace: thresholdPace > 0,
+      sportPaceZones: (settings.pace_zones || []).map(z => Math.round(z)),
+      sportPaceUnits: settings.pace_units || 'MINS_KM',
       sportTypes: [...(settings.types || [])],
       editTypeSearch: ''
     });

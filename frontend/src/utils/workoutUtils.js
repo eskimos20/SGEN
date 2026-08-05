@@ -239,7 +239,7 @@ export const buildShortDescription = (steps) => {
 };
 
 const getStepPowerValue = (step) => {
-  const power = step?.power || {};
+  const power = step?.power || step?.pace || {};
   if (power.value !== undefined) return Math.round(Number(power.value));
   if (power.start !== undefined && power.end !== undefined) {
     return Math.round((Number(power.start) + Number(power.end)) / 2);
@@ -272,7 +272,9 @@ export const parseWorkoutDocToSteps = (workoutDoc) => {
       };
     }
 
-    const power = step.power || {};
+    // Also accept pace-based steps (workout_doc.steps[].pace) so pace-mode
+    // workouts saved from Run workouts can be re-opened for editing.
+    const power = step.power || step.pace || {};
     if (power.start !== undefined && power.end !== undefined) {
       const start = Math.round(Number(power.start));
       const end = Math.round(Number(power.end));
@@ -303,10 +305,31 @@ export const parseWorkoutDocToSteps = (workoutDoc) => {
   }).filter(Boolean);
 };
 
+/**
+ * Convert flattened workout steps with %FTP-style "power" targets into
+ * Intervals.icu pace targets ("pace": { units: "%pace", value/start/end }).
+ * The underlying percentage values are reused as-is (they represent % of
+ * threshold pace instead of % of FTP when the workout is built in pace mode).
+ * @param {Array} steps - Flattened workout steps (each with a `power` object)
+ * @returns {Array} Steps with `power` replaced by `pace`
+ */
+export const convertStepsToPaceTargets = (steps) => {
+  return steps.map(step => {
+    const { power, ...rest } = step;
+    if (!power) return step;
+    const pace = { units: '%pace' };
+    if (power.value !== undefined) pace.value = power.value;
+    if (power.start !== undefined) pace.start = power.start;
+    if (power.end !== undefined) pace.end = power.end;
+    return { ...rest, pace };
+  });
+};
+
 export default {
   calculateWorkoutMetrics,
   flattenSteps,
   getWorkoutColor,
   buildShortDescription,
-  parseWorkoutDocToSteps
+  parseWorkoutDocToSteps,
+  convertStepsToPaceTargets
 };

@@ -1,5 +1,6 @@
 import { Settings, Trash2, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { getSportColorClasses } from '../../utils/athleteUtils';
+import { formatPaceFromVelocity } from '../../utils/zoneUtils';
 
 const formatActivityType = (type) => {
   if (!type) return '';
@@ -23,8 +24,12 @@ const SportCard = ({
   const maxHr = settings.max_hr;
   const hrZones = settings.hr_zones;
   const powerZones = settings.power_zones;
+  const thresholdPace = settings.threshold_pace;
+  const paceZones = settings.pace_zones;
+  const paceUnits = settings.pace_units;
   const hasHrZones = hrZones && hrZones.length > 0;
   const hasPowerZones = powerZones && powerZones.length > 0 && ftp > 0;
+  const hasPaceZones = paceZones && paceZones.length > 0 && thresholdPace > 0;
   const us = updateActivitiesState[settings.id] || {};
 
   return (
@@ -141,6 +146,11 @@ const SportCard = ({
             {weight > 0 && <span className="text-gray-500 ml-1">({(ftp/weight).toFixed(2)} W/kg)</span>}
           </span>
         )}
+        {thresholdPace > 0 && (
+          <span className="px-2 py-1 bg-white/90 sm:bg-white sm:rounded text-sm font-medium">
+            Threshold Pace: {formatPaceFromVelocity(thresholdPace, paceUnits)}
+          </span>
+        )}
       </div>
       
       {/* HR Zones */}
@@ -173,7 +183,7 @@ const SportCard = ({
       
       {/* Power Zones */}
       {hasPowerZones && (
-        <div>
+        <div className={hasPaceZones ? 'mb-3' : ''}>
           <h4 className="text-xs font-medium text-gray-600 mb-1">Power Zones</h4>
           <div className="flex flex-wrap gap-1">
             {powerZones.map((zone, zIdx) => {
@@ -192,6 +202,37 @@ const SportCard = ({
                 rangeDisplay = `${prevWatts + 1}-${currentWatts}W`;
               }
               
+              return (
+                <span key={zIdx} className="text-xs px-1.5 py-0.5 bg-white/90 sm:bg-white sm:rounded">
+                  Z{zIdx + 1}: {rangeDisplay}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Pace Zones (running/walking sports with threshold pace set on Intervals.icu) */}
+      {hasPaceZones && (
+        <div>
+          <h4 className="text-xs font-medium text-gray-600 mb-1">Pace Zones</h4>
+          <div className="flex flex-wrap gap-1">
+            {paceZones.map((zone, zIdx) => {
+              const isLastZone = zIdx === paceZones.length - 1 && zone >= 999;
+              const prevZone = zIdx > 0 ? paceZones[zIdx - 1] : 0;
+              const currentPace = formatPaceFromVelocity(thresholdPace * zone / 100, paceUnits);
+              const prevPace = zIdx > 0 ? formatPaceFromVelocity(thresholdPace * prevZone / 100, paceUnits) : null;
+
+              // Faster pace = lower time, so higher zone % means a lower (faster) pace value
+              let rangeDisplay;
+              if (isLastZone) {
+                rangeDisplay = `faster than ${prevPace}`;
+              } else if (zIdx === 0) {
+                rangeDisplay = `slower than ${currentPace}`;
+              } else {
+                rangeDisplay = `${prevPace} - ${currentPace}`;
+              }
+
               return (
                 <span key={zIdx} className="text-xs px-1.5 py-0.5 bg-white/90 sm:bg-white sm:rounded">
                   Z{zIdx + 1}: {rangeDisplay}

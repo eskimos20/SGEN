@@ -5,6 +5,7 @@ import {
   updateAthleteSportSettings, 
   updateWellnessData 
 } from '../utils/fitnessService';
+import { parsePaceToVelocity } from '../utils/zoneUtils';
 
 export const useProfileEdit = (athleteProfile, onProfileUpdate) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -52,6 +53,22 @@ export const useProfileEdit = (athleteProfile, onProfileUpdate) => {
         // Handle power zones
         if (editForm.sportPowerZones && editForm.sportPowerZones.length > 0) {
           sportUpdate.power_zones = editForm.sportPowerZones;
+        }
+
+        // Handle threshold pace add/remove (Intervals.icu auto-populates pace_zones
+        // the first time threshold_pace is set)
+        if (editForm.isPaceSport) {
+          if (editForm.sportThresholdPace) {
+            const velocity = parsePaceToVelocity(editForm.sportThresholdPace, editForm.sportPaceUnits);
+            if (velocity) sportUpdate.threshold_pace = velocity;
+          } else if (editForm.originalHasThresholdPace) {
+            sportUpdate.threshold_pace = 0;
+          }
+
+          // Handle pace zones (only present once threshold_pace has been set at least once)
+          if (editForm.sportPaceZones && editForm.sportPaceZones.length > 0) {
+            sportUpdate.pace_zones = editForm.sportPaceZones;
+          }
         }
         
         // Handle activity types changes

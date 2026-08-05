@@ -2,6 +2,7 @@ import { Loader2, Search, X } from 'lucide-react';
 import { getSportEmoji } from '../../utils/sportTypeUtils';
 import HRZonesTable from './HRZonesTable';
 import PowerZonesTable from './PowerZonesTable';
+import PaceZonesTable from './PaceZonesTable';
 
 const formatActivityType = (type) => {
   if (!type) return '';
@@ -122,7 +123,7 @@ const SportSettingsFields = ({
         )}
       </div>
 
-      {/* Top row: FTP, Max HR, LTHR */}
+      {/* Top row: FTP, Max HR, LTHR, Threshold Pace */}
       <div className={`grid gap-4 ${editForm.supportsPower ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {editForm.supportsPower && (
           <div>
@@ -158,6 +159,22 @@ const SportSettingsFields = ({
             placeholder="Enter LTHR"
           />
         </div>
+
+        {editForm.isPaceSport && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Threshold Pace (mm:ss/km)</label>
+            <input
+              type="text"
+              value={editForm.sportThresholdPace}
+              onChange={(e) => setEditForm(prev => ({ ...prev, sportThresholdPace: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="e.g. 5:30"
+            />
+            {!editForm.sportThresholdPace && (
+              <span className="block text-xs text-gray-500 mt-1">Not set - add your threshold pace to enable pace zones and pace-based workouts</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Zones side by side */}
@@ -168,6 +185,10 @@ const SportSettingsFields = ({
 
         {editForm.supportsPower && editForm.sportPowerZones && editForm.sportPowerZones.length > 0 && (
           <PowerZonesTable editForm={editForm} setEditForm={setEditForm} />
+        )}
+
+        {editForm.isPaceSport && editForm.sportPaceZones && editForm.sportPaceZones.length > 0 && (
+          <PaceZonesTable editForm={editForm} setEditForm={setEditForm} />
         )}
       </div>
     </>

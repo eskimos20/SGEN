@@ -5,9 +5,29 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Performance Optimizations, Workout Sharing, Copy/Edit & Smart Duplicate Handling',
-  date: '2026-07-28',
+  title: 'Pace Workout Fixes for Intervals.icu, Search & Calendar Tooltips and Sport Settings Polish',
+  date: '2026-08-05',
   features: [
+    {
+      icon: '🏃',
+      title: 'Pace-Based Running Workouts in Intervals.icu',
+      description: 'Run workouts now use the Intervals.icu workout builder text format with explicit Pace targets. This fixes the previous scaling issue where 100% threshold could be displayed as 88%, and ensures all steps show up correctly in Intervals.icu.'
+    },
+    {
+      icon: '⏱️',
+      title: 'Pace Tooltips in Calendar and Search',
+      description: "Hovering over a workout chart in the calendar event detail or search results now shows the absolute pace for each step, e.g. '10min @ 100% (5:00/km)', when Use Pace is enabled."
+    },
+    {
+      icon: '✅',
+      title: 'Smoother WorkoutCreator Pace Editing',
+      description: 'Opening a run pace workout in the Workout Creator now checks the Use Pace checkbox immediately without the previous "No Threshold Pace" warning flash, and waits for sport settings to load before validating.'
+    },
+    {
+      icon: '🔧',
+      title: 'Pace Formatting & Sport Settings Polish',
+      description: 'Fixed a bug where pace values could display as "4:60" — seconds now correctly roll over to the next minute. Pace zones and threshold pace handling in Sport Settings have also been improved.'
+    },
     {
       icon: '🚀',
       title: 'Performance & Reliability Improvements',

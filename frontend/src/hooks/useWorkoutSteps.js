@@ -23,7 +23,62 @@ const getCategoryIntervalDefaults = (category) => {
   return CATEGORY_INTERVAL_DEFAULTS[category] || CATEGORY_INTERVAL_DEFAULTS.Threshold;
 };
 
-export const useWorkoutSteps = (selectedCategory = 'Threshold') => {
+// Maps a workout category onto the equivalent pace zone index (0-based, Z1=0...Z7=6)
+// e.g. Threshold -> Z4 (index 3), matching the same naming used for HR/Power zones.
+const CATEGORY_PACE_ZONE_INDEX = {
+  Endurance: 1,   // Z2
+  Tempo: 2,       // Z3
+  SweetSpot: 2.5, // between Z3 and Z4 (no dedicated zone)
+  Threshold: 3,   // Z4
+  VO2Max: 4,      // Z5
+  Anaerobic: 5,   // Z6
+  Sprint: 6       // Z7
+};
+
+// Get the % of threshold pace for a given (possibly fractional) zone index.
+// paceZones are ascending upper-bound percentages from Intervals.icu sport settings.
+const getPaceZoneValue = (paceZones, zoneIndex) => {
+  if (!paceZones || paceZones.length === 0) return 100;
+  if (Number.isInteger(zoneIndex)) {
+    const value = paceZones[zoneIndex];
+    if (value !== undefined && value < 999) return value;
+    // Top zone is uncapped (999) - use previous zone boosted by 15% as a sane default
+    const prev = paceZones[zoneIndex - 1] || 100;
+    return Math.round(prev * 1.15);
+  }
+  const lower = paceZones[Math.floor(zoneIndex)] ?? 100;
+  const upper = paceZones[Math.ceil(zoneIndex)] ?? lower;
+  return Math.round((lower + upper) / 2);
+};
+
+const getCategoryPaceDefaults = (category, paceZones) => {
+  const zoneIndex = CATEGORY_PACE_ZONE_INDEX[category] ?? CATEGORY_PACE_ZONE_INDEX.Threshold;
+  const powerDefaults = getCategoryIntervalDefaults(category);
+  return {
+    power: getPaceZoneValue(paceZones, zoneIndex),
+    restPower: getPaceZoneValue(paceZones, 0), // recovery between reps = Z1
+    duration: powerDefaults.duration,
+    reps: powerDefaults.reps,
+    restDuration: powerDefaults.restDuration
+  };
+};
+
+// Fixed pace defaults for non-category-based interval types (% of threshold pace)
+const PACE_RAMP_DEFAULTS = {
+  warmup: { start: 40, end: 60 },
+  cooldown: { start: 60, end: 40 },
+  ramp: { start: 50, end: 85 }
+};
+
+const getFixedPaceDefault = (typeId, paceZones) => {
+  switch (typeId) {
+    case 'steady': return getPaceZoneValue(paceZones, 1);   // Z2
+    case 'recovery': return getPaceZoneValue(paceZones, 0); // Z1
+    default: return 75;
+  }
+};
+
+export const useWorkoutSteps = (selectedCategory = 'Threshold', usePace = false, paceZones = null) => {
   const [steps, setSteps] = useState([]);
   const [draggedType, setDraggedType] = useState(null);
   const [draggedStepIndex, setDraggedStepIndex] = useState(null);
@@ -51,6 +106,7 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold') => {
       } else if (intervalType?.isRamp) {
         return [{
           duration: step.duration,
+          ramp: true,
           power: { start: step.powerStart, end: step.powerEnd },
           // Intervals.icu flag: step ends on lap button press (Garmin/Suunto only).
           // Zwift is unaffected - it reads the plain timed warmup from the .zwo file.
@@ -92,21 +148,25 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold') => {
       // Adding new interval from palette
       const intervalType = INTERVAL_TYPES.find(t => t.id === draggedType);
       const categoryDefaults = getCategoryIntervalDefaults(selectedCategory);
+      const categoryPaceDefaults = usePace ? getCategoryPaceDefaults(selectedCategory, paceZones) : null;
+      const paceRamp = usePace ? PACE_RAMP_DEFAULTS[draggedType] : null;
       const newStep = {
         id: Date.now(),
         type: draggedType,
         ...(intervalType.isRamp ? {
-          powerStart: intervalType.defaultPowerStart,
-          powerEnd: intervalType.defaultPowerEnd,
+          powerStart: paceRamp ? paceRamp.start : intervalType.defaultPowerStart,
+          powerEnd: paceRamp ? paceRamp.end : intervalType.defaultPowerEnd,
           duration: intervalType.defaultDuration
         } : {
-          power: draggedType === 'interval' ? categoryDefaults.power : intervalType.defaultPower,
+          power: draggedType === 'interval'
+            ? (usePace ? categoryPaceDefaults.power : categoryDefaults.power)
+            : (usePace ? getFixedPaceDefault(draggedType, paceZones) : intervalType.defaultPower),
           duration: draggedType === 'interval' ? categoryDefaults.duration : intervalType.defaultDuration
         }),
         ...(draggedType === 'interval' && {
           reps: categoryDefaults.reps,
           restDuration: categoryDefaults.restDuration,
-          restPower: categoryDefaults.restPower
+          restPower: usePace ? categoryPaceDefaults.restPower : categoryDefaults.restPower
         })
       };
       
@@ -129,7 +189,7 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold') => {
     setDraggedType(null);
     setDraggedStepIndex(null);
     setDropTargetIndex(null);
-  }, [draggedType, draggedStepIndex, selectedCategory]);
+  }, [draggedType, draggedStepIndex, selectedCategory, usePace, paceZones]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedType(null);

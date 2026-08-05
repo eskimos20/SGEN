@@ -1,18 +1,22 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { getZoneColorForPower, DEFAULT_POWER_ZONES } from '../../utils/zoneUtils';
+import { getZoneColorForPower, DEFAULT_POWER_ZONES, formatPaceFromVelocity } from '../../utils/zoneUtils';
 import { flattenSteps } from '../../utils/workoutUtils';
 import { formatDurationWithSeconds } from '../../utils/dataUtils';
 
-// Get power value from step (handles ramps)
+// Get the intensity target from a step, handling both power (%ftp) and pace (%pace)
+// targets as well as ramps. Falls back to `power` first for backwards compatibility.
+const getTarget = (step) => step.power || step.pace || {};
+
 const getPower = (step) => {
-  if (step.power?.value) return step.power.value;
-  if (step.power?.start && step.power?.end) {
-    return (step.power.start + step.power.end) / 2;
+  const target = getTarget(step);
+  if (target.value) return target.value;
+  if (target.start && target.end) {
+    return (target.start + target.end) / 2;
   }
-  return step.power?.end || 50;
+  return target.end || 50;
 };
 
-const WorkoutChart = ({ workoutDoc, ftp = 280, powerZones = DEFAULT_POWER_ZONES, height = 'h-24', showTooltip = true }) => {
+const WorkoutChart = ({ workoutDoc, ftp = 280, powerZones = DEFAULT_POWER_ZONES, height = 'h-24', showTooltip = true, usePace = false, thresholdPace = null, paceUnits = null }) => {
   const [hoveredStep, setHoveredStep] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -59,12 +63,13 @@ const WorkoutChart = ({ workoutDoc, ftp = 280, powerZones = DEFAULT_POWER_ZONES,
           const widthPercent = (duration / totalDuration) * 100;
           const isRecovery = power < 60;
           const { bg, hex } = getZoneColorForPower(power, powerZones);
-          const isRamp = step.power?.start !== undefined && step.power?.end !== undefined && step.power.start !== step.power.end;
+          const target = getTarget(step);
+          const isRamp = target.start !== undefined && target.end !== undefined && target.start !== target.end;
           
           // For ramps, calculate start and end heights and colors
           if (isRamp) {
-            const startPower = step.power.start;
-            const endPower = step.power.end;
+            const startPower = target.start;
+            const endPower = target.end;
             const startHeight = (startPower / maxPower) * 100;
             const endHeight = (endPower / maxPower) * 100;
             const startColor = getZoneColorForPower(startPower, powerZones);
@@ -140,11 +145,14 @@ const WorkoutChart = ({ workoutDoc, ftp = 280, powerZones = DEFAULT_POWER_ZONES,
           }}
         >
           <div className="font-semibold text-yellow-400">
-            {formatDurationWithSeconds(hoveredStep.duration)} @ {Math.round(getPower(hoveredStep))}% ({Math.round(getPower(hoveredStep) * ftp / 100)}W)
+            {formatDurationWithSeconds(hoveredStep.duration)} @ {Math.round(getPower(hoveredStep))}%{' '}
+            {(usePace || (hoveredStep.pace && !hoveredStep.power))
+              ? (thresholdPace > 0 ? `(${formatPaceFromVelocity(thresholdPace * getPower(hoveredStep) / 100, paceUnits)})` : '')
+              : `(${Math.round(getPower(hoveredStep) * ftp / 100)}W)`}
           </div>
-          {hoveredStep.power?.start !== undefined && hoveredStep.power?.end !== undefined && hoveredStep.power.start !== hoveredStep.power.end && (
+          {getTarget(hoveredStep).start !== undefined && getTarget(hoveredStep).end !== undefined && getTarget(hoveredStep).start !== getTarget(hoveredStep).end && (
             <div className="text-gray-300">
-              Ramp: {hoveredStep.power.start}% → {hoveredStep.power.end}%
+              Ramp: {getTarget(hoveredStep).start}% → {getTarget(hoveredStep).end}%
             </div>
           )}
           <div className="text-gray-400">

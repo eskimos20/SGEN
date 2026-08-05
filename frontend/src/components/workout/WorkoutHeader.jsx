@@ -23,7 +23,10 @@ const WorkoutHeader = ({
   workoutMetrics,
   onSave,
   isSaving,
-  hasSteps
+  hasSteps,
+  usePace,
+  setUsePace,
+  paceAvailable
 }) => {
   return (
     <>
@@ -59,6 +62,27 @@ const WorkoutHeader = ({
               <option value="Ride">🚴 Ride (Cycling)</option>
               <option value="Run">🏃 Run</option>
             </select>
+            {sportType === 'Run' && (
+              <>
+                <label
+                  className="flex items-center gap-2 mt-2 text-sm text-gray-700 cursor-pointer"
+                  title={paceAvailable ? '' : 'You need a Run Threshold Pace set in Statistics → Sport Settings to create pace-based workouts'}
+                >
+                  <input
+                    type="checkbox"
+                    checked={usePace}
+                    onChange={(e) => setUsePace(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Use pace instead of Watt
+                </label>
+                {usePace && !paceAvailable && (
+                  <span className="block text-xs text-red-500 mt-1">
+                    No Threshold Pace set - go to Statistics → Sport Settings → Run to add it
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
           {/* Category */}

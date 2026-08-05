@@ -243,6 +243,7 @@ const SearchWorkouts = () => {
                 onCopy={onCopyWorkout}
                 onEdit={onEditWorkout}
                 canShare={user?.shareWorkoutsEnabled === true}
+                athleteProfile={athleteProfile}
                 getFtpForWorkout={getFtpForWorkout}
                 getSportType={getSportType}
                 getSportTypeDisplayName={getSportTypeDisplayName}

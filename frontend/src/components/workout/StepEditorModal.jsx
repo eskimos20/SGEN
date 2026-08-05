@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { INTERVAL_TYPES } from '../../hooks/useWorkoutSteps';
+import { formatPaceFromVelocity } from '../../utils/zoneUtils';
 
 const inputCls = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center";
 
@@ -67,11 +68,19 @@ const DurationInput = ({ label, totalSeconds, onChange }) => {
   );
 };
 
-const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 0 }) => {
+const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 0, usePace = false, thresholdPace = null, paceUnits = null }) => {
   if (!editingStep) return null;
 
   const intervalType = INTERVAL_TYPES.find(t => t.id === editingStep.type);
-  const w = (pct) => ftp > 0 ? `${Math.round(pct / 100 * ftp)}w` : null;
+  const w = (pct) => {
+    if (usePace) return thresholdPace > 0 ? formatPaceFromVelocity(thresholdPace * pct / 100, paceUnits) : null;
+    return ftp > 0 ? `${Math.round(pct / 100 * ftp)}w` : null;
+  };
+  const intensityUnit = usePace ? '% of Threshold Pace' : '% FTP';
+  const sublabelFor = (pct) => {
+    if (usePace) return thresholdPace > 0 ? `${pct}% of threshold pace` : intensityUnit;
+    return ftp > 0 ? `${pct}% of ${ftp}w` : intensityUnit;
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
@@ -113,13 +122,13 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
               {/* Row 3: Work Power */}
               <div className="flex gap-2">
                 <NumberInput
-                  label={<>Work Power {w(editingStep.power) && <span className="font-normal text-blue-600">({w(editingStep.power)})</span>}</>}
-                  sublabel={ftp > 0 ? `${editingStep.power}% of ${ftp}w` : '% FTP'}
+                  label={<>Work {usePace ? 'Pace' : 'Power'} {w(editingStep.power) && <span className="font-normal text-blue-600">({w(editingStep.power)})</span>}</>}
+                  sublabel={sublabelFor(editingStep.power)}
                   value={editingStep.power}
                   onChange={(e) => setEditingStep({...editingStep, power: parseInt(e.target.value) || 0})}
                   min={0}
                   max={200}
-                  placeholder="% FTP"
+                  placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
               </div>
@@ -134,13 +143,13 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
               {/* Row 5: Rest Power */}
               <div className="flex gap-2">
                 <NumberInput
-                  label={<>Rest Power {w(editingStep.restPower) && <span className="font-normal text-blue-600">({w(editingStep.restPower)})</span>}</>}
-                  sublabel={ftp > 0 ? `${editingStep.restPower}% of ${ftp}w` : '% FTP'}
+                  label={<>Rest {usePace ? 'Pace' : 'Power'} {w(editingStep.restPower) && <span className="font-normal text-blue-600">({w(editingStep.restPower)})</span>}</>}
+                  sublabel={sublabelFor(editingStep.restPower)}
                   value={editingStep.restPower}
                   onChange={(e) => setEditingStep({...editingStep, restPower: parseInt(e.target.value) || 0})}
                   min={0}
                   max={100}
-                  placeholder="% FTP"
+                  placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
               </div>
@@ -157,34 +166,34 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
             /* Row: Start Power + End Power side by side */
             <div className="flex gap-2">
               <NumberInput
-                label={<>Start Power {w(editingStep.powerStart) && <span className="font-normal text-blue-600">({w(editingStep.powerStart)})</span>}</>}
-                sublabel={ftp > 0 ? `${editingStep.powerStart}% of ${ftp}w` : '% FTP'}
+                label={<>Start {usePace ? 'Pace' : 'Power'} {w(editingStep.powerStart) && <span className="font-normal text-blue-600">({w(editingStep.powerStart)})</span>}</>}
+                sublabel={sublabelFor(editingStep.powerStart)}
                 value={editingStep.powerStart}
                 onChange={(e) => setEditingStep({...editingStep, powerStart: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
-                placeholder="% FTP"
+                placeholder={intensityUnit}
               />
               <NumberInput
-                label={<>End Power {w(editingStep.powerEnd) && <span className="font-normal text-blue-600">({w(editingStep.powerEnd)})</span>}</>}
-                sublabel={ftp > 0 ? `${editingStep.powerEnd}% of ${ftp}w` : '% FTP'}
+                label={<>End {usePace ? 'Pace' : 'Power'} {w(editingStep.powerEnd) && <span className="font-normal text-blue-600">({w(editingStep.powerEnd)})</span>}</>}
+                sublabel={sublabelFor(editingStep.powerEnd)}
                 value={editingStep.powerEnd}
                 onChange={(e) => setEditingStep({...editingStep, powerEnd: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
-                placeholder="% FTP"
+                placeholder={intensityUnit}
               />
             </div>
           ) : editingStep.type !== 'interval' && (
             <div className="flex gap-2">
               <NumberInput
-                label={<>Power {w(editingStep.power) && <span className="font-normal text-blue-600">({w(editingStep.power)})</span>}</>}
-                sublabel={ftp > 0 ? `${editingStep.power}% of ${ftp}w` : '% FTP'}
+                label={<>{usePace ? 'Pace' : 'Power'} {w(editingStep.power) && <span className="font-normal text-blue-600">({w(editingStep.power)})</span>}</>}
+                sublabel={sublabelFor(editingStep.power)}
                 value={editingStep.power}
                 onChange={(e) => setEditingStep({...editingStep, power: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
-                placeholder="% FTP"
+                placeholder={intensityUnit}
               />
               <div className="flex-1" />
             </div>

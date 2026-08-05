@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Trash2, Share2, Copy, Pencil } from 'lucide-react';
 import WorkoutChart from '../workout/WorkoutChart';
+import { getSportSettingsForType } from '../../utils/zoneUtils';
 import { getSportEmoji } from '../../utils/sportTypeUtils';
 
 const WorkoutCard = ({
@@ -15,12 +16,22 @@ const WorkoutCard = ({
   onCopy,
   onEdit,
   canShare,
+  athleteProfile,
   getFtpForWorkout,
   getSportType,
   getSportTypeDisplayName
 }) => {
   const workoutId = workout.filename || workout.name || JSON.stringify(workout);
   const isExpanded = expandedWorkoutId === workoutId;
+  const sportType = getSportType(workout);
+  const sportSettings = getSportSettingsForType(
+    athleteProfile?.sportSettings,
+    sportType === 'run' ? 'Run' : 'Ride'
+  );
+  const isPaceWorkout = workout.workout_doc?.target === 'PACE' ||
+    (sportType === 'run' && workout.workout_doc?.steps?.some(s => s.pace));
+  const thresholdPace = workout.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
+  const paceUnits = workout.workout_doc?.pace_units || sportSettings?.paceUnits || 'MINS_KM';
 
   return (
     <div 
@@ -102,6 +113,9 @@ const WorkoutCard = ({
             height="h-20"
             ftp={getFtpForWorkout(workout)}
             showTooltip={true}
+            usePace={isPaceWorkout}
+            thresholdPace={thresholdPace}
+            paceUnits={paceUnits}
           />
         </div>
       )}

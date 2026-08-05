@@ -30,6 +30,10 @@ const WorkoutDetailModal = ({
   const ftp = sportType === 'run'
     ? (athleteProfile?.runningFtp || 240)
     : sportSettings.ftp;
+  const isPaceWorkout = workout.workout_doc?.target === 'PACE' ||
+    (sportType === 'run' && workout.workout_doc?.steps?.some(s => s.pace));
+  const thresholdPace = workout.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
+  const paceUnits = workout.workout_doc?.pace_units || sportSettings?.paceUnits || 'MINS_KM';
 
   const durationSeconds = (workout.duration || 0) * 60;
   const metrics = workout.workout_doc ? calculateWorkoutMetrics(workout.workout_doc, ftp) : null;
@@ -113,6 +117,9 @@ const WorkoutDetailModal = ({
                 ftp={ftp}
                 height="h-32"
                 showTooltip={true}
+                usePace={isPaceWorkout}
+                thresholdPace={thresholdPace}
+                paceUnits={paceUnits}
               />
             </div>
           )}

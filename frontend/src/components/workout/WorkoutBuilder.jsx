@@ -16,7 +16,10 @@ const WorkoutBuilder = ({
   onEditStep,
   onRemoveStep,
   onCopyStep,
-  formatDuration
+  formatDuration,
+  usePace = false,
+  thresholdPace = null,
+  paceUnits = null
 }) => {
   if (steps.length === 0) {
     return (
@@ -68,6 +71,9 @@ const WorkoutBuilder = ({
             height="h-32"
             ftp={ftp}
             showTooltip={true}
+            usePace={usePace}
+            thresholdPace={thresholdPace}
+            paceUnits={paceUnits}
           />
           {/* Drop overlay */}
           {(draggedType || draggedStepIndex !== null) && (
@@ -96,6 +102,9 @@ const WorkoutBuilder = ({
                   onRemove={onRemoveStep}
                   onCopy={onCopyStep}
                   formatDuration={formatDuration}
+                  usePace={usePace}
+                  thresholdPace={thresholdPace}
+                  paceUnits={paceUnits}
                 />
               </React.Fragment>
             ))}
