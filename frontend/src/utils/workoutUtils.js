@@ -249,6 +249,59 @@ const getStepPowerValue = (step) => {
   return 0;
 };
 
+// Check whether a flattened step is a steady/pace value block (not a ramp)
+const isValueStep = (step) => {
+  const target = step?.power || step?.pace || {};
+  return target.value !== undefined;
+};
+
+// Check whether two flattened steps represent the same work or rest block
+const sameIntervalBlock = (a, b) => {
+  if ((a.duration || 0) !== (b.duration || 0)) return false;
+  const aTarget = a?.power || a?.pace || {};
+  const bTarget = b?.power || b?.pace || {};
+  if (aTarget.value === undefined || bTarget.value === undefined) return false;
+  return Number(aTarget.value) === Number(bTarget.value);
+};
+
+// Collapse repeated work/rest pairs from a flattened workout_doc back into
+// interval steps. This keeps the Workout Builder display matching the way the
+// user originally built the workout (e.g. 4x10min instead of 10 loose blocks).
+const collapseWorkoutSteps = (steps) => {
+  const result = [];
+  let i = 0;
+  while (i < steps.length) {
+    const work = steps[i];
+    const rest = steps[i + 1];
+    if (
+      rest &&
+      isValueStep(work) &&
+      isValueStep(rest) &&
+      !sameIntervalBlock(work, rest) &&
+      getStepPowerValue(work) > getStepPowerValue(rest)
+    ) {
+      // two consecutive value-based steps could be the start of an interval
+      let reps = 1;
+      while (
+        i + 2 * reps < steps.length &&
+        i + 2 * reps + 1 < steps.length &&
+        sameIntervalBlock(steps[i + 2 * reps], work) &&
+        sameIntervalBlock(steps[i + 2 * reps + 1], rest)
+      ) {
+        reps++;
+      }
+      if (reps >= 2) {
+        result.push({ reps, steps: [work, rest] });
+        i += 2 * reps;
+        continue;
+      }
+    }
+    result.push(work);
+    i++;
+  }
+  return result;
+};
+
 /**
  * Convert a backend workout_doc into Workout Creator steps.
  * Handles Warmup/Cooldown/Ramp, SteadyState/Recovery and grouped IntervalsT.
@@ -256,13 +309,21 @@ const getStepPowerValue = (step) => {
 export const parseWorkoutDocToSteps = (workoutDoc) => {
   if (!workoutDoc?.steps || !Array.isArray(workoutDoc.steps)) return [];
 
-  return workoutDoc.steps.map((step, index) => {
+  const collapsedSteps = collapseWorkoutSteps(workoutDoc.steps);
+
+  return collapsedSteps.map((step, index) => {
     const base = { id: Date.now() + index };
     const nested = step.steps;
 
     if (step.reps && Array.isArray(nested) && nested.length >= 2) {
-      const work = nested[0];
-      const rest = nested[1];
+      // Some workout sources (library ZWOs) order the work/rest pair as
+      // rest-first, so pick the higher-power block as the work interval.
+      const first = nested[0];
+      const second = nested[1];
+      const firstPower = getStepPowerValue(first);
+      const secondPower = getStepPowerValue(second);
+      const work = firstPower >= secondPower ? first : second;
+      const rest = firstPower >= secondPower ? second : first;
       return {
         ...base,
         type: 'interval',
