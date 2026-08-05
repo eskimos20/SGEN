@@ -269,7 +269,6 @@ const WorkoutCreator = () => {
           description={description}
           setDescription={setDescription}
           shortDescription={shortDescription}
-          setShortDescription={setShortDescription}
           workoutMetrics={workoutMetrics}
           usePace={usePace}
           setUsePace={setUsePace}
