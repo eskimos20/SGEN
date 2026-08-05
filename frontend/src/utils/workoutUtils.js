@@ -66,13 +66,15 @@ export const calculateWorkoutMetrics = (workoutDoc, ftp) => {
 
     // Average power for the step as percentage of FTP, truncated to integer
     // to match Java backend (asInt() / integer division).
+    // Pace workouts store the percentage in `step.pace` instead of `step.power`.
+    const powerTarget = step.power || step.pace;
     let powerPercent = 50;
-    if (step.power?.start !== undefined && step.power?.end !== undefined) {
-      const startInt = Math.trunc(step.power.start);
-      const endInt = Math.trunc(step.power.end);
+    if (powerTarget?.start !== undefined && powerTarget?.end !== undefined) {
+      const startInt = Math.trunc(powerTarget.start);
+      const endInt = Math.trunc(powerTarget.end);
       powerPercent = Math.trunc((startInt + endInt) / 2);
-    } else if (step.power?.value !== undefined) {
-      powerPercent = Math.trunc(step.power.value);
+    } else if (powerTarget?.value !== undefined) {
+      powerPercent = Math.trunc(powerTarget.value);
     }
 
     // Work in joules for average power

@@ -2,9 +2,8 @@ import { Gauge, Zap, TrendingUp, Target } from 'lucide-react';
 import { flattenSteps } from '../../utils/workoutUtils';
 
 const WorkoutStats = ({ workoutDoc, ftp }) => {
-  // Use provided FTP or default
-  const effectiveFtp = ftp || 280;
-  if (!workoutDoc?.steps) return null;
+  // Hide watt-based stats if no FTP is configured for the sport
+  if (!ftp || !workoutDoc?.steps) return null;
 
   const steps = flattenSteps(workoutDoc.steps);
   
@@ -14,23 +13,25 @@ const WorkoutStats = ({ workoutDoc, ftp }) => {
   const powerSamples = [];
 
   // Calculate power for each second
+  // Pace workouts store the percentage in `step.pace` instead of `step.power`.
   for (const step of steps) {
     const duration = step.duration || 0;
     totalDuration += duration;
 
-    if (step.power?.start !== undefined && step.power?.end !== undefined) {
+    const powerTarget = step.power || step.pace;
+    if (powerTarget?.start !== undefined && powerTarget?.end !== undefined) {
       // Ramp - interpolate power from start to end
-      const startPower = (step.power.start / 100) * effectiveFtp;
-      const endPower = (step.power.end / 100) * effectiveFtp;
+      const startPower = (powerTarget.start / 100) * ftp;
+      const endPower = (powerTarget.end / 100) * ftp;
       for (let i = 0; i < duration; i++) {
         const progress = i / duration;
         const power = startPower + (endPower - startPower) * progress;
         powerSamples.push(power);
         totalPowerSeconds += power;
       }
-    } else if (step.power?.value !== undefined) {
+    } else if (powerTarget?.value !== undefined) {
       // Steady state
-      const power = (step.power.value / 100) * effectiveFtp;
+      const power = (powerTarget.value / 100) * ftp;
       for (let i = 0; i < duration; i++) {
         powerSamples.push(power);
         totalPowerSeconds += power;
@@ -60,7 +61,7 @@ const WorkoutStats = ({ workoutDoc, ftp }) => {
   // Energy (kJ)
   const workKj = (avgPower * totalDuration) / 1000;
 
-  const intensity = effectiveFtp > 0 ? (normalizedPower / effectiveFtp) * 100 : 0;
+  const intensity = ftp > 0 ? (normalizedPower / ftp) * 100 : 0;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

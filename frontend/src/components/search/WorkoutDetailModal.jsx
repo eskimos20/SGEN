@@ -23,13 +23,15 @@ const WorkoutDetailModal = ({
   if (!isOpen || !workout) return null;
 
   const sportType = getSportType(workout);
+  const sportKey = sportType === 'run' ? 'Run' : 'Ride';
   const sportSettings = getSportSettingsForType(
     athleteProfile?.sportSettings,
-    sportType === 'run' ? 'Run' : 'Ride'
+    sportKey
   );
-  const ftp = sportType === 'run'
-    ? (athleteProfile?.runningFtp || 240)
-    : sportSettings.ftp;
+  const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
+    s.types && s.types.some(t => t === sportKey)
+  );
+  const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
   const isPaceWorkout = workout.workout_doc?.target === 'PACE' ||
     (sportType === 'run' && workout.workout_doc?.steps?.some(s => s.pace));
   const thresholdPace = workout.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
@@ -125,7 +127,7 @@ const WorkoutDetailModal = ({
           )}
 
           {/* Workout Stats */}
-          {workout.workout_doc?.steps && (
+          {workout.workout_doc?.steps && ftp > 0 && (
             <div className="mb-6">
               <WorkoutStats workoutDoc={workout.workout_doc} ftp={ftp} />
             </div>

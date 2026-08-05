@@ -148,7 +148,7 @@ const WorkoutChart = ({ workoutDoc, ftp = 280, powerZones = DEFAULT_POWER_ZONES,
             {formatDurationWithSeconds(hoveredStep.duration)} @ {Math.round(getPower(hoveredStep))}%{' '}
             {(usePace || (hoveredStep.pace && !hoveredStep.power))
               ? (thresholdPace > 0 ? `(${formatPaceFromVelocity(thresholdPace * getPower(hoveredStep) / 100, paceUnits)})` : '')
-              : `(${Math.round(getPower(hoveredStep) * ftp / 100)}W)`}
+              : (ftp > 0 ? `(${Math.round(getPower(hoveredStep) * ftp / 100)}W)` : '')}
           </div>
           {getTarget(hoveredStep).start !== undefined && getTarget(hoveredStep).end !== undefined && getTarget(hoveredStep).start !== getTarget(hoveredStep).end && (
             <div className="text-gray-300">

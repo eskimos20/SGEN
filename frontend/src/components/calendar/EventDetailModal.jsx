@@ -486,9 +486,11 @@ const EventDetailModal = ({
             // Use same activity type detection as WorkoutItemCard
             const activityType = selectedEvent.workout_doc?.sport_type || selectedEvent.activityType || selectedEvent.sport_type || selectedEvent.type || 'Cycling';
             const isRun = activityType === 'Running' || activityType === 'Run' || activityType === 'run';
-            const ftp = isRun 
-              ? (athleteProfile?.runningFtp || 240) 
-              : sportSettings.ftp;
+            const sportKey = isRun ? 'Run' : 'Ride';
+            const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
+              s.types && s.types.some(t => t === sportKey)
+            );
+            const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
             const hasPaceSteps = selectedEvent.workout_doc?.steps?.some(s => s.pace);
             const usePace = selectedEvent.target === 'PACE' || selectedEvent.workout_doc?.target === 'PACE' || (isRun && hasPaceSteps);
             const thresholdPace = selectedEvent.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
@@ -511,15 +513,14 @@ const EventDetailModal = ({
 
           {/* Workout Stats - for planned events */}
           {!selectedEvent.isCompleted && selectedEvent.workout_doc?.steps && (() => {
-            const sportSettings = getSportSettingsForType(
-              athleteProfile?.sportSettings,
-              selectedEvent.type || 'Ride'
-            );
-            // Use same activity type detection as WorkoutItemCard
             const activityType = selectedEvent.workout_doc?.sport_type || selectedEvent.activityType || selectedEvent.sport_type || selectedEvent.type || 'Cycling';
-            const ftp = (activityType === 'Running' || activityType === 'Run' || activityType === 'run') 
-              ? (athleteProfile?.runningFtp || 240) 
-              : sportSettings.ftp;
+            const isRun = activityType === 'Running' || activityType === 'Run' || activityType === 'run';
+            const sportKey = isRun ? 'Run' : 'Ride';
+            const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
+              s.types && s.types.some(t => t === sportKey)
+            );
+            const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
+            if (!ftp) return null;
             return (
               <div className="mb-6">
                 <WorkoutStats workoutDoc={selectedEvent.workout_doc} ftp={ftp} />

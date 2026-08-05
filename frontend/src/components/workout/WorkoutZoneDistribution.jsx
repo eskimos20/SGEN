@@ -16,7 +16,9 @@ const WorkoutZoneDistribution = ({ workoutDoc, totalTime, powerZones = DEFAULT_P
   let calculatedTotal = 0;
 
   steps.forEach(step => {
-    const power = step.power?.value || step.power?.end || 50;
+    const power = step.power?.value !== undefined
+      ? step.power.value
+      : (step.power?.end !== undefined ? step.power.end : (step.pace?.value !== undefined ? step.pace.value : (step.pace?.end !== undefined ? step.pace.end : 50)));
     const duration = step.duration || 0;
     calculatedTotal += duration;
     
