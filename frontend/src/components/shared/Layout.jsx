@@ -127,7 +127,7 @@ const Layout = () => {
         ...(hasIntervalsConfig ? [{ to: '/statistics', icon: BarChart3, label: 'Statistics' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/nutrition', icon: Utensils, label: 'Nutrition' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/calendar', icon: Calendar, label: 'Calendar' }] : []),
-        ...(hasIntervalsConfig && !isMobile ? [{ to: '/workout-creator', icon: Dumbbell, label: 'Workout Creator' }] : []),
+        ...(hasIntervalsConfig ? [{ to: '/workout-creator', icon: Dumbbell, label: 'Workout Creator' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/search-workouts', icon: Search, label: 'Search Workouts' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/bikefit', icon: Scan, label: 'BikeFit' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/achievements', icon: Trophy, label: 'Achievements' }] : []),

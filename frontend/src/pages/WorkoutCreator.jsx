@@ -12,6 +12,7 @@ import { useWorkoutSteps, INTERVAL_TYPES } from '../hooks/useWorkoutSteps';
 import { useWorkoutSave } from '../hooks/useWorkoutSave';
 import { calculateWorkoutMetrics, buildShortDescription, parseWorkoutDocToSteps } from '../utils/workoutUtils';
 import api from '../api/axios';
+import { Save } from 'lucide-react';
 
 const WorkoutCreator = () => {
   useAuth();
@@ -33,6 +34,15 @@ const WorkoutCreator = () => {
   const [paceZones, setPaceZones] = useState(null);
   const [paceUnits, setPaceUnits] = useState(null);
   const [paceSettingsLoading, setPaceSettingsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Mobile detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Workout steps management
   const {
@@ -49,6 +59,8 @@ const WorkoutCreator = () => {
     handleDragOver,
     handleDrop,
     handleDragEnd,
+    handleStepTouchStart,
+    addStepByType,
     removeInterval,
     copyStep,
     openEditModal,
@@ -259,13 +271,9 @@ const WorkoutCreator = () => {
           shortDescription={shortDescription}
           setShortDescription={setShortDescription}
           workoutMetrics={workoutMetrics}
-          onSave={handleSave}
-          isSaving={isSaving}
-          hasSteps={steps.length > 0}
           usePace={usePace}
           setUsePace={setUsePace}
           paceAvailable={paceSettingsLoading || !!(thresholdPace > 0 && paceZones)}
-          saveDisabled={saveDisabled}
           ftpMissing={ftpMissing}
         />
 
@@ -273,8 +281,10 @@ const WorkoutCreator = () => {
         <DragItemsPalette
           onDragStart={handlePaletteDragStart}
           onDragEnd={handleDragEnd}
+          onAddStep={addStepByType}
           formatDuration={formatDuration}
           disabled={builderLocked}
+          isMobile={isMobile}
         />
 
         {/* Workout Builder */}
@@ -289,6 +299,7 @@ const WorkoutCreator = () => {
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onStepDragStart={handleStepDragStart}
+          onStepTouchStart={handleStepTouchStart}
           onEditStep={openEditModal}
           onRemoveStep={removeInterval}
           onCopyStep={copyStep}
@@ -298,6 +309,18 @@ const WorkoutCreator = () => {
           paceUnits={paceUnits}
           disabled={builderLocked}
         />
+
+        {/* Save Workout */}
+        <div className="flex justify-end pt-2 sm:pt-4">
+          <button
+            onClick={handleSave}
+            disabled={isSaving || steps.length === 0 || saveDisabled}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors text-sm font-medium"
+          >
+            <Save className="w-4 h-4" />
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {/* Step Editor Modal */}

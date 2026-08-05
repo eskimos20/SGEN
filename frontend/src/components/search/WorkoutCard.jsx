@@ -3,7 +3,6 @@ import { Calendar, Trash2, Share2, Copy, Pencil } from 'lucide-react';
 import WorkoutChart from '../workout/WorkoutChart';
 import { getSportSettingsForType } from '../../utils/zoneUtils';
 import { getSportEmoji } from '../../utils/sportTypeUtils';
-import { isCapacitor } from '../../config/api.config';
 
 const WorkoutCard = ({
   workout,
@@ -58,7 +57,7 @@ const WorkoutCard = ({
               <span className="text-gray-400">{workout.duration}min</span>
             </p>
           </div>
-          {!isCapacitor && workout.source === 'custom' && (
+          {workout.source === 'custom' && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

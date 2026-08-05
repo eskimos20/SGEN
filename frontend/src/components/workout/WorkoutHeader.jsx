@@ -1,4 +1,3 @@
-import { Save } from 'lucide-react';
 
 export const CATEGORIES = [
   { id: 'Endurance', name: 'Endurance', color: 'bg-blue-500' },
@@ -21,13 +20,9 @@ const WorkoutHeader = ({
   shortDescription,
   setShortDescription,
   workoutMetrics,
-  onSave,
-  isSaving,
-  hasSteps,
   usePace,
   setUsePace,
   paceAvailable,
-  saveDisabled,
   ftpMissing
 }) => {
   return (
@@ -150,14 +145,6 @@ const WorkoutHeader = ({
                 <div className="text-xs text-gray-600">Minutes</div>
               </div>
             </div>
-            <button
-              onClick={onSave}
-              disabled={isSaving || !hasSteps || saveDisabled}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors text-sm font-medium"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
           </div>
         </div>
       </div>

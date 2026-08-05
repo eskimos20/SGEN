@@ -7,6 +7,7 @@ const WorkoutStepCard = ({
   index,
   isDragging,
   onDragStart,
+  onTouchStart,
   onEdit,
   onRemove,
   onCopy,
@@ -25,7 +26,9 @@ const WorkoutStepCard = ({
     <div
       draggable={!disabled}
       onDragStart={disabled ? undefined : (e) => onDragStart(e, index)}
-      className={`flex-shrink-0 w-48 bg-white border-2 rounded-lg p-3 transition-all ${
+      data-step-index={index}
+      data-drag-source="true"
+      className={`flex-shrink-0 w-full md:w-48 bg-white border-2 rounded-lg p-3 transition-all ${
         disabled
           ? 'opacity-60 cursor-not-allowed'
           : `cursor-move ${isDragging ? 'opacity-50 scale-95' : 'hover:shadow-md'}`
@@ -33,7 +36,12 @@ const WorkoutStepCard = ({
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <GripVertical className="h-4 w-4 text-gray-400" />
+          <div
+            className="touch-drag-handle touch-none p-1 -m-1"
+            onTouchStart={disabled ? undefined : (e) => onTouchStart(e, index)}
+          >
+            <GripVertical className="h-4 w-4 text-gray-400" />
+          </div>
           <span className="text-lg">{intervalType?.icon}</span>
         </div>
         <div className="flex items-center gap-1">

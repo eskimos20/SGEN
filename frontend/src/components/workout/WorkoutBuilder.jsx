@@ -13,6 +13,7 @@ const WorkoutBuilder = ({
   onDragOver,
   onDrop,
   onStepDragStart,
+  onStepTouchStart,
   onEditStep,
   onRemoveStep,
   onCopyStep,
@@ -24,13 +25,14 @@ const WorkoutBuilder = ({
 }) => {
   if (steps.length === 0) {
     return (
-      <div className={`bg-white rounded-xl shadow-sm p-6 ${disabled ? 'opacity-60' : ''}`}>
+      <div data-drop-index="0" className={`bg-white rounded-xl shadow-sm p-6 ${disabled ? 'opacity-60' : ''}`}>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Workout Builder (0 intervals)
         </h2>
         <div
           onDragOver={disabled ? undefined : (e) => onDragOver(e, 0)}
           onDrop={disabled ? undefined : (e) => onDrop(e, 0)}
+          data-drop-index="0"
           className="h-80 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50"
         >
           <p className="text-gray-500 text-lg font-medium">Drop intervals here to start building</p>
@@ -41,7 +43,7 @@ const WorkoutBuilder = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
+    <div data-drop-index={steps.length} className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">
           Workout Builder ({steps.length} intervals)
@@ -54,7 +56,8 @@ const WorkoutBuilder = ({
       <div className="relative">
         {/* Workout Chart Preview */}
         <div 
-          className={`mb-16 h-32 bg-gray-50 rounded-lg relative ${disabled ? 'opacity-60' : ''}`}
+          data-drop-index={steps.length}
+          className={`mb-4 md:mb-16 h-32 bg-gray-50 rounded-lg relative ${disabled ? 'opacity-60' : ''}`}
           onDragOver={disabled ? undefined : (e) => {
             if (draggedType || draggedStepIndex !== null) {
               e.preventDefault();
@@ -84,14 +87,14 @@ const WorkoutBuilder = ({
           )}
         </div>
 
-        {/* Horizontal Interval Cards */}
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-3 min-w-min">
+        {/* Interval Cards */}
+        <div className="md:overflow-x-auto md:pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:gap-3 md:min-w-min">
             {steps.map((step, index) => (
               <React.Fragment key={step.id}>
                 {/* Drop indicator before this card */}
                 {dropTargetIndex === index && (
-                  <div className="flex-shrink-0 w-1 bg-blue-500 rounded-full" />
+                  <div className="h-1 w-full bg-blue-500 rounded-full my-2 md:h-auto md:w-1 md:my-0 md:flex-shrink-0" />
                 )}
                 
                 <WorkoutStepCard
@@ -99,6 +102,7 @@ const WorkoutBuilder = ({
                   index={index}
                   isDragging={draggedStepIndex === index}
                   onDragStart={onStepDragStart}
+                  onTouchStart={onStepTouchStart}
                   onEdit={onEditStep}
                   onRemove={onRemoveStep}
                   onCopy={onCopyStep}
@@ -113,7 +117,7 @@ const WorkoutBuilder = ({
             
             {/* Drop indicator at end */}
             {dropTargetIndex === steps.length && (
-              <div className="flex-shrink-0 w-1 bg-blue-500 rounded-full" />
+              <div className="h-1 w-full bg-blue-500 rounded-full my-2 md:h-auto md:w-1 md:my-0 md:flex-shrink-0" />
             )}
           </div>
         </div>

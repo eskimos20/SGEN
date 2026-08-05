@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 export const INTERVAL_TYPES = [
   { id: 'warmup', name: 'Warm Up', icon: '🔥', defaultPowerStart: 50, defaultPowerEnd: 60, defaultDuration: 600, isRamp: true },
@@ -78,12 +78,31 @@ const getFixedPaceDefault = (typeId, paceZones) => {
   }
 };
 
+const getTouchDropIndex = (clientX, clientY) => {
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el) return null;
+
+  const drop = el.closest('[data-drop-index]');
+  if (drop) return Number(drop.dataset.dropIndex);
+
+  const step = el.closest('[data-step-index]');
+  if (step) {
+    const rect = step.getBoundingClientRect();
+    const idx = Number(step.dataset.stepIndex);
+    return (clientX - rect.left) < rect.width / 2 ? idx : idx + 1;
+  }
+
+  return null;
+};
+
 export const useWorkoutSteps = (selectedCategory = 'Threshold', usePace = false, paceZones = null) => {
   const [steps, setSteps] = useState([]);
   const [draggedType, setDraggedType] = useState(null);
   const [draggedStepIndex, setDraggedStepIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [editingStep, setEditingStep] = useState(null);
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const touchSourceRef = useRef(null);
 
   // Convert steps to workout format for chart and TSS calculation
   const workoutSteps = useMemo(() => {
@@ -124,52 +143,59 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold', usePace = false,
   // Handle drag start from interval palette
   const handlePaletteDragStart = useCallback((e, typeId) => {
     setDraggedType(typeId);
-    e.dataTransfer.effectAllowed = 'copy';
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
   // Handle drag start from existing step
   const handleStepDragStart = useCallback((e, index) => {
     setDraggedStepIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
   }, []);
 
   // Handle drag over drop zone
   const handleDragOver = useCallback((e, index) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = draggedType ? 'copy' : 'move';
+    if (e.dataTransfer) e.dataTransfer.dropEffect = draggedType ? 'copy' : 'move';
     setDropTargetIndex(index);
   }, [draggedType]);
+
+  const buildNewStep = useCallback((typeId) => {
+    const intervalType = INTERVAL_TYPES.find(t => t.id === typeId);
+    const categoryDefaults = getCategoryIntervalDefaults(selectedCategory);
+    const categoryPaceDefaults = usePace ? getCategoryPaceDefaults(selectedCategory, paceZones) : null;
+    const paceRamp = usePace ? PACE_RAMP_DEFAULTS[typeId] : null;
+    return {
+      id: Date.now(),
+      type: typeId,
+      ...(intervalType.isRamp ? {
+        powerStart: paceRamp ? paceRamp.start : intervalType.defaultPowerStart,
+        powerEnd: paceRamp ? paceRamp.end : intervalType.defaultPowerEnd,
+        duration: intervalType.defaultDuration
+      } : {
+        power: typeId === 'interval'
+          ? (usePace ? categoryPaceDefaults.power : categoryDefaults.power)
+          : (usePace ? getFixedPaceDefault(typeId, paceZones) : intervalType.defaultPower),
+        duration: typeId === 'interval' ? categoryDefaults.duration : intervalType.defaultDuration
+      }),
+      ...(typeId === 'interval' && {
+        reps: categoryDefaults.reps,
+        restDuration: categoryDefaults.restDuration,
+        restPower: usePace ? categoryPaceDefaults.restPower : categoryDefaults.restPower
+      })
+    };
+  }, [selectedCategory, usePace, paceZones]);
+
+  const addStepByType = useCallback((typeId) => {
+    const newStep = buildNewStep(typeId);
+    setSteps(prev => [...prev, newStep]);
+  }, [buildNewStep]);
 
   // Handle drop
   const handleDrop = useCallback((e, dropIndex) => {
     e.preventDefault();
     
     if (draggedType) {
-      // Adding new interval from palette
-      const intervalType = INTERVAL_TYPES.find(t => t.id === draggedType);
-      const categoryDefaults = getCategoryIntervalDefaults(selectedCategory);
-      const categoryPaceDefaults = usePace ? getCategoryPaceDefaults(selectedCategory, paceZones) : null;
-      const paceRamp = usePace ? PACE_RAMP_DEFAULTS[draggedType] : null;
-      const newStep = {
-        id: Date.now(),
-        type: draggedType,
-        ...(intervalType.isRamp ? {
-          powerStart: paceRamp ? paceRamp.start : intervalType.defaultPowerStart,
-          powerEnd: paceRamp ? paceRamp.end : intervalType.defaultPowerEnd,
-          duration: intervalType.defaultDuration
-        } : {
-          power: draggedType === 'interval'
-            ? (usePace ? categoryPaceDefaults.power : categoryDefaults.power)
-            : (usePace ? getFixedPaceDefault(draggedType, paceZones) : intervalType.defaultPower),
-          duration: draggedType === 'interval' ? categoryDefaults.duration : intervalType.defaultDuration
-        }),
-        ...(draggedType === 'interval' && {
-          reps: categoryDefaults.reps,
-          restDuration: categoryDefaults.restDuration,
-          restPower: usePace ? categoryPaceDefaults.restPower : categoryDefaults.restPower
-        })
-      };
-      
+      const newStep = buildNewStep(draggedType);
       setSteps(prev => {
         const newSteps = [...prev];
         newSteps.splice(dropIndex, 0, newStep);
@@ -189,13 +215,92 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold', usePace = false,
     setDraggedType(null);
     setDraggedStepIndex(null);
     setDropTargetIndex(null);
-  }, [draggedType, draggedStepIndex, selectedCategory, usePace, paceZones]);
+  }, [draggedType, draggedStepIndex, buildNewStep]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedType(null);
     setDraggedStepIndex(null);
     setDropTargetIndex(null);
   }, []);
+
+  // Keep latest callback references for touch event listeners
+  const handleDragOverRef = useRef(handleDragOver);
+  const handleDropRef = useRef(handleDrop);
+  const handleDragEndRef = useRef(handleDragEnd);
+  const dropTargetIndexRef = useRef(dropTargetIndex);
+
+  useEffect(() => { handleDragOverRef.current = handleDragOver; }, [handleDragOver]);
+  useEffect(() => { handleDropRef.current = handleDrop; }, [handleDrop]);
+  useEffect(() => { handleDragEndRef.current = handleDragEnd; }, [handleDragEnd]);
+  useEffect(() => { dropTargetIndexRef.current = dropTargetIndex; }, [dropTargetIndex]);
+
+  // Mobile touch drag handlers
+  const startTouchDrag = useCallback((e, typeId, stepIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeId) {
+      setDraggedType(typeId);
+      setDraggedStepIndex(null);
+    } else if (stepIndex !== null) {
+      setDraggedStepIndex(stepIndex);
+      setDraggedType(null);
+    }
+    setIsTouchDragging(true);
+
+    const card = e.currentTarget.closest('[data-drag-source]');
+    if (card) {
+      touchSourceRef.current = card;
+      card.dataset.dragOriginalPointerEvents = card.style.pointerEvents || '';
+      card.style.pointerEvents = 'none';
+      card.style.opacity = '0.5';
+      card.style.transform = 'scale(0.95)';
+    }
+
+    const restore = () => {
+      if (touchSourceRef.current) {
+        touchSourceRef.current.style.pointerEvents = touchSourceRef.current.dataset.dragOriginalPointerEvents || '';
+        touchSourceRef.current.style.opacity = '';
+        touchSourceRef.current.style.transform = '';
+        touchSourceRef.current = null;
+      }
+    };
+
+    const touchMove = (ev) => {
+      const touch = ev.touches[0] || ev.changedTouches[0];
+      if (!touch) return;
+      ev.preventDefault();
+      const dropIndex = getTouchDropIndex(touch.clientX, touch.clientY);
+      if (dropIndex !== null) {
+        handleDragOverRef.current(ev, dropIndex);
+      }
+    };
+
+    const touchEnd = (ev) => {
+      ev.preventDefault();
+      if (dropTargetIndexRef.current !== null) {
+        handleDropRef.current(ev, dropTargetIndexRef.current);
+      } else {
+        handleDragEndRef.current();
+      }
+      setIsTouchDragging(false);
+      document.removeEventListener('touchmove', touchMove, { passive: false });
+      document.removeEventListener('touchend', touchEnd);
+      document.removeEventListener('touchcancel', touchEnd);
+      restore();
+    };
+
+    document.addEventListener('touchmove', touchMove, { passive: false });
+    document.addEventListener('touchend', touchEnd);
+    document.addEventListener('touchcancel', touchEnd);
+  }, [getTouchDropIndex]);
+
+  const handlePaletteTouchStart = useCallback((e, typeId) => {
+    startTouchDrag(e, typeId, null);
+  }, [startTouchDrag]);
+
+  const handleStepTouchStart = useCallback((e, index) => {
+    startTouchDrag(e, null, index);
+  }, [startTouchDrag]);
 
   // Remove interval
   const removeInterval = useCallback((id) => {
@@ -236,6 +341,9 @@ export const useWorkoutSteps = (selectedCategory = 'Threshold', usePace = false,
     handleDragOver,
     handleDrop,
     handleDragEnd,
+    handlePaletteTouchStart,
+    handleStepTouchStart,
+    addStepByType,
     removeInterval,
     copyStep,
     openEditModal,
