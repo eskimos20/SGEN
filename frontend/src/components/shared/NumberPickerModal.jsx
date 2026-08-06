@@ -4,7 +4,7 @@ import { useLockBodyScroll } from '../../utils/modalScrollLock';
 
 const ITEM_HEIGHT = 40;
 
-const NumberPickerModal = ({ title, value, min, max, onSelect, onCancel }) => {
+const NumberPickerModal = ({ title, value, min, max, onSelect, onCancel, displayFormatter }) => {
   const listRef = useRef(null);
   const [selected, setSelected] = useState(Number(value) || min);
   useLockBodyScroll(true);
@@ -34,22 +34,27 @@ const NumberPickerModal = ({ title, value, min, max, onSelect, onCancel }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-      <div className="bg-white w-11/12 sm:max-w-[280px] rounded-t-2xl sm:rounded-2xl p-3 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="bg-white w-11/12 sm:max-w-[280px] rounded-2xl p-2 shadow-2xl">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-1 hover:bg-gray-100 rounded-lg"
-          >
-            <X className="h-4 w-4 text-gray-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-blue-600">
+              {displayFormatter ? displayFormatter(selected) : selected}
+            </span>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="p-1 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="h-4 w-4 text-gray-500" />
+            </button>
+          </div>
         </div>
         <div
           ref={listRef}
           onScroll={handleScroll}
-          className="h-44 overflow-y-auto snap-y snap-mandatory bg-gray-50 rounded-xl"
+          className="h-32 overflow-y-auto snap-y snap-mandatory bg-gray-50 rounded-xl"
         >
           {values.map((v) => (
             <div

@@ -23,7 +23,7 @@ const DurationInput = ({ label, totalSeconds, onChange }) => {
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="flex items-center gap-2">
         <NumberInput
-          sublabel="min"
+          sublabel="Minutes"
           value={mins}
           onChange={handleMins}
           className={inputCls}
@@ -33,7 +33,7 @@ const DurationInput = ({ label, totalSeconds, onChange }) => {
         />
         <span className="text-gray-500 font-bold text-lg mb-4">:</span>
         <NumberInput
-          sublabel="sec"
+          sublabel="Seconds"
           value={String(secs).padStart(2, '0')}
           onChange={handleSecs}
           className={inputCls}
@@ -82,7 +82,7 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
               <div className="flex gap-2">
                 <NumberInput
                   label="Repetitions"
-                  sublabel="reps"
+                  sublabel="Reps"
                   value={editingStep.reps}
                   onChange={(e) => setEditingStep({...editingStep, reps: parseInt(e.target.value) || 1})}
                   min={1}
@@ -111,6 +111,7 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                   max={200}
                   className={inputCls}
                   style={{ fontSize: '16px' }}
+                  displayFormatter={w}
                   placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
@@ -134,6 +135,7 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                   max={100}
                   className={inputCls}
                   style={{ fontSize: '16px' }}
+                  displayFormatter={w}
                   placeholder={intensityUnit}
                 />
                 <div className="flex-1" />
@@ -157,6 +159,9 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                 onChange={(e) => setEditingStep({...editingStep, powerStart: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
+                className={inputCls}
+                style={{ fontSize: '16px' }}
+                displayFormatter={w}
                 placeholder={intensityUnit}
               />
               <NumberInput
@@ -166,6 +171,9 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                 onChange={(e) => setEditingStep({...editingStep, powerEnd: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
+                className={inputCls}
+                style={{ fontSize: '16px' }}
+                displayFormatter={w}
                 placeholder={intensityUnit}
               />
             </div>
@@ -178,6 +186,9 @@ const StepEditorModal = ({ editingStep, setEditingStep, onSave, onCancel, ftp = 
                 onChange={(e) => setEditingStep({...editingStep, power: parseInt(e.target.value) || 0})}
                 min={0}
                 max={200}
+                className={inputCls}
+                style={{ fontSize: '16px' }}
+                displayFormatter={w}
                 placeholder={intensityUnit}
               />
               <div className="flex-1" />

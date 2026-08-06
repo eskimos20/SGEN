@@ -5,9 +5,19 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Pace Workout Fixes for Intervals.icu, Search & Calendar Tooltips and Sport Settings Polish',
-  date: '2026-08-05',
+  title: 'Mobile Workout Editing, Simple Number Picker and Live Online Status',
+  date: '2026-08-06',
   features: [
+    {
+      icon: '📱',
+      title: 'Create and Edit Workouts on Mobile & Android',
+      description: 'You can now create and edit workouts directly in the mobile web interface and the Android app, so you are no longer tied to a desktop browser to build your own sessions.'
+    },
+    {
+      icon: '🔢',
+      title: 'Simple Number Picker for Power, Pace and Intervals',
+      description: 'A unified number picker is now used in the Workout Creator and Find Intervals. It gives you a scrollable, easy-to-use view with live watt or pace feedback while editing power and pace values.'
+    },
     {
       icon: '🏃',
       title: 'Pace-Based Running Workouts in Intervals.icu',

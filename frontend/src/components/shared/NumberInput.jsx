@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import NumberPickerModal from './NumberPickerModal';
 
-const NumberInput = ({ label, sublabel, value, onChange, min = 0, max = 999, className, style, placeholder, pickerTitle, wrapperClassName }) => {
+const NumberInput = ({ label, sublabel, value, onChange, min = 0, max = 999, className, style, placeholder, pickerTitle, displayFormatter, wrapperClassName }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -36,6 +36,7 @@ const NumberInput = ({ label, sublabel, value, onChange, min = 0, max = 999, cla
               value={value}
               min={min}
               max={max}
+              displayFormatter={displayFormatter}
               onSelect={(v) => { onChange({ target: { value: String(v) } }); setIsOpen(false); }}
               onCancel={() => setIsOpen(false)}
             />

@@ -256,7 +256,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                 max={20}
                 className={intervalCls}
                 style={{ fontSize: '16px' }}
-                sublabel="intervals"
+                sublabel="Intervals"
                 wrapperClassName="w-20"
               />
             </div>
@@ -270,7 +270,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                   max={999}
                   className={durationCls}
                   style={{ fontSize: '16px' }}
-                  sublabel="min"
+                  sublabel="Minutes"
                   wrapperClassName="w-20"
                 />
                 <span className="text-gray-500 font-bold text-sm mb-3">:</span>
@@ -281,7 +281,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                   max={59}
                   className={durationCls}
                   style={{ fontSize: '16px' }}
-                  sublabel="sec"
+                  sublabel="Seconds"
                   wrapperClassName="w-20"
                 />
               </div>
