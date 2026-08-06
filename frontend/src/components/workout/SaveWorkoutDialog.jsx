@@ -29,14 +29,22 @@ const SaveWorkoutDialog = ({
           
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="schedule-checkbox"
-                checked={saveAndSchedule}
-                onChange={(e) => setSaveAndSchedule(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
-              <label htmlFor="schedule-checkbox" className="text-sm font-medium text-gray-700 cursor-pointer">
+              <div
+                onClick={() => setSaveAndSchedule(!saveAndSchedule)}
+                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors cursor-pointer ${
+                  saveAndSchedule ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                }`}
+              >
+                {saveAndSchedule && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <label
+                onClick={() => setSaveAndSchedule(!saveAndSchedule)}
+                className="text-sm font-medium text-gray-700 cursor-pointer"
+              >
                 Schedule to calendar
               </label>
             </div>
