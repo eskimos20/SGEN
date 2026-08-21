@@ -1,0 +1,54 @@
+# Compiled class file
+*.class
+
+# Log files
+logs/
+*.log
+
+# Database files
+data/
+*.db
+*.mv.db
+*.trace.db
+
+# Build output
+target/
+build/
+dist/
+
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+backend/workout-library/
+custom-workout-library/
+SGEN.jar
+backend/src/main/resources/static/assets/
+backend/src/main/resources/static/index.html
+
+# BikeFit uploads
+uploads/
+
+# Node binary
+frontend/node/

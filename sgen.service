@@ -1,0 +1,18 @@
+[Unit]
+Description=SGEN Service
+After=network.target mnt-sdb.mount
+RequiresMountsFor=/mnt/sdb
+
+[Service]
+Type=simple
+WorkingDirectory=/mnt/sdb/SERVER/SGEN
+ExecStart=/usr/bin/java -jar SGEN.jar
+Restart=on-failure
+RestartSec=10
+User=eskimos
+Group=eskimos
+Environment="JWT_SECRET=YOURSECRET"
+Environment="CORS_ALLOWED_ORIGINS=https://yourdns"
+
+[Install]
+WantedBy=multi-user.target
