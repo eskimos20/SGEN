@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Search, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import NumberInput from '../shared/NumberInput';
+import RangeSlider from '../ui/RangeSlider';
 import { ComposedChart, Area, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, ReferenceArea } from 'recharts';
 import api from '../../api/axios';
 
@@ -16,10 +17,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
   const [isSearching, setIsSearching] = useState(false);
   const [efforts, setEfforts] = useState(null);
   const [error, setError] = useState(null);
-  const [skipWarmup, setSkipWarmup] = useState(false);
-  const [warmupMinutes, setWarmupMinutes] = useState(10);
-  const [skipCooldown, setSkipCooldown] = useState(false);
-  const [cooldownMinutes, setCooldownMinutes] = useState(10);
+  const [range, setRange] = useState({ min: 0, max: 0 });
 
   // Parse streams data - handle both array and object formats
   let timeData = [];
@@ -99,11 +97,13 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
         duration: durationInSeconds,
         count: intervalCount
       };
-      if (skipWarmup && warmupMinutes > 0) {
-        params.skipSeconds = warmupMinutes * 60;
+      const skipSeconds = Math.round(searchStartMin * 60);
+      const cooldownSeconds = Math.round((totalDurationMin - searchEndMin) * 60);
+      if (skipSeconds > 0) {
+        params.skipSeconds = skipSeconds;
       }
-      if (skipCooldown && cooldownMinutes > 0) {
-        params.cooldownSeconds = cooldownMinutes * 60;
+      if (cooldownSeconds > 0) {
+        params.cooldownSeconds = cooldownSeconds;
       }
       const response = await api.get(`/statistics/activity/${activityId}/compute-intervals`, { params });
       const data = response.data;
@@ -152,6 +152,8 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
 
   // Calculate total activity duration in minutes for minimum visual width
   const totalDurationMin = timeData.length > 0 ? (timeData[timeData.length - 1] || 0) / 60 : 1;
+  const searchStartMin = range.min || 0;
+  const searchEndMin = range.max > 0 ? range.max : Math.round(totalDurationMin);
   const minVisualWidthMin = totalDurationMin * 0.015; // At least 1.5% of chart width
 
   const getEffortTimeRange = (effort, idx, allEfforts) => {
@@ -300,72 +302,20 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
             </button>
           </div>
 
-          {/* Skip Warmup Option */}
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap w-36">
-              <div
-                onClick={() => setSkipWarmup(!skipWarmup)}
-                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                  skipWarmup ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                }`}
-              >
-                {skipWarmup && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-              <span className="text-sm font-medium text-gray-700">Skip warmup</span>
-            </label>
-            {skipWarmup && (
-              <div className="flex items-center gap-2">
-                <NumberInput
-                  value={warmupMinutes}
-                  onChange={(e) => setWarmupMinutes(Math.max(0, Math.min(999, parseInt(e.target.value) || 0)))}
-                  min={0}
-                  max={999}
-                  className={intervalCls}
-                  style={{ fontSize: '16px' }}
-                  pickerTitle="Warmup minutes"
-                  wrapperClassName="w-20"
-                />
-                <span className="text-xs text-gray-500 whitespace-nowrap">minutes</span>
-              </div>
-            )}
-          </div>
-
-          {/* Skip Cooldown Option */}
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap w-36">
-              <div
-                onClick={() => setSkipCooldown(!skipCooldown)}
-                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                  skipCooldown ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                }`}
-              >
-                {skipCooldown && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-              <span className="text-sm font-medium text-gray-700">Skip cooldown</span>
-            </label>
-            {skipCooldown && (
-              <div className="flex items-center gap-2">
-                <NumberInput
-                  value={cooldownMinutes}
-                  onChange={(e) => setCooldownMinutes(Math.max(0, Math.min(999, parseInt(e.target.value) || 0)))}
-                  min={0}
-                  max={999}
-                  className={intervalCls}
-                  style={{ fontSize: '16px' }}
-                  pickerTitle="Cooldown minutes"
-                  wrapperClassName="w-20"
-                />
-                <span className="text-xs text-gray-500 whitespace-nowrap">minutes</span>
-              </div>
-            )}
+          {/* Activity range */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-gray-600 block">Activity range</label>
+              <span className="text-[10px] text-gray-500">Drag the handles to skip warmup/cooldown</span>
+            </div>
+            <RangeSlider
+              min={0}
+              max={Math.round(totalDurationMin)}
+              valueMin={searchStartMin}
+              valueMax={searchEndMin}
+              onChange={setRange}
+              step={1}
+            />
           </div>
 
           {/* Error */}
@@ -373,23 +323,29 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
             <div className="text-xs text-red-600 bg-red-50 rounded-lg p-2.5 border border-red-100">{error}</div>
           )}
 
-          {/* Results */}
-          {efforts && efforts.length > 0 && chartData.length > 0 && (
+          {/* Activity Overview */}
+          {isOpen && chartData.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-3 space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-medium text-gray-700">
-                  Found {efforts.length} best {searchType === 'watts' ? 'power' : 'HR'} interval{efforts.length > 1 ? 's' : ''}{' '}
-                  <span className="text-gray-400 font-normal">
-                    ({formatDurationLabel((durationMinutes || 0) * 60 + (durationSeconds || 0))} each)
-                  </span>
-                </h4>
-                <button
-                  onClick={() => setEfforts(null)}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors"
-                  title="Clear results"
-                >
-                  <X className="h-3.5 w-3.5 text-gray-400" />
-                </button>
+                {efforts && efforts.length > 0 ? (
+                  <h4 className="text-xs font-medium text-gray-700">
+                    Found {efforts.length} best {searchType === 'watts' ? 'power' : 'HR'} interval{efforts.length > 1 ? 's' : ''}{' '}
+                    <span className="text-gray-400 font-normal">
+                      ({formatDurationLabel((durationMinutes || 0) * 60 + (durationSeconds || 0))} each)
+                    </span>
+                  </h4>
+                ) : (
+                  <h4 className="text-xs font-medium text-gray-700">Activity Overview</h4>
+                )}
+                {efforts && efforts.length > 0 && (
+                  <button
+                    onClick={() => setEfforts(null)}
+                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    title="Clear results"
+                  >
+                    <X className="h-3.5 w-3.5 text-gray-400" />
+                  </button>
+                )}
               </div>
 
               {/* Chart */}
@@ -451,6 +407,22 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                           name="hr"
                         />
                       )}
+                      {searchStartMin > 0 && (
+                        <ReferenceArea
+                          yAxisId={searchType === 'watts' ? 'watts' : 'hr'}
+                          x1={0}
+                          x2={searchStartMin}
+                          fill="rgba(148, 163, 184, 0.2)"
+                        />
+                      )}
+                      {searchEndMin < Math.round(totalDurationMin) && (
+                        <ReferenceArea
+                          yAxisId={searchType === 'watts' ? 'watts' : 'hr'}
+                          x1={searchEndMin}
+                          x2={Math.round(totalDurationMin)}
+                          fill="rgba(148, 163, 184, 0.2)"
+                        />
+                      )}
                       {efforts.map((effort, idx) => {
                         const { startMin, endMin } = getEffortTimeRange(effort, idx, efforts);
                         return (
@@ -488,7 +460,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                 </div>
               </div>
 
-              {/* Efforts table */}
+              {efforts && efforts.length > 0 && ( <>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -529,6 +501,8 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
               </table>
 
               <p className="text-[10px] text-blue-600 italic">These intervals will be applied when you click Save</p>
+              </>
+            )}
             </div>
           )}
         </div>
