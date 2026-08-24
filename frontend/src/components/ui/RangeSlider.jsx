@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5 }) => {
+const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInputs = false }) => {
   const [isDraggingMin, setIsDraggingMin] = useState(false);
   const [isDraggingMax, setIsDraggingMax] = useState(false);
   const sliderRef = useRef(null);
@@ -142,7 +142,7 @@ const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5 }) => {
         </div>
       </div>
       
-      {/* Number inputs */}
+      {!hideInputs && (
       <div className="flex items-center gap-2">
         <input
           type="number"
@@ -174,6 +174,7 @@ const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5 }) => {
           style={{ fontSize: '16px' }}
         />
       </div>
+      )}
     </div>
   );
 };

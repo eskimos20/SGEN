@@ -138,7 +138,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
     const chartData = [];
     for (let i = 0; i < timeData.length; i += sampleRate) {
       chartData.push({
-        time: Math.round(timeData[i] / 60),
+        time: Math.round(timeData[i] / 60 * 10) / 10,
         watts: powerData[i] || null,
         hr: hrData[i] || null
       });
@@ -157,13 +157,12 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
   const getEffortTimeRange = (effort, idx, allEfforts) => {
     const startTime = timeData[effort.start_index] || 0;
     const endTime = timeData[effort.end_index] || 0;
-    let startMin = Math.round(startTime / 60);
-    let endMin = Math.round(endTime / 60);
-    const minWidth = Math.max(1, Math.round(minVisualWidthMin));
+    let startMin = Math.round(startTime / 60 * 10) / 10;
+    let endMin = Math.round(endTime / 60 * 10) / 10;
 
     // Ensure a minimum visual width so short intervals are visible
-    if (endMin - startMin < minWidth) {
-      endMin = startMin + minWidth;
+    if (endMin - startMin < minVisualWidthMin) {
+      endMin = startMin + minVisualWidthMin;
     }
 
     // For short intervals (<60s) and HR searches, ensure visual separation
@@ -172,7 +171,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
 
     if (isShortInterval && isHRSearch && idx > 0) {
       // Simple separation: add index-based offset for HR short intervals
-      const offset = Math.round(idx * minWidth * 0.5);
+      const offset = idx * minVisualWidthMin * 0.5;
       startMin = startMin + offset;
       endMin = endMin + offset;
     }
@@ -356,8 +355,10 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis
                         dataKey="time"
+                        type="number"
+                        domain={['dataMin', 'dataMax']}
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => `${v}m`}
+                        tickFormatter={(v) => `${Math.round(v)}m`}
                       />
                       {hasPower && (
                         <YAxis
