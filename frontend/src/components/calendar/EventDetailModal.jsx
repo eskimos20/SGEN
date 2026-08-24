@@ -267,7 +267,7 @@ const EventDetailModal = ({
         <div ref={contentRef} className="p-4 overflow-y-auto flex-1 flex flex-col" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
           {/* Edit Section - only for completed activities AND custom events */}
           {(selectedEvent.isCompleted || (!selectedEvent.isCompleted && selectedEvent.category && editableEventCategories.includes(selectedEvent.category))) && isEditing && (
-            <div className="mb-6 space-y-3 border border-blue-200 rounded-lg p-3 sm:p-4 bg-blue-50 overflow-hidden flex-1">
+            <div className="mb-6 space-y-3 border border-blue-200 rounded-lg p-3 sm:p-4 bg-blue-50 flex-1">
               {/* Name */}
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Activity Name</label>
