@@ -356,7 +356,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                       <XAxis
                         dataKey="time"
                         type="number"
-                        domain={['dataMin', 'dataMax']}
+                        domain={[0, Math.round(totalDurationMin)]}
                         tick={{ fontSize: 10 }}
                         tickFormatter={(v) => `${Math.round(v)}m`}
                       />
@@ -413,7 +413,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                           yAxisId={searchType === 'watts' ? 'watts' : 'hr'}
                           x1={0}
                           x2={searchStartMin}
-                          fill="rgba(148, 163, 184, 0.2)"
+                          fill="rgba(71, 85, 105, 0.35)"
                         />
                       )}
                       {searchEndMin < Math.round(totalDurationMin) && (
@@ -421,7 +421,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                           yAxisId={searchType === 'watts' ? 'watts' : 'hr'}
                           x1={searchEndMin}
                           x2={Math.round(totalDurationMin)}
-                          fill="rgba(148, 163, 184, 0.2)"
+                          fill="rgba(71, 85, 105, 0.35)"
                         />
                       )}
                       {efforts?.map((effort, idx) => {
