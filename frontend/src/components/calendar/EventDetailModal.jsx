@@ -201,7 +201,7 @@ const EventDetailModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl rounded-xl shadow-2xl w-full max-w-none sm:max-w-4xl h-[85vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col pt-4 sm:pt-0" style={{ overscrollBehavior: 'contain' }}>
+      <div className="bg-white rounded-t-2xl rounded-xl shadow-2xl w-full max-w-none sm:max-w-4xl h-[85vh] sm:h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col pt-4 sm:pt-0" style={{ overscrollBehavior: 'contain' }}>
         {/* Modal Header */}
         <div className="border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between p-4">
