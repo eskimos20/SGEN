@@ -214,34 +214,48 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
 
       {isOpen && (
         <div className="mt-3 space-y-3">
-          {/* Search by stream type */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Search by</label>
-            <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
-              {hasPower && (
-                <button
-                  onClick={() => { setSearchType('watts'); setEfforts(null); setError(null); }}
-                  className={`py-1.5 px-4 text-xs font-medium transition-colors ${
-                    searchType === 'watts'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Power
-                </button>
-              )}
-              {hasHR && (
-                <button
-                  onClick={() => { setSearchType('heartrate'); setEfforts(null); setError(null); }}
-                  className={`py-1.5 px-4 text-xs font-medium transition-colors border-l border-gray-200 ${
-                    searchType === 'heartrate'
-                      ? 'bg-red-500 text-white border-l-transparent'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  Heart Rate
-                </button>
-              )}
+          {/* Search by stream type + Activity range slider */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+            <div className="flex-shrink-0">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Search by</label>
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                {hasPower && (
+                  <button
+                    onClick={() => { setSearchType('watts'); setEfforts(null); setError(null); }}
+                    className={`py-1.5 px-4 text-xs font-medium transition-colors ${
+                      searchType === 'watts'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Power
+                  </button>
+                )}
+                {hasHR && (
+                  <button
+                    onClick={() => { setSearchType('heartrate'); setEfforts(null); setError(null); }}
+                    className={`py-1.5 px-4 text-xs font-medium transition-colors border-l border-gray-200 ${
+                      searchType === 'heartrate'
+                        ? 'bg-red-500 text-white border-l-transparent'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Heart Rate
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 min-w-[120px] w-full sm:w-auto" title="Drag the handles to skip warmup/cooldown">
+              <RangeSlider
+                min={0}
+                max={Math.round(totalDurationMin)}
+                valueMin={searchStartMin}
+                valueMax={searchEndMin}
+                onChange={setRange}
+                step={1}
+                hideInputs
+                compact
+              />
             </div>
           </div>
 
@@ -487,23 +501,6 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
               <p className="text-[10px] text-blue-600 italic">These intervals will be applied when you click Save</p>
               </>
             )}
-
-              {/* Activity range */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-medium text-gray-600 block">Activity range</label>
-                  <span className="text-[10px] text-gray-500">Drag the handles to skip warmup/cooldown</span>
-                </div>
-                <RangeSlider
-                  min={0}
-                  max={Math.round(totalDurationMin)}
-                  valueMin={searchStartMin}
-                  valueMax={searchEndMin}
-                  onChange={setRange}
-                  step={1}
-                  hideInputs
-                />
-              </div>
             </div>
           )}
         </div>

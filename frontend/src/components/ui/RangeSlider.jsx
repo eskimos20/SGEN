@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInputs = false }) => {
+const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInputs = false, compact = false }) => {
   const [isDraggingMin, setIsDraggingMin] = useState(false);
   const [isDraggingMax, setIsDraggingMax] = useState(false);
   const sliderRef = useRef(null);
@@ -103,21 +103,23 @@ const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInp
   const rangeWidth = maxPosition - minPosition;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between text-sm font-medium text-gray-700">
-        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-lg">Min: {valueMin} min</span>
-        <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-lg">Max: {valueMax} min</span>
-      </div>
+    <div className={compact ? '' : 'space-y-3'}>
+      {!compact && (
+        <div className="flex items-center justify-between text-sm font-medium text-gray-700">
+          <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-lg">Min: {valueMin} min</span>
+          <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-lg">Max: {valueMax} min</span>
+        </div>
+      )}
       
-      <div className="relative py-3">
+      <div className={compact ? 'relative py-1.5' : 'relative py-3'}>
         {/* Track - taller hit area */}
         <div
           ref={sliderRef}
-          className="relative h-3 bg-gray-200 rounded-full cursor-pointer"
+          className={`relative bg-gray-200 rounded-full cursor-pointer ${compact ? 'h-2' : 'h-3'}`}
         >
           {/* Range fill */}
           <div
-            className="absolute h-3 bg-blue-500 rounded-full"
+            className={`absolute bg-blue-500 rounded-full ${compact ? 'h-2' : 'h-3'}`}
             style={{
               left: `${minPosition}px`,
               width: `${rangeWidth}px`
@@ -126,7 +128,7 @@ const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInp
           
           {/* Min handle - larger touch target */}
           <div
-            className="absolute w-6 h-6 bg-green-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 top-1/2 touch-none"
+            className={`absolute bg-green-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 top-1/2 touch-none ${compact ? 'w-4 h-4' : 'w-6 h-6'}`}
             style={{ left: `${minPosition}px` }}
             onMouseDown={(e) => handleStart(e, true)}
             onTouchStart={(e) => handleStart(e, true)}
@@ -134,7 +136,7 @@ const RangeSlider = ({ min, max, valueMin, valueMax, onChange, step = 5, hideInp
           
           {/* Max handle - larger touch target */}
           <div
-            className="absolute w-6 h-6 bg-blue-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 top-1/2 touch-none"
+            className={`absolute bg-blue-500 border-2 border-white rounded-full shadow-lg cursor-grab active:cursor-grabbing transform -translate-x-1/2 -translate-y-1/2 top-1/2 touch-none ${compact ? 'w-4 h-4' : 'w-6 h-6'}`}
             style={{ left: `${maxPosition}px` }}
             onMouseDown={(e) => handleStart(e, false)}
             onTouchStart={(e) => handleStart(e, false)}
