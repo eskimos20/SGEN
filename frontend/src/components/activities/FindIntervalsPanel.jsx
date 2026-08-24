@@ -300,23 +300,6 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
             </button>
           </div>
 
-          {/* Activity range */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-600 block">Activity range</label>
-              <span className="text-[10px] text-gray-500">Drag the handles to skip warmup/cooldown</span>
-            </div>
-            <RangeSlider
-              min={0}
-              max={Math.round(totalDurationMin)}
-              valueMin={searchStartMin}
-              valueMax={searchEndMin}
-              onChange={setRange}
-              step={1}
-              hideInputs
-            />
-          </div>
-
           {/* Error */}
           {error && (
             <div className="text-xs text-red-600 bg-red-50 rounded-lg p-2.5 border border-red-100">{error}</div>
@@ -504,6 +487,23 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
               <p className="text-[10px] text-blue-600 italic">These intervals will be applied when you click Save</p>
               </>
             )}
+
+              {/* Activity range */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-gray-600 block">Activity range</label>
+                  <span className="text-[10px] text-gray-500">Drag the handles to skip warmup/cooldown</span>
+                </div>
+                <RangeSlider
+                  min={0}
+                  max={Math.round(totalDurationMin)}
+                  valueMin={searchStartMin}
+                  valueMax={searchEndMin}
+                  onChange={setRange}
+                  step={1}
+                  hideInputs
+                />
+              </div>
             </div>
           )}
         </div>

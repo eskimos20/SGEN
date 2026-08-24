@@ -260,7 +260,7 @@ const AddCalendarEntryModal = ({ isOpen, onClose, entryType, date, onCreated, ed
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-t-2xl">
+      <div className="bg-white sm:rounded-2xl shadow-2xl w-full max-w-none sm:max-w-4xl overflow-hidden flex flex-col h-[85vh] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-t-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-3 sm:px-5 py-3 sm:py-4 bg-blue-600 flex-shrink-0 sm:rounded-t-2xl">
           <h3 className="text-sm sm:text-lg font-semibold text-white truncate pr-4">
