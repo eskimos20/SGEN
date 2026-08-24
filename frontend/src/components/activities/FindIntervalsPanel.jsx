@@ -423,7 +423,7 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                           fill="rgba(148, 163, 184, 0.2)"
                         />
                       )}
-                      {efforts.map((effort, idx) => {
+                      {efforts?.map((effort, idx) => {
                         const { startMin, endMin } = getEffortTimeRange(effort, idx, efforts);
                         return (
                           <ReferenceArea
