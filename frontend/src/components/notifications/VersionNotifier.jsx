@@ -5,9 +5,24 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Weather, Radar and Mobile Map Fixes',
-  date: '2026-08-20',
+  title: 'Find Intervals & Edit Window Polish',
+  date: '2026-08-24',
   features: [
+    {
+      icon: '🎚️',
+      title: 'Compact Activity Range Slider',
+      description: 'The warmup/cooldown range slider in Find Intervals now sits next to the Search by toggle under its own "Activity range" label, making the panel more compact.'
+    },
+    {
+      icon: '🪟',
+      title: 'Consistent Edit Window Size',
+      description: 'The edit window opened from the calendar now matches the size of the activity/event window it was opened from, instead of appearing smaller.'
+    },
+    {
+      icon: '📜',
+      title: 'Full-Height Edit Form',
+      description: 'The edit form now fills the available space in the window so you can always scroll all the way down to Activity Overview without content being cut off.'
+    },
     {
       icon: '⛅',
       title: 'OpenMeteo Weather Toggle',
