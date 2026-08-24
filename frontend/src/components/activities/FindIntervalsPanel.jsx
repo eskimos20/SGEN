@@ -245,7 +245,8 @@ const FindIntervalsPanel = forwardRef(({ activityId, streams }, ref) => {
                 )}
               </div>
             </div>
-            <div className="flex-1 min-w-[120px] w-full sm:w-auto" title="Drag the handles to skip warmup/cooldown">
+            <div className="flex-1 min-w-[120px] w-full sm:w-auto sm:ml-6" title="Drag the handles to skip warmup/cooldown">
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Activity range</label>
               <RangeSlider
                 min={0}
                 max={Math.round(totalDurationMin)}
