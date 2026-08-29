@@ -380,7 +380,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
       {!stravaData?.rateLimit && <StravaMedia activity={activityData} preFetchedData={stravaData?.photos} />}
 
       {/* Activity Overview: Chart + Stats */}
-      <ActivityChart streams={streams} />
+      <ActivityChart streams={streams} decoupling={hrDrift} />
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -588,40 +588,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
         </div>
       )}
 
-      {/* HR Drift / Decoupling Section */}
-      {(hrDrift !== null && hrDrift !== undefined) && (
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
-          <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-purple-600" />
-            Heart Rate Drift (Pw:Hr Decoupling)
-          </h4>
-          <div className="flex items-center gap-4">
-            <div className={`text-2xl font-bold ${hrDrift <= 2 ? 'text-green-600' : hrDrift <= 4 ? 'text-green-600' : hrDrift <= 6 ? 'text-blue-600' : hrDrift <= 8 ? 'text-yellow-600' : hrDrift <= 12 ? 'text-orange-600' : hrDrift <= 15 ? 'text-red-600' : 'text-red-600'}`}>
-              {hrDrift > 0 ? '+' : ''}{hrDrift.toFixed(1)}%
-            </div>
-            <div className="text-sm text-gray-600">
-              {hrDrift <= 2 ? (
-                <span className="text-green-700">Exceptional - Elite level aerobic stability</span>
-              ) : hrDrift <= 4 ? (
-                <span className="text-green-700">Excellent - Strong aerobic base</span>
-              ) : hrDrift <= 6 ? (
-                <span className="text-blue-700">Good - Well-trained endurance</span>
-              ) : hrDrift <= 8 ? (
-                <span className="text-yellow-700">Moderate drift - Aerobic base can improve</span>
-              ) : hrDrift <= 12 ? (
-                <span className="text-orange-700">High drift - Intensity near aerobic threshold</span>
-              ) : hrDrift <= 15 ? (
-                <span className="text-red-700">Very high drift - Limited endurance at intensity</span>
-              ) : (
-                <span className="text-red-700">Excessive drift - Fatigue, heat, dehydration or too high intensity</span>
-              )}
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Measures how much your heart rate increased relative to power output during the activity.
-          </p>
-        </div>
-      )}
+
 
       {/* All Intervals */}
       {Array.isArray(allIntervals) && allIntervals.length > 0 && (
