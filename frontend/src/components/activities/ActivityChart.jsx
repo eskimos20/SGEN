@@ -98,28 +98,30 @@ const ActivityChart = ({ streams, decoupling }) => {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex items-center justify-between mt-2 text-xs">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-blue-500 rounded" />
-            <span>Power (W)</span>
+      <div className="mt-2 text-xs" style={{ paddingLeft: '15px' }}>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 bg-blue-500 rounded" />
+              <span>Power (W)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-1 bg-red-500 rounded" />
+              <span>Heart Rate (bpm)</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-1 bg-red-500 rounded" />
-            <span>Heart Rate (bpm)</span>
-          </div>
+          {decoupling !== null && decoupling !== undefined && (
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-700">Decoupling:</span>
+              <span className={`font-bold ${decoupling <= 2 ? 'text-green-600' : decoupling <= 4 ? 'text-green-600' : decoupling <= 6 ? 'text-blue-600' : decoupling <= 8 ? 'text-yellow-600' : decoupling <= 12 ? 'text-orange-600' : 'text-red-600'}`}>
+                {decoupling > 0 ? '+' : ''}{decoupling.toFixed(1)}%
+              </span>
+              <span className="text-gray-500">
+                {decoupling <= 2 ? 'Elite - Exceptional aerobic stability' : decoupling <= 4 ? 'Excellent - Strong aerobic base' : decoupling <= 6 ? 'Good - Well-trained endurance' : decoupling <= 8 ? 'Moderate - Aerobic base can improve' : decoupling <= 12 ? 'High - Intensity near aerobic threshold' : 'Very High - Limited endurance at intensity'}
+              </span>
+            </div>
+          )}
         </div>
-        {decoupling !== null && decoupling !== undefined && (
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Decoupling:</span>
-            <span className={`font-bold ${decoupling <= 2 ? 'text-green-600' : decoupling <= 4 ? 'text-green-600' : decoupling <= 6 ? 'text-blue-600' : decoupling <= 8 ? 'text-yellow-600' : decoupling <= 12 ? 'text-orange-600' : 'text-red-600'}`}>
-              {decoupling > 0 ? '+' : ''}{decoupling.toFixed(1)}%
-            </span>
-            <span className="text-gray-500">
-              {decoupling <= 2 ? 'Elite' : decoupling <= 4 ? 'Excellent' : decoupling <= 6 ? 'Good' : decoupling <= 8 ? 'Moderate' : decoupling <= 12 ? 'High' : 'Very High'}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );
