@@ -1,4 +1,4 @@
-import { Activity } from 'lucide-react';
+import { Activity, Zap, Heart } from 'lucide-react';
 import { ComposedChart, Area, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 const ActivityChart = ({ streams, decoupling }) => {
@@ -98,15 +98,15 @@ const ActivityChart = ({ streams, decoupling }) => {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-2 text-xs" style={{ paddingLeft: '15px' }}>
+      <div className="mt-2 text-xs" style={{ paddingLeft: '25px' }}>
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-blue-500 rounded" />
+              <Zap className="h-3 w-3 text-blue-500" />
               <span>Power (W)</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-1 bg-red-500 rounded" />
+              <Heart className="h-3 w-3 text-red-500" />
               <span>Heart Rate (bpm)</span>
             </div>
           </div>
