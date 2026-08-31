@@ -322,3 +322,33 @@ export const calculateWeeklyTotals = (year, month, weekNumber, activities, event
     isoWeekNumber
   };
 };
+
+export const calculateMonthlyTotals = (year, month, activities) => {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  let totalSeconds = 0;
+  
+  // Get month start and end dates for filtering
+  const monthStartStr = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+  const monthEndStr = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+  
+  // Only count completed activities (past/today = actual training)
+  activities.forEach(activity => {
+    if (activity.start_date_local) {
+      const dateStr = activity.start_date_local.substring(0, 10);
+      if (dateStr >= monthStartStr && dateStr <= monthEndStr) {
+        const activitySeconds = activity.moving_time || 0;
+        totalSeconds += activitySeconds;
+      }
+    }
+  });
+  
+  const totalHours = Math.floor(totalSeconds / 3600);
+  const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+  
+  return {
+    hours: totalHours + (totalMinutes / 60),
+    displayText: `${formatHoursMinutes(totalSeconds)}`
+  };
+};

@@ -5,123 +5,18 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Find Intervals & Edit Window Polish',
-  date: '2026-08-24',
+  title: 'Calendar Monthly Total & Activity Overview Layout',
+  date: '2026-08-31',
   features: [
     {
-      icon: '🎚️',
-      title: 'Compact Activity Range Slider',
-      description: 'The warmup/cooldown range slider in Find Intervals now sits next to the Search by toggle under its own "Activity range" label, making the panel more compact.'
+      icon: '📅',
+      title: 'Monthly Total Hours in Calendar',
+      description: 'The calendar header now shows total hours for the current month, counting only completed activities (past and today). Changed from "Planned workouts" to "Total hours xx" with dynamic calculation based on actual training time.'
     },
     {
-      icon: '🪟',
-      title: 'Consistent Edit Window Size',
-      description: 'The edit window opened from the calendar now matches the size of the activity/event window it was opened from, instead of appearing smaller.'
-    },
-    {
-      icon: '📜',
-      title: 'Full-Height Edit Form',
-      description: 'The edit form now fills the available space in the window so you can always scroll all the way down to Activity Overview without content being cut off.'
-    },
-    {
-      icon: '⛅',
-      title: 'OpenMeteo Weather Toggle',
-      description: 'Switch between SMHI and OpenMeteo forecasts per user in the weather settings. When OpenMeteo is enabled, search, forecast and radar location use OpenMeteo\'s global city and weather data while the frontend stays visually identical.'
-    },
-    {
-      icon: '🏷️',
-      title: 'Weather Source Badge',
-      description: 'A green badge next to "Weather Forecast" shows whether SMHI or OpenMeteo is currently active for your location.'
-    },
-    {
-      icon: '🌍',
-      title: 'Global City Search with UTF-8 Support',
-      description: 'Search cities worldwide through OpenMeteo geocoding, including correct handling of Swedish characters like å, ä and ö.'
-    },
-    {
-      icon: '🛰️',
-      title: 'LibreWXR Radar & Satellite Map',
-      description: 'The dashboard now shows live radar/satellite animation directly from your self-hosted LibreWXR server with smooth crossfade transitions between frames.'
-    },
-    {
-      icon: '📍',
-      title: 'Radar Reloads on City Change',
-      description: 'Changing weather station now resets the radar player to the first frame, forces a fresh tile load for the new location and starts playback automatically when ready.'
-    },
-    {
-      icon: '📱',
-      title: 'Mobile Menu Overlay Fix',
-      description: 'The radar map is now constrained to its own stacking context so map controls no longer block the mobile hamburger menu, logout or other top-bar actions.'
-    },
-    {
-      icon: '🔄',
-      title: 'LibreWXR Auto-Update on Deploy',
-      description: 'The deployment script now pulls the latest LibreWXR changes and rebuilds the Docker container automatically when a new version is available.'
-    },
-    {
-      icon: '📱',
-      title: 'Create and Edit Workouts on Mobile & Android',
-      description: 'You can now create and edit workouts directly in the mobile web interface and the Android app, so you are no longer tied to a desktop browser to build your own sessions.'
-    },
-    {
-      icon: '🔢',
-      title: 'Simple Number Picker for Power, Pace and Intervals',
-      description: 'A unified number picker is now used in the Workout Creator and Find Intervals. It gives you a scrollable, easy-to-use view with live watt or pace feedback while editing power and pace values.'
-    },
-    {
-      icon: '🏃',
-      title: 'Pace-Based Running Workouts in Intervals.icu',
-      description: 'Run workouts now use the Intervals.icu workout builder text format with explicit Pace targets. This fixes the previous scaling issue where 100% threshold could be displayed as 88%, and ensures all steps show up correctly in Intervals.icu.'
-    },
-    {
-      icon: '⏱️',
-      title: 'Pace Tooltips in Calendar and Search',
-      description: "Hovering over a workout chart in the calendar event detail or search results now shows the absolute pace for each step, e.g. '10min @ 100% (5:00/km)', when Use Pace is enabled."
-    },
-    {
-      icon: '✅',
-      title: 'Smoother WorkoutCreator Pace Editing',
-      description: 'Opening a run pace workout in the Workout Creator now checks the Use Pace checkbox immediately without the previous "No Threshold Pace" warning flash, and waits for sport settings to load before validating.'
-    },
-    {
-      icon: '🔧',
-      title: 'Pace Formatting & Sport Settings Polish',
-      description: 'Fixed a bug where pace values could display as "4:60" — seconds now correctly roll over to the next minute. Pace zones and threshold pace handling in Sport Settings have also been improved.'
-    },
-    {
-      icon: '🚀',
-      title: 'Performance & Reliability Improvements',
-      description: 'Optimized Intervals.icu data fetching with parallel requests and improved rate limiting to prevent 429 errors. OpenAI rate limiter now uses non-blocking waits, while frontend timers and scroll handlers are properly cleaned up. Logout also uses soft navigation without a full page reload.'
-    },
-    {
-      icon: '🔁',
-      title: 'Share Workouts with Other Users',
-      description: 'Share workouts from the global or custom library with users who have sharing enabled. Recipients get a notification where they can accept or decline, and the workout can be scheduled directly on the recipient calendar.'
-    },
-    {
-      icon: '📋',
-      title: 'Copy Workouts to Your Custom Library',
-      description: 'Copy any workout from the workout library or your custom library into your own custom folder. If a workout with the same name already exists, a new version is created automatically (v1, v2, etc.).'
-    },
-    {
-      icon: '✏️',
-      title: 'Edit Custom Workouts',
-      description: 'Open a custom workout in the Workout Creator to edit its intervals, category, sport type and description. Saving overwrites the original file, making it easy to iterate on your own workouts.'
-    },
-    {
-      icon: '⚡',
-      title: 'Smarter Workout Creator Defaults',
-      description: 'New intervals and ramps get category-specific default power and durations. The short description is now auto-generated from the step structure, including rest and collapsed identical sets.'
-    },
-    {
-      icon: '♻️',
-      title: 'Smart Accept for Shared Workouts',
-      description: 'When accepting a shared workout, the backend checks if an identical ZWO already exists and reuses it. If the structure is different, it creates the next available version instead of overwriting.'
-    },
-    {
-      icon: '🧹',
-      title: 'Clean Up Notifications on Delete',
-      description: 'Deleting a custom workout removes only the pending notifications that were sent from that specific file by you. Shares sent by other users are not affected.'
+      icon: '�',
+      title: 'Decoupling Display in Activity Overview',
+      description: 'Relocated the HR drift/decoupling section from its separate position to directly under the Activity Overview chart. The layout is restructured so the Power/Heart Rate legend appears on the left (aligned with the chart edge) and the decoupling value and description are displayed on the right.'
     }
   ]
 };

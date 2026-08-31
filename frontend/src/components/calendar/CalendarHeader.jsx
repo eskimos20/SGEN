@@ -10,14 +10,15 @@ const CalendarHeader = ({
   onOpenScheduler,
   onCommitSchedule,
   onClearSchedule,
-  onOpenDeleteRange
+  onOpenDeleteRange,
+  monthlyTotal
 }) => {
   return (
     <div className="flex flex-col gap-3">
       {/* Title row */}
       <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl sm:shadow-sm p-3 sm:p-6 border-b sm:border border-gray-200">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Training Calendar</h1>
-        <p className="text-gray-600 mt-1">Planned workouts</p>
+        <p className="text-gray-600 mt-1">Total hours {monthlyTotal}</p>
       </div>
 
       {/* Action buttons row */}

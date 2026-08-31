@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
-import { getDaysInMonth } from '../utils/calendarUtils';
+import { getDaysInMonth, calculateMonthlyTotals } from '../utils/calendarUtils';
 import { fetchCalendarEvents, fetchAthleteProfile } from '../services/calendarService';
 import api from '../api/axios';
 import { useCalendarDragDrop } from '../hooks/useCalendarDragDrop';
@@ -244,6 +244,16 @@ const Calendar = () => {
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                       'July', 'August', 'September', 'October', 'November', 'December'];
 
+  // Calculate monthly total for completed activities only
+  const monthlyTotal = useMemo(() => {
+    const monthlyStats = calculateMonthlyTotals(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      activities || []
+    );
+    return monthlyStats.displayText;
+  }, [currentDate, activities]);
+
   // Add a loading state component to prevent blank page
   if (loading && calendarEvents.length === 0 && calendarActivities.length === 0) {
     return (
@@ -306,6 +316,7 @@ const Calendar = () => {
         pendingEvents={pendingEvents}
         loadingSchedulerData={loadingSchedulerData}
         isCommitting={isCommitting}
+        monthlyTotal={monthlyTotal}
         onNavigateMonth={(direction, exactDate) => {
           if (exactDate) {
             setCurrentDate(exactDate);
