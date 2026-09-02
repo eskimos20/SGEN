@@ -66,6 +66,7 @@ public class IntervalsService {
         String athleteId = ctx.user.getIntervalsAthleteId();
         WebClient client = ctx.client;
         Map<String, Object> allData = new ConcurrentHashMap<>();
+        final Map<String, JsonNode> streamsMap = new ConcurrentHashMap<>();
 
         // Activities (with per-activity intervals fetched concurrently)
         CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
@@ -103,9 +104,22 @@ public class IntervalsService {
                                                 .queryParam("intervals", "true").build(currentActivityId))
                                         .retrieve().bodyToMono(String.class).block();
                                 JsonNode details = objectMapper.readTree(detailJson);
+                                JsonNode streams = null;
+                                try {
+                                    rateLimiter.acquire();
+                                    String streamsJson = client.get()
+                                            .uri("/api/v1/activity/{id}/streams", currentActivityId)
+                                            .retrieve().bodyToMono(String.class).block();
+                                    streams = objectMapper.readTree(streamsJson);
+                                    streamsMap.put(currentActivityId, streams);
+                                } catch (Exception e) {
+                                    log.debug("Failed to fetch streams for activity {}: {}", currentActivityId, e.getMessage());
+                                }
                                 if (details.has("icu_intervals")) {
+                                    JsonNode intervals = details.get("icu_intervals");
+                                    enrichIntervalsWithStartHr(intervals, streams);
                                     ((com.fasterxml.jackson.databind.node.ObjectNode) currentActivity)
-                                            .set("icu_intervals", details.get("icu_intervals"));
+                                            .set("icu_intervals", intervals);
                                 }
                                 if (details.has("icu_max_watts") && !currentActivity.has("icu_max_watts")) {
                                     ((com.fasterxml.jackson.databind.node.ObjectNode) currentActivity)
@@ -194,8 +208,9 @@ public class IntervalsService {
                     final String actId = activity.path("id").asText();
                     final JsonNode cachedIntervals = activity.path("icu_intervals").isArray()
                             ? activity.path("icu_intervals") : null;
+                    final JsonNode cachedStreams = streamsMap.get(actId);
                     futures.add(CompletableFuture.supplyAsync(
-                            () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals), executorService));
+                            () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals, cachedStreams), executorService));
                 }
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                 log.info("Completed fetching streams data for all activities");
@@ -381,6 +396,53 @@ public class IntervalsService {
         String lower = type.toLowerCase();
         return lower.contains("run") || lower.contains("trail") || lower.contains("hike") || 
                lower.equals("virtualrun");
+    }
+
+    /**
+     * Enrich interval objects with the heart rate at the interval start index.
+     * Requires streams with a heart rate channel (heartrate) in either array or object format.
+     */
+    private void enrichIntervalsWithStartHr(JsonNode intervals, JsonNode streams) {
+        if (intervals == null || !intervals.isArray() || streams == null) return;
+
+        List<Integer> hrData = null;
+        if (streams.isArray()) {
+            for (JsonNode stream : streams) {
+                if ("heartrate".equals(stream.path("type").asText())) {
+                    JsonNode data = stream.path("data");
+                    if (data.isArray()) {
+                        hrData = new ArrayList<>(data.size());
+                        for (JsonNode d : data) hrData.add(d.asInt(0));
+                    }
+                    break;
+                }
+            }
+        } else if (streams.isObject()) {
+            JsonNode hrNode = streams.get("heartrate");
+            if (hrNode != null && hrNode.isArray()) {
+                hrData = new ArrayList<>(hrNode.size());
+                for (JsonNode d : hrNode) hrData.add(d.asInt(0));
+            } else if (hrNode != null && hrNode.has("data")) {
+                JsonNode data = hrNode.get("data");
+                if (data.isArray()) {
+                    hrData = new ArrayList<>(data.size());
+                    for (JsonNode d : data) hrData.add(d.asInt(0));
+                }
+            }
+        }
+
+        if (hrData == null || hrData.isEmpty()) return;
+
+        for (JsonNode interval : intervals) {
+            if (!interval.isObject()) continue;
+            int startIndex = interval.path("start_index").asInt(-1);
+            if (startIndex >= 0 && startIndex < hrData.size()) {
+                int startHr = hrData.get(startIndex);
+                if (startHr > 0) {
+                    ((ObjectNode) interval).put("start_hr", startHr);
+                }
+            }
+        }
     }
 
     /**

@@ -106,10 +106,15 @@ public class IntervalsActivityAnalysisService {
      * Returns null if the activity has no usable power data.
      */
     public ActivityProcessingResult processActivity(WebClient client, String activityId, double weightKg) {
-        return processActivity(client, activityId, weightKg, null);
+        return processActivity(client, activityId, weightKg, null, null);
     }
 
     public ActivityProcessingResult processActivity(WebClient client, String activityId, double weightKg, JsonNode cachedIntervals) {
+        return processActivity(client, activityId, weightKg, cachedIntervals, null);
+    }
+
+    public ActivityProcessingResult processActivity(WebClient client, String activityId, double weightKg,
+                                                      JsonNode cachedIntervals, JsonNode cachedStreams) {
         try {
             JsonNode intervals;
             JsonNode activityDetails = null;
@@ -129,11 +134,18 @@ public class IntervalsActivityAnalysisService {
                 if (intervals == null || !intervals.isArray() || intervals.size() == 0) return null;
             }
 
-            rateLimiter.acquire();
-            String streamsJson = client.get()
-                    .uri("/api/v1/activity/{id}/streams", activityId)
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode streams = objectMapper.readTree(streamsJson);
+            JsonNode streams;
+            if (cachedStreams != null && !cachedStreams.isEmpty()
+                    && ((cachedStreams.isArray() && cachedStreams.size() > 0)
+                            || (cachedStreams.isObject() && cachedStreams.size() > 0))) {
+                streams = cachedStreams;
+            } else {
+                rateLimiter.acquire();
+                String streamsJson = client.get()
+                        .uri("/api/v1/activity/{id}/streams", activityId)
+                        .retrieve().bodyToMono(String.class).block();
+                streams = objectMapper.readTree(streamsJson);
+            }
 
             if (activityDetails != null && appSettingsService.isDumpActivityStreamsEnabled()) {
                 String actName = activityDetails.path("name").asText();
@@ -173,6 +185,8 @@ public class IntervalsActivityAnalysisService {
             Map<String, Object> data = new HashMap<>();
             data.put("duration_sec", duration);
             if (avgWatts > 0) data.put("avg_watts", Math.round(avgWatts));
+            double startHr = interval.path("start_hr").asDouble(0);
+            if (startHr > 0) data.put("start_hr", Math.round(startHr));
             if (avgHr > 0) data.put("avg_hr", Math.round(avgHr));
             double maxHr = interval.path("max_heartrate").asDouble(0);
             if (maxHr > 0) data.put("max_hr", Math.round(maxHr));

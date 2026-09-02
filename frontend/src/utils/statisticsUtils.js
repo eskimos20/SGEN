@@ -204,6 +204,7 @@ export const buildMinimalData = (data, weeklyData, getUpcomingWorkouts, includeU
             duration_sec: interval.moving_time || interval.elapsed_time,
             avg_watts: interval.average_watts ? Math.round(interval.average_watts) : undefined,
             max_watts: interval.max_watts ? Math.round(interval.max_watts) : undefined,
+            start_hr: interval.start_hr ? Math.round(interval.start_hr) : undefined,
             avg_hr: interval.average_heartrate ? Math.round(interval.average_heartrate) : undefined,
             max_hr: interval.max_heartrate ? Math.round(interval.max_heartrate) : undefined,
             avg_cadence: interval.average_cadence ? Math.round(interval.average_cadence) : undefined,

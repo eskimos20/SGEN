@@ -5,18 +5,13 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Calendar Monthly Total & Activity Overview Layout',
-  date: '2026-08-31',
+  title: 'Enhanced AI Interval Analysis',
+  date: '2026-09-02',
   features: [
     {
-      icon: '📅',
-      title: 'Monthly Total Hours in Calendar',
-      description: 'The calendar header now shows total hours for the current month, counting only completed activities (past and today). Changed from "Planned workouts" to "Total hours xx" with dynamic calculation based on actual training time.'
-    },
-    {
-      icon: '�',
-      title: 'Decoupling Display in Activity Overview',
-      description: 'Relocated the HR drift/decoupling section from its separate position to directly under the Activity Overview chart. The layout is restructured so the Power/Heart Rate legend appears on the left (aligned with the chart edge) and the decoupling value and description are displayed on the right.'
+      icon: '',
+      title: 'Interval Start Heart Rate for AI',
+      description: 'OpenAI analysis now receives richer interval data: average watts, heart rate at the start of each interval, average heart rate, and max heart rate, enabling better insight into how hard each interval begins.'
     }
   ]
 };
