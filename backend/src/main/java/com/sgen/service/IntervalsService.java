@@ -421,7 +421,7 @@ public class IntervalsService {
 
         ArrayNode intervalArray = (ArrayNode) intervals;
 
-        // Start HR for every interval that has a valid start_index
+        // Start/end HR for every interval that has valid stream indices
         for (int i = 0; i < intervalArray.size(); i++) {
             JsonNode interval = intervalArray.get(i);
             if (!interval.isObject()) continue;
@@ -430,6 +430,13 @@ public class IntervalsService {
                 int startHr = hrData.get(startIndex);
                 if (startHr > 0) {
                     ((ObjectNode) interval).put("start_hr", startHr);
+                }
+            }
+            int endIndex = interval.path("end_index").asInt(-1);
+            if (endIndex >= 0 && endIndex < hrData.size()) {
+                int endHr = hrData.get(endIndex);
+                if (endHr > 0) {
+                    ((ObjectNode) interval).put("end_hr", endHr);
                 }
             }
         }

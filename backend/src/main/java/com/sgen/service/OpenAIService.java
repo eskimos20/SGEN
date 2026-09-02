@@ -168,7 +168,7 @@ public class OpenAIService {
             "avgWatts, maxWatts, normalizedPower, avgHr, maxHr, tss (training stress score), " +
             "intensity (IF, fraction of FTP), decoupling (aerobic efficiency drift %), " +
             "feel (1-5 subjective), rpe (1-10), cadence, pace (min:sec/km for running), " +
-            "elevationGain, and interval_summary with per-interval power/HR/zone data (duration_sec, avg_watts, start_hr, avg_hr, max_hr, hrr, zone)\n" +
+            "elevationGain, and interval_summary with per-interval power/HR/zone data (duration_sec, type, avg_watts, start_hr, end_hr, avg_hr, max_hr for work intervals, hrr for rest intervals, zone)\n" +
             "- fitness: current CTL (chronic training load/fitness), ATL (acute training load/fatigue), TSB (training stress balance/form = CTL-ATL)\n" +
             "- wellness[]: daily tracking with CTL, ATL, form (TSB), rampRate, HRV, hrvSDNN, restingHR, sleepHours, sleepScore\n" +
             "- weeklyVolumeLoadSummary[]: weekly totals with hours, TSS, session count by type, deload week flags\n" +
