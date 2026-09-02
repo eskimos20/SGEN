@@ -203,24 +203,19 @@ export const buildMinimalData = (data, weeklyData, getUpcomingWorkouts, includeU
             if (interval.average_watts !== undefined && interval.average_watts !== null && interval.average_watts <= 0) return false;
             return true;
           })
-          .map(interval => {
-            const type = interval.type || '';
-            const isRecovery = ['RECOVERY', 'REST'].includes(type.toUpperCase());
-            return {
-              duration_sec: interval.moving_time || interval.elapsed_time,
-              type: type || undefined,
-              avg_watts: interval.average_watts ? Math.round(interval.average_watts) : undefined,
-              max_watts: interval.max_watts ? Math.round(interval.max_watts) : undefined,
-              start_hr: interval.start_hr ? Math.round(interval.start_hr) : undefined,
-              end_hr: interval.end_hr ? Math.round(interval.end_hr) : undefined,
-              avg_hr: interval.average_heartrate ? Math.round(interval.average_heartrate) : undefined,
-              ...(isRecovery ? {} : { max_hr: interval.max_heartrate ? Math.round(interval.max_heartrate) : undefined }),
-              hrr: interval.hrr ? Math.round(interval.hrr) : undefined,
-              avg_cadence: interval.average_cadence ? Math.round(interval.average_cadence) : undefined,
-              max_cadence: interval.max_cadence ? Math.round(interval.max_cadence) : undefined,
-              zone: interval.zone
-            };
-          });
+          .map(interval => ({
+            duration_sec: interval.moving_time || interval.elapsed_time,
+            type: interval.type || undefined,
+            avg_watts: interval.average_watts ? Math.round(interval.average_watts) : undefined,
+            max_watts: interval.max_watts ? Math.round(interval.max_watts) : undefined,
+            start_hr: interval.start_hr ? Math.round(interval.start_hr) : undefined,
+            end_hr: interval.end_hr ? Math.round(interval.end_hr) : undefined,
+            avg_hr: interval.average_heartrate ? Math.round(interval.average_heartrate) : undefined,
+            hrr: interval.hrr ? Math.round(interval.hrr) : undefined,
+            avg_cadence: interval.average_cadence ? Math.round(interval.average_cadence) : undefined,
+            max_cadence: interval.max_cadence ? Math.round(interval.max_cadence) : undefined,
+            zone: interval.zone
+          }));
         
         if (intervals.length > 0) {
           activityData.interval_summary = {

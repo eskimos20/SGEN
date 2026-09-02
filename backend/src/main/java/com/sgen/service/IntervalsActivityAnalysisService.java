@@ -183,7 +183,6 @@ public class IntervalsActivityAnalysisService {
             if (avgWatts <= 0 && avgHr <= 0) continue;
 
             String intervalType = interval.path("type").asText("").toUpperCase();
-            boolean isRecovery = "RECOVERY".equals(intervalType) || "REST".equals(intervalType);
 
             Map<String, Object> data = new HashMap<>();
             data.put("duration_sec", duration);
@@ -194,8 +193,6 @@ public class IntervalsActivityAnalysisService {
             double endHr = interval.path("end_hr").asDouble(0);
             if (endHr > 0) data.put("end_hr", Math.round(endHr));
             if (avgHr > 0) data.put("avg_hr", Math.round(avgHr));
-            double maxHr = interval.path("max_heartrate").asDouble(0);
-            if (!isRecovery && maxHr > 0) data.put("max_hr", Math.round(maxHr));
             double hrr = interval.path("hrr").asDouble(0);
             if (hrr > 0) data.put("hrr", Math.round(hrr));
             double maxWatts = interval.path("max_watts").asDouble(0);
