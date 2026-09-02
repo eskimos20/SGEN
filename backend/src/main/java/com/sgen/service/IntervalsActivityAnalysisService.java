@@ -190,6 +190,8 @@ public class IntervalsActivityAnalysisService {
             if (avgHr > 0) data.put("avg_hr", Math.round(avgHr));
             double maxHr = interval.path("max_heartrate").asDouble(0);
             if (maxHr > 0) data.put("max_hr", Math.round(maxHr));
+            double hrr = interval.path("hrr").asDouble(0);
+            if (hrr > 0) data.put("hrr", Math.round(hrr));
             double maxWatts = interval.path("max_watts").asDouble(0);
             if (maxWatts > 0) data.put("max_watts", Math.round(maxWatts));
             String zone = interval.path("icu_zone").asText(null);

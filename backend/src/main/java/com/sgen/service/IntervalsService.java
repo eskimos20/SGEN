@@ -2,6 +2,7 @@ package com.sgen.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.User;
 import com.sgen.service.IntervalsActivityAnalysisService.ActivityProcessingResult;
@@ -117,7 +118,7 @@ public class IntervalsService {
                                 }
                                 if (details.has("icu_intervals")) {
                                     JsonNode intervals = details.get("icu_intervals");
-                                    enrichIntervalsWithStartHr(intervals, streams);
+                                    enrichIntervalsFromStreams(intervals, streams);
                                     ((com.fasterxml.jackson.databind.node.ObjectNode) currentActivity)
                                             .set("icu_intervals", intervals);
                                 }
@@ -399,41 +400,30 @@ public class IntervalsService {
     }
 
     /**
-     * Enrich interval objects with the heart rate at the interval start index.
-     * Requires streams with a heart rate channel (heartrate) in either array or object format.
+     * Enrich interval objects using activity streams:
+     * - start_hr: heart rate at the interval start index.
+     * - hrr: heart rate recovery after a WORK interval, measured as the drop in
+     *        average HR from the end of the work interval to ~60 seconds into
+     *        the following RECOVERY/REST interval.
+     * Requires streams with heart rate (heartrate) and time channels, in either
+     * array or object format.
      */
-    private void enrichIntervalsWithStartHr(JsonNode intervals, JsonNode streams) {
+    private void enrichIntervalsFromStreams(JsonNode intervals, JsonNode streams) {
         if (intervals == null || !intervals.isArray() || streams == null) return;
 
-        List<Integer> hrData = null;
-        if (streams.isArray()) {
-            for (JsonNode stream : streams) {
-                if ("heartrate".equals(stream.path("type").asText())) {
-                    JsonNode data = stream.path("data");
-                    if (data.isArray()) {
-                        hrData = new ArrayList<>(data.size());
-                        for (JsonNode d : data) hrData.add(d.asInt(0));
-                    }
-                    break;
-                }
-            }
-        } else if (streams.isObject()) {
-            JsonNode hrNode = streams.get("heartrate");
-            if (hrNode != null && hrNode.isArray()) {
-                hrData = new ArrayList<>(hrNode.size());
-                for (JsonNode d : hrNode) hrData.add(d.asInt(0));
-            } else if (hrNode != null && hrNode.has("data")) {
-                JsonNode data = hrNode.get("data");
-                if (data.isArray()) {
-                    hrData = new ArrayList<>(data.size());
-                    for (JsonNode d : data) hrData.add(d.asInt(0));
-                }
-            }
+        List<Integer> hrData = extractStreamValues(streams, "heartrate");
+        List<Double> timeData = extractStreamValuesAsDouble(streams, "time");
+
+        if (hrData == null || hrData.isEmpty() || timeData == null || timeData.isEmpty()
+                || hrData.size() != timeData.size()) {
+            return;
         }
 
-        if (hrData == null || hrData.isEmpty()) return;
+        ArrayNode intervalArray = (ArrayNode) intervals;
 
-        for (JsonNode interval : intervals) {
+        // Start HR for every interval that has a valid start_index
+        for (int i = 0; i < intervalArray.size(); i++) {
+            JsonNode interval = intervalArray.get(i);
             if (!interval.isObject()) continue;
             int startIndex = interval.path("start_index").asInt(-1);
             if (startIndex >= 0 && startIndex < hrData.size()) {
@@ -443,6 +433,126 @@ public class IntervalsService {
                 }
             }
         }
+
+        // HRR for REST/RECOVERY intervals that follow a WORK interval
+        for (int i = 1; i < intervalArray.size(); i++) {
+            JsonNode rest = intervalArray.get(i);
+            JsonNode work = intervalArray.get(i - 1);
+            if (!rest.isObject() || !work.isObject()) continue;
+
+            String restType = rest.path("type").asText("").toUpperCase();
+            String workType = work.path("type").asText("").toUpperCase();
+            if (!("RECOVERY".equals(restType) || "REST".equals(restType))) continue;
+            if (!"WORK".equals(workType)) continue;
+
+            int workEndIndex = work.path("end_index").asInt(-1);
+            int restStartIndex = rest.path("start_index").asInt(-1);
+            if (workEndIndex < 0 || workEndIndex >= timeData.size()) continue;
+            if (restStartIndex < 0 || restStartIndex >= timeData.size()) continue;
+
+            double restStartTime = timeData.get(restStartIndex);
+
+            // Average HR in the last ~10 seconds before the rest starts
+            double endWinStart = Math.max(0, restStartTime - 10);
+            double endWinEnd = restStartTime;
+            double hrAtEndSum = 0;
+            int hrAtEndCount = 0;
+            for (int j = 0; j < timeData.size(); j++) {
+                double t = timeData.get(j);
+                if (t >= endWinStart && t <= endWinEnd && hrData.get(j) > 0) {
+                    hrAtEndSum += hrData.get(j);
+                    hrAtEndCount++;
+                }
+            }
+            if (hrAtEndCount == 0) continue;
+            double hrAtEnd = hrAtEndSum / hrAtEndCount;
+
+            // Average HR around 60 seconds into the rest interval
+            double recoveryCenter = restStartTime + 60;
+            double window = 5.0;
+            double recWinStart = recoveryCenter - window / 2.0;
+            double recWinEnd = recoveryCenter + window / 2.0;
+            double hrAfterSum = 0;
+            int hrAfterCount = 0;
+            for (int j = 0; j < timeData.size(); j++) {
+                double t = timeData.get(j);
+                if (t >= recWinStart && t <= recWinEnd && hrData.get(j) > 0) {
+                    hrAfterSum += hrData.get(j);
+                    hrAfterCount++;
+                }
+            }
+            if (hrAfterCount == 0) continue;
+            double hrAfterRecovery = hrAfterSum / hrAfterCount;
+
+            double hrr = hrAtEnd - hrAfterRecovery;
+            if (hrr > 0) {
+                ((ObjectNode) rest).put("hrr", Math.round(hrr));
+            }
+        }
+    }
+
+    /**
+     * Extract an integer-valued stream from either array or object format.
+     */
+    private List<Integer> extractStreamValues(JsonNode streams, String key) {
+        List<Integer> values = null;
+        if (streams.isArray()) {
+            for (JsonNode stream : streams) {
+                if (key.equals(stream.path("type").asText())) {
+                    JsonNode data = stream.path("data");
+                    if (data.isArray()) {
+                        values = new ArrayList<>(data.size());
+                        for (JsonNode d : data) values.add(d.asInt(0));
+                    }
+                    break;
+                }
+            }
+        } else if (streams.isObject()) {
+            JsonNode node = streams.get(key);
+            if (node != null && node.isArray()) {
+                values = new ArrayList<>(node.size());
+                for (JsonNode d : node) values.add(d.asInt(0));
+            } else if (node != null && node.has("data")) {
+                JsonNode data = node.get("data");
+                if (data.isArray()) {
+                    values = new ArrayList<>(data.size());
+                    for (JsonNode d : data) values.add(d.asInt(0));
+                }
+            }
+        }
+        return values;
+    }
+
+    /**
+     * Extract a double-valued stream from either array or object format.
+     */
+    private List<Double> extractStreamValuesAsDouble(JsonNode streams, String key) {
+        List<Double> values = null;
+        if (streams.isArray()) {
+            for (JsonNode stream : streams) {
+                if (key.equals(stream.path("type").asText())) {
+                    JsonNode data = stream.path("data");
+                    if (data.isArray()) {
+                        values = new ArrayList<>(data.size());
+                        for (JsonNode d : data) values.add(d.asDouble(0));
+                    }
+                    break;
+                }
+            }
+        } else if (streams.isObject()) {
+            JsonNode node = streams.get(key);
+            if (node != null && node.isArray()) {
+                values = new ArrayList<>(node.size());
+                for (JsonNode d : node) values.add(d.asDouble(0));
+            } else if (node != null && node.has("data")) {
+                JsonNode data = node.get("data");
+                if (data.isArray()) {
+                    values = new ArrayList<>(data.size());
+                    for (JsonNode d : data) values.add(d.asDouble(0));
+                }
+            }
+        }
+        return values;
     }
 
     /**
