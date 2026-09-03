@@ -138,7 +138,7 @@ const StatisticsCharts = ({
       {/* ── Activity Type + HR Zones + Pwr Zones (one card) ── */}
       <div className="card-mobile">
         <SectionHeader
-          title="Activity Type Breakdown & Zone Distribution"
+          title="Period Activity Breakdown & Zone Distribution"
           icon={<BarChart2 className="h-5 w-5 text-blue-600" />}
           expanded={isZonesExpanded}
           onToggle={toggleZones}

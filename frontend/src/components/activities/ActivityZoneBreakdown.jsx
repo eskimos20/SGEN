@@ -21,8 +21,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {hasPower && (
           <div>
-            <h5 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
-              <Zap className="h-3 w-3" />
+            <h5 className="text-sm font-semibold text-gray-900 mb-3 text-center">
               Time in Power Zones
             </h5>
             <div className="h-64">
@@ -57,8 +56,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
 
         {hasHR && (
           <div>
-            <h5 className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
-              <Heart className="h-3 w-3" />
+            <h5 className="text-sm font-semibold text-gray-900 mb-3 text-center">
               Time in HR Zones
             </h5>
             <div className="h-64">
