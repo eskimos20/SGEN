@@ -295,15 +295,21 @@ export const calculateActivityZones = (activity, sportSettings, streams) => {
 
   // --- Power zones ---
   let powerZoneSeconds = [0, 0, 0, 0, 0, 0, 0];
+  let hasPreCalculatedPowerZones = false;
 
   // Try to use pre-calculated Intervals.icu zone times
   if (activity?.icu_zone_times && Array.isArray(activity.icu_zone_times) && activity.icu_zone_times.length > 0) {
     activity.icu_zone_times.forEach((zone, idx) => {
       if (idx < 7) {
-        powerZoneSeconds[idx] = (zone?.secs || zone || 0);
+        const seconds = (zone?.secs !== undefined ? zone.secs : (typeof zone === 'number' ? zone : 0));
+        powerZoneSeconds[idx] = seconds;
+        if (seconds > 0) hasPreCalculatedPowerZones = true;
       }
     });
-  } else if (streams && settings) {
+  }
+
+  // Fall back to streams if no pre-calculated power zone data
+  if (!hasPreCalculatedPowerZones && streams && ftp > 0) {
     // Calculate from streams
     let wattsData = [];
     let timeData = [];
@@ -317,7 +323,7 @@ export const calculateActivityZones = (activity, sportSettings, streams) => {
       timeData = Array.isArray(streams.time) ? streams.time : (streams.time?.data || []);
     }
 
-    if (wattsData.length > 0 && timeData.length > 0 && ftp > 0) {
+    if (wattsData.length > 0 && timeData.length > 0) {
       for (let i = 0; i < wattsData.length; i++) {
         const watts = wattsData[i];
         if (!watts || watts <= 0) continue;
@@ -340,15 +346,21 @@ export const calculateActivityZones = (activity, sportSettings, streams) => {
 
   // --- Heart rate zones ---
   let hrZoneSeconds = [0, 0, 0, 0, 0, 0, 0];
+  let hasPreCalculatedHrZones = false;
 
   // Try to use pre-calculated Intervals.icu HR zone times
   if (activity?.icu_hr_zone_times && Array.isArray(activity.icu_hr_zone_times) && activity.icu_hr_zone_times.length > 0) {
     activity.icu_hr_zone_times.forEach((time, idx) => {
       if (idx < 7) {
-        hrZoneSeconds[idx] = time || 0;
+        const seconds = (typeof time === 'number' ? time : (time?.secs || 0));
+        hrZoneSeconds[idx] = seconds;
+        if (seconds > 0) hasPreCalculatedHrZones = true;
       }
     });
-  } else if (streams && settings) {
+  }
+
+  // Fall back to streams if no pre-calculated HR zone data
+  if (!hasPreCalculatedHrZones && streams && (lthr > 0 || maxHr > 0)) {
     // Calculate from streams
     let hrData = [];
     let timeData = [];

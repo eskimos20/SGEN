@@ -25,7 +25,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
               <Zap className="h-3 w-3" />
               Time in Power Zones
             </h5>
-            <div className="h-36">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -34,7 +34,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
                     nameKey="shortName"
                     cx="50%"
                     cy="50%"
-                    outerRadius={45}
+                    outerRadius={80}
                   >
                     {powerZoneBreakdown.map((entry, index) => (
                       <Cell key={`power-cell-${index}`} fill={entry.color} />
@@ -44,10 +44,10 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 justify-center">
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
               {powerZoneBreakdown.map((zone) => (
-                <div key={zone.shortName} className="flex items-center gap-1 text-[10px]">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: zone.color }} />
+                <div key={zone.shortName} className="flex items-center gap-1 text-xs">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.color }} />
                   <span>{zone.shortName} ({zone.percent}%)</span>
                 </div>
               ))}
@@ -61,7 +61,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
               <Heart className="h-3 w-3" />
               Time in HR Zones
             </h5>
-            <div className="h-36">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -70,7 +70,7 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
                     nameKey="shortName"
                     cx="50%"
                     cy="50%"
-                    outerRadius={45}
+                    outerRadius={80}
                   >
                     {hrZoneBreakdown.map((entry, index) => (
                       <Cell key={`hr-cell-${index}`} fill={entry.color} />
@@ -80,10 +80,10 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap gap-2 justify-center">
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
               {hrZoneBreakdown.map((zone) => (
-                <div key={zone.shortName} className="flex items-center gap-1 text-[10px]">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: zone.color }} />
+                <div key={zone.shortName} className="flex items-center gap-1 text-xs">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.color }} />
                   <span>{zone.shortName} ({zone.percent}%)</span>
                 </div>
               ))}
