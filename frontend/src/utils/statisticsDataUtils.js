@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { format, startOfWeek } from 'date-fns';
 import { calculateAge, getVolumeColor } from '../utils/athleteUtils';
+import { ZONE_DISPLAY_NAMES } from '../utils/zoneUtils';
 
 // Colors for pie chart
 export const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1'];
@@ -65,7 +66,6 @@ export const useWeeklyData = (data, athleteProfile) => {
 
     // HR Zone totals for pie chart - Intervals.icu uses icu_hr_zone_times
     // Array format from Intervals.icu: [Z1, Z2, Z3, Z4, Z5, Z6, Z7] in seconds
-    const zoneNames = ['Z1 (Recovery)', 'Z2 (Aerobic)', 'Z3 (Tempo)', 'Z4 (SubThreshold)', 'Z5 (SuperThreshold)', 'Z6 (VO2max)', 'Z7 (Anaerobic)'];
     const zoneTotals = [0, 0, 0, 0, 0, 0, 0];
     
     activities.forEach(a => {
@@ -82,7 +82,7 @@ export const useWeeklyData = (data, athleteProfile) => {
     });
 
     const totalZoneTime = zoneTotals.reduce((sum, t) => sum + t, 0);
-    const hrZoneBreakdown = zoneNames.map((name, idx) => ({
+    const hrZoneBreakdown = ZONE_DISPLAY_NAMES.map((name, idx) => ({
       name,
       time: zoneTotals[idx],
       percent: totalZoneTime > 0 ? Math.round(zoneTotals[idx] / totalZoneTime * 100) : 0
@@ -90,7 +90,6 @@ export const useWeeklyData = (data, athleteProfile) => {
 
     // Power Zone totals for pie chart - Intervals.icu uses icu_zone_times
     // Array format from Intervals.icu: [Z1, Z2, Z3, Z4, Z5, Z6, Z7] in seconds (as objects with secs property)
-    const powerZoneNames = ['Z1 (Recovery)', 'Z2 (Aerobic)', 'Z3 (Tempo)', 'Z4 (SubThreshold)', 'Z5 (SuperThreshold)', 'Z6 (VO2max)', 'Z7 (Anaerobic)'];
     const powerZoneTotals = [0, 0, 0, 0, 0, 0, 0];
     
     activities.forEach(a => {
@@ -108,7 +107,7 @@ export const useWeeklyData = (data, athleteProfile) => {
     });
 
     const totalPowerZoneTime = powerZoneTotals.reduce((sum, t) => sum + t, 0);
-    const powerZoneBreakdown = powerZoneNames.map((name, idx) => ({
+    const powerZoneBreakdown = ZONE_DISPLAY_NAMES.map((name, idx) => ({
       name,
       time: powerZoneTotals[idx],
       percent: totalPowerZoneTime > 0 ? Math.round(powerZoneTotals[idx] / totalPowerZoneTime * 100) : 0

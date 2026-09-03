@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Activity, Heart, Zap, Clock, TrendingUp, Gauge, Timer, Flame, Target, MapPin, Trophy, Bike, Footprints, Mountain, RotateCcw, Route, Utensils, Scale } from 'lucide-react';
 import { getActivityKcal } from '../../utils/nutritionUtils';
 import ActivityChart from './ActivityChart';
+import ActivityZoneBreakdown from './ActivityZoneBreakdown';
 import ActivityMap from './ActivityMap';
 import ActivityPowerCurve from './ActivityPowerCurve';
 import PaceCurveChart from '../charts/PaceCurveChart';
@@ -379,8 +380,9 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
       {/* Strava Photos - using pre-fetched data */}
       {!stravaData?.rateLimit && <StravaMedia activity={activityData} preFetchedData={stravaData?.photos} />}
 
-      {/* Activity Overview: Chart + Stats */}
+      {/* Activity Overview: Chart + Zone Breakdown + Stats */}
       <ActivityChart streams={streams} decoupling={hrDrift} />
+      <ActivityZoneBreakdown activity={activityData} athleteProfile={athleteProfile} streams={streams} />
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-2 gap-3">

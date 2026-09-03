@@ -5,9 +5,19 @@ import api from '../../api/axios';
 // No hardcoded fallback - version must come from backend
 
 const VERSION_NOTES = {
-  title: 'Enhanced AI Interval Analysis',
-  date: '2026-09-02',
+  title: 'Activity Zone Breakdown & Zone Consistency',
+  date: '2026-09-03',
   features: [
+    {
+      icon: '💓',
+      title: 'Time in Power & HR Zones per Activity',
+      description: 'Each expanded activity now shows Time in Power Zones and Time in HR Zones directly under the Activity Overview chart, using the same pie chart style as the statistics page but sized for the activity view.'
+    },
+    {
+      icon: '🎨',
+      title: 'Consistent Zone Colors & Codes',
+      description: 'Zone names, colors and display labels are now centralized in zoneUtils.js and reused across the entire app, ensuring all zone charts use the same color palette and zone definitions.'
+    },
     {
       icon: '',
       title: 'Interval Start Heart Rate for AI',

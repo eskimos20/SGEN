@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Zap, Heart, BarChart2, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import { formatHoursMinutes } from '../../utils/dataUtils';
+import { ZONE_COLOR_HEX } from '../../utils/zoneUtils';
 
 const SectionHeader = ({ title, icon, expanded, onToggle }) => (
   <div
@@ -53,8 +54,6 @@ const StatisticsCharts = ({
   };
 
   if (!weeklyData) return null;
-
-  const zoneColors = ['#9ca3af', '#3b82f6', '#10b981', '#eab308', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   return (
     <div className="space-y-6">
@@ -185,7 +184,7 @@ const StatisticsCharts = ({
                         <Pie data={weeklyData.hrZoneBreakdown} dataKey="percent" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
                           {weeklyData.hrZoneBreakdown.map((entry, index) => {
                             const zoneIdx = parseInt(entry.name.charAt(1)) - 1;
-                            return <Cell key={`cell-${index}`} fill={zoneColors[zoneIdx] || COLORS[index]} />;
+                            return <Cell key={`cell-${index}`} fill={ZONE_COLOR_HEX[zoneIdx] || COLORS[index]} />;
                           })}
                         </Pie>
                         <Tooltip formatter={(value) => `${value}%`} />
@@ -197,7 +196,7 @@ const StatisticsCharts = ({
                       const zoneIdx = parseInt(zone.name.charAt(1)) - 1;
                       return (
                         <div key={zone.name} className="flex items-center gap-1 text-xs">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zoneColors[zoneIdx] }} />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ZONE_COLOR_HEX[zoneIdx] }} />
                           <span>{zone.name} ({zone.percent}%)</span>
                         </div>
                       );
@@ -224,7 +223,7 @@ const StatisticsCharts = ({
                       <PieChart>
                         <Pie data={weeklyData.powerZoneBreakdown} dataKey="percent" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
                           {weeklyData.powerZoneBreakdown.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={zoneColors[index] || COLORS[index]} />
+                            <Cell key={`cell-${index}`} fill={ZONE_COLOR_HEX[index] || COLORS[index]} />
                           ))}
                         </Pie>
                         <Tooltip formatter={(value) => `${value}%`} />
@@ -234,7 +233,7 @@ const StatisticsCharts = ({
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
                     {weeklyData.powerZoneBreakdown.map((zone, idx) => (
                       <div key={zone.name} className="flex items-center gap-1 text-xs">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zoneColors[idx] }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ZONE_COLOR_HEX[idx] }} />
                         <span>{zone.name} ({zone.percent}%)</span>
                       </div>
                     ))}
