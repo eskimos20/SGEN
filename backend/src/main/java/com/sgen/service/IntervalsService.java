@@ -258,14 +258,6 @@ public class IntervalsService {
                     .retrieve().bodyToMono(String.class).block();
             JsonNode activityNode = objectMapper.readTree(activityJson);
             details.put("activity", activityNode);
-
-            if (activityNode.has("icu_intervals")) {
-                details.put("intervalSummary",
-                        analysisService.extractIntervalSummary(activityNode.get("icu_intervals")));
-                Map<String, Object> intervalsWrapper = new HashMap<>();
-                intervalsWrapper.put("icu_intervals", activityNode.get("icu_intervals"));
-                details.put("intervals", intervalsWrapper);
-            }
         } catch (Exception e) {
             log.error("Failed to fetch activity {}: {}", activityId, e.getMessage(), e);
             details.put("activityError", e.getMessage());
@@ -318,6 +310,17 @@ public class IntervalsService {
             
         } catch (Exception e) {
             log.warn("Failed to fetch streams for {}: {}", activityId, e.getMessage());
+        }
+
+        // Enrich intervals with start/end HR and HRR from streams (must run after streams are fetched)
+        JsonNode activityNodeForIntervals = (JsonNode) details.get("activity");
+        if (activityNodeForIntervals != null && activityNodeForIntervals.has("icu_intervals")) {
+            JsonNode intervals = activityNodeForIntervals.get("icu_intervals");
+            enrichIntervalsFromStreams(intervals, (JsonNode) details.get("streams"));
+            details.put("intervalSummary", analysisService.extractIntervalSummary(intervals));
+            Map<String, Object> intervalsWrapper = new HashMap<>();
+            intervalsWrapper.put("icu_intervals", intervals);
+            details.put("intervals", intervalsWrapper);
         }
 
         try {
