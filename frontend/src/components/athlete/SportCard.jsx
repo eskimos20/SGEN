@@ -152,6 +152,18 @@ const SportCard = ({
           </span>
         )}
       </div>
+
+      {/* Lap interval settings */}
+      {ftp > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          <span className={`text-xs px-2 py-1 rounded font-medium ${settings.use_laps_for_power_intervals ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+            Use Laps: {settings.use_laps_for_power_intervals ? 'Enabled' : 'Disabled'}
+          </span>
+          <span className={`text-xs px-2 py-1 rounded font-medium ${settings.keep_all_laps_for_power_intervals ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+            Keep All Laps: {settings.keep_all_laps_for_power_intervals ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      )}
       
       {/* HR Zones */}
       {hasHrZones && (
