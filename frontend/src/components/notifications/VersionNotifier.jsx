@@ -4,27 +4,40 @@ import api from '../../api/axios';
 
 // No hardcoded fallback - version must come from backend
 
-const VERSION_NOTES = {
-  title: 'Activity Zone Breakdown & Zone Consistency',
-  date: '2026-09-03',
-  features: [
-    {
-      icon: '💓',
-      title: 'Time in Power & HR Zones per Activity',
-      description: 'Each expanded activity now shows Time in Power Zones and Time in HR Zones directly under the Activity Overview chart, using the same pie chart style as the statistics page but sized for the activity view.'
-    },
-    {
-      icon: '🎨',
-      title: 'Consistent Zone Colors & Codes',
-      description: 'Zone names, colors and display labels are now centralized in zoneUtils.js and reused across the entire app, ensuring all zone charts use the same color palette and zone definitions.'
-    },
-    {
-      icon: '',
-      title: 'Interval Start Heart Rate for AI',
-      description: 'OpenAI analysis now receives richer interval data: average watts, heart rate at the start of each interval, average heart rate, and max heart rate, enabling better insight into how hard each interval begins.'
-    }
-  ]
-};
+const VERSION_NOTES = [
+  {
+    title: 'Sport-Specific Lap Interval Settings',
+    date: '2026-09-07',
+    features: [
+      {
+        icon: '',
+        title: 'Lap Interval Toggles per Sport',
+        description: 'Each sport with FTP now has "Use Laps for Power Intervals" and "Keep All Laps" toggles in Sport Settings. Their Enabled/Disabled status is shown directly on each Sport Settings card, and the toggles include hover explanations.'
+      }
+    ]
+  },
+  {
+    title: 'Activity Zone Breakdown & Zone Consistency',
+    date: '2026-09-03',
+    features: [
+      {
+        icon: '💓',
+        title: 'Time in Power & HR Zones per Activity',
+        description: 'Each expanded activity now shows Time in Power Zones and Time in HR Zones directly under the Activity Overview chart, using the same pie chart style as the statistics page but sized for the activity view.'
+      },
+      {
+        icon: '🎨',
+        title: 'Consistent Zone Colors & Codes',
+        description: 'Zone names, colors and display labels are now centralized in zoneUtils.js and reused across the entire app, ensuring all zone charts use the same color palette and zone definitions.'
+      },
+      {
+        icon: '',
+        title: 'Interval Start Heart Rate for AI',
+        description: 'OpenAI analysis now receives richer interval data: average watts, heart rate at the start of each interval, average heart rate, and max heart rate, enabling better insight into how hard each interval begins.'
+      }
+    ]
+  }
+];
 
 
 const VersionNotifier = ({ isVisible, onDismiss }) => {
@@ -118,27 +131,34 @@ const VersionNotifier = ({ isVisible, onDismiss }) => {
         {/* Expanded content */}
         {isExpanded && (
           <div className="border-t border-white/20 p-3 sm:p-4 bg-black/10 max-h-[50vh] sm:max-h-[70vh] overflow-y-auto">
-            <div className="space-y-3 sm:space-y-4">
-              {/* Header */}
-              <div>
-                <h3 className="font-bold text-base sm:text-lg mb-1">{VERSION_NOTES.title}</h3>
-                <p className="text-xs sm:text-sm text-white/80">Version {currentVersion} • {VERSION_NOTES.date}</p>
-              </div>
-
-              {/* Features */}
-              <div className="space-y-2 sm:space-y-3">
-                <h4 className="font-semibold text-xs sm:text-sm text-white/90">✨ New Features</h4>
-                {VERSION_NOTES.features.map((feature, index) => (
-                  <div key={index} className="flex gap-2 sm:gap-3">
-                    <span className="text-base sm:text-lg">{feature.icon}</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-xs sm:text-sm">{feature.title}</p>
-                      <p className="text-xs text-white/80 leading-relaxed">{feature.description}</p>
-                    </div>
+            <div className="space-y-4 sm:space-y-5">
+              {VERSION_NOTES.map((note, noteIndex) => (
+                <div key={noteIndex} className="space-y-2 sm:space-y-3">
+                  {/* Header */}
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg mb-1">{note.title}</h3>
+                    <p className="text-xs sm:text-sm text-white/80">
+                      {noteIndex === 0 ? `Version ${currentVersion}` : 'Previously'} • {note.date}
+                    </p>
                   </div>
-                ))}
-              </div>
 
+                  {/* Features */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <h4 className="font-semibold text-xs sm:text-sm text-white/90">
+                      {noteIndex === 0 ? '✨ New Features' : '✓ Previously Released'}
+                    </h4>
+                    {note.features.map((feature, index) => (
+                      <div key={index} className="flex gap-2 sm:gap-3">
+                        <span className="text-base sm:text-lg">{feature.icon}</span>
+                        <div className="flex-1">
+                          <p className="font-medium text-xs sm:text-sm">{feature.title}</p>
+                          <p className="text-xs text-white/80 leading-relaxed">{feature.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
