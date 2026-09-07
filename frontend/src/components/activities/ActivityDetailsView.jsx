@@ -607,6 +607,8 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
                   <th className="text-left py-2 px-1 font-medium text-gray-600 text-xs">Type</th>
                   <th className="text-left py-2 px-1 font-medium text-gray-600 text-xs">Duration</th>
                   <th className="text-right py-2 px-1 font-medium text-gray-600 text-xs">Avg W</th>
+                  <th className="text-right py-2 px-1 font-medium text-gray-600 text-xs">Start HR</th>
+                  <th className="text-right py-2 px-1 font-medium text-gray-600 text-xs">End HR</th>
                   <th className="text-right py-2 px-1 font-medium text-gray-600 text-xs">Avg HR</th>
                   <th className="text-right py-2 px-1 font-medium text-gray-600 text-xs">HRR</th>
                 </tr>
@@ -632,6 +634,12 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
                       <td className="py-2 px-1 text-xs">{formatDuration(interval.elapsed_time || interval.moving_time)}</td>
                       <td className="py-2 px-1 text-right font-medium text-blue-600 text-xs">
                         {interval.average_watts ? Math.round(interval.average_watts) : '-'}
+                      </td>
+                      <td className="py-2 px-1 text-right text-red-400 text-xs">
+                        {interval.start_hr ? Math.round(interval.start_hr) : '-'}
+                      </td>
+                      <td className="py-2 px-1 text-right text-red-400 text-xs">
+                        {interval.end_hr ? Math.round(interval.end_hr) : '-'}
                       </td>
                       <td className="py-2 px-1 text-right font-medium text-red-600 text-xs">
                         {interval.average_heartrate ? Math.round(interval.average_heartrate) : '-'}
