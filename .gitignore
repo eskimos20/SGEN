@@ -52,3 +52,6 @@ uploads/
 
 # Node binary
 frontend/node/
+
+# Android APK (built on server, never commit)
+backend/src/main/resources/static/downloads/sgen-android.apk
