@@ -107,6 +107,8 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
       sportPowerZones: settings.power_zones || [],
       supportsPower: supportsPower,
       originalSupportsPower: supportsPower,
+      useLapsForPowerIntervals: settings.use_laps_for_power_intervals || false,
+      keepAllLapsForPowerIntervals: settings.keep_all_laps_for_power_intervals || false,
       isPaceSport: isPaceSport,
       sportThresholdPace: thresholdPace > 0 ? formatPaceValue(thresholdPace, settings.pace_units || 'MINS_KM') : '',
       originalHasThresholdPace: thresholdPace > 0,

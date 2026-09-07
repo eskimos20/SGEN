@@ -55,6 +55,12 @@ export const useProfileEdit = (athleteProfile, onProfileUpdate) => {
           sportUpdate.power_zones = editForm.sportPowerZones;
         }
 
+        // Handle power interval lap settings
+        if (editForm.supportsPower) {
+          sportUpdate.use_laps_for_power_intervals = !!editForm.useLapsForPowerIntervals;
+          sportUpdate.keep_all_laps_for_power_intervals = !!editForm.keepAllLapsForPowerIntervals;
+        }
+
         // Handle threshold pace add/remove (Intervals.icu auto-populates pace_zones
         // the first time threshold_pace is set)
         if (editForm.isPaceSport) {

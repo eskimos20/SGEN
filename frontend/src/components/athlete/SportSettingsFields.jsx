@@ -123,6 +123,49 @@ const SportSettingsFields = ({
         )}
       </div>
 
+      {/* Laps for power intervals toggles */}
+      {editForm.supportsPower && (
+        <div className="space-y-3 mb-4">
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editForm.useLapsForPowerIntervals || false}
+                onChange={(e) => setEditForm(prev => ({
+                  ...prev,
+                  useLapsForPowerIntervals: e.target.checked
+                }))}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Use Laps for Power Intervals</span>
+              <p className="text-xs text-gray-500">Use device/file laps instead of auto-detecting power intervals.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editForm.keepAllLapsForPowerIntervals || false}
+                onChange={(e) => setEditForm(prev => ({
+                  ...prev,
+                  keepAllLapsForPowerIntervals: e.target.checked
+                }))}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Keep All Laps</span>
+              <p className="text-xs text-gray-500">Keep every lap as an interval and skip Intervals.icu&apos;s cleanup heuristics.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top row: FTP, Max HR, LTHR, Threshold Pace */}
       <div className={`grid gap-4 ${editForm.supportsPower ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {editForm.supportsPower && (
