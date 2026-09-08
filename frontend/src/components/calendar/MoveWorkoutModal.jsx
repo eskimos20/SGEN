@@ -104,89 +104,91 @@ const MoveWorkoutModal = ({
           </button>
         </div>
 
-        {/* Workout Info */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-            <span className="font-medium text-gray-900">{workout.name}</span>
-          </div>
-          <div className="text-sm text-gray-600">
-            Current date: {parseWorkoutDate(workout.start_date_local)?.toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              month: 'short', 
-              day: 'numeric' 
-            })}
-          </div>
-        </div>
-
-        {/* Calendar */}
-        <div className="p-4">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4 text-gray-600" />
-            </button>
-            <h3 className="font-medium text-gray-900">
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </h3>
-            <button
-              onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ChevronRight className="h-4 w-4 text-gray-600" />
-            </button>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {/* Workout Info */}
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+              <span className="font-medium text-gray-900">{workout.name}</span>
+            </div>
+            <div className="text-sm text-gray-600">
+              Current date: {parseWorkoutDate(workout.start_date_local)?.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric' 
+              })}
+            </div>
           </div>
 
-          {/* Week days */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {weekDays.map(day => (
-              <div key={day} className="text-center text-xs font-medium text-gray-600 py-1">
-                {day}
-              </div>
-            ))}
-          </div>
+          {/* Calendar */}
+          <div className="p-4">
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => navigateMonth(-1)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 text-gray-600" />
+              </button>
+              <h3 className="font-medium text-gray-900">
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </h3>
+              <button
+                onClick={() => navigateMonth(1)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
 
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Empty cells for days before month starts */}
-            {Array.from({ length: startingDay }).map((_, index) => (
-              <div key={`empty-${index}`} className="h-8"></div>
-            ))}
-            
-            {/* Days of the month */}
-            {Array.from({ length: daysInMonth }).map((_, index) => {
-              const day = index + 1;
-              const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-              const isPast = date < today;
-              const workoutDate = parseWorkoutDate(workout.start_date_local);
-              const isCurrentWorkoutDate = workoutDate && date.toDateString() === workoutDate.toDateString();
-              const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
-              const isToday = date.toDateString() === today.toDateString();
-
-              return (
-                <button
-                  key={day}
-                  onClick={() => handleDateSelect(day)}
-                  disabled={isPast || isCurrentWorkoutDate}
-                  className={`h-8 rounded-lg text-xs font-medium transition-colors ${
-                    isPast 
-                      ? 'text-gray-300 cursor-not-allowed bg-gray-50' 
-                      : isCurrentWorkoutDate
-                        ? 'text-gray-400 cursor-not-allowed bg-gray-100'
-                        : isSelected
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : isToday
-                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                            : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
+            {/* Week days */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {weekDays.map(day => (
+                <div key={day} className="text-center text-xs font-medium text-gray-600 py-1">
                   {day}
-                </button>
-              );
-            })}
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar days */}
+            <div className="grid grid-cols-7 gap-1">
+              {/* Empty cells for days before month starts */}
+              {Array.from({ length: startingDay }).map((_, index) => (
+                <div key={`empty-${index}`} className="h-8"></div>
+              ))}
+              
+              {/* Days of the month */}
+              {Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                const isPast = date < today;
+                const workoutDate = parseWorkoutDate(workout.start_date_local);
+                const isCurrentWorkoutDate = workoutDate && date.toDateString() === workoutDate.toDateString();
+                const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                const isToday = date.toDateString() === today.toDateString();
+
+                return (
+                  <button
+                    key={day}
+                    onClick={() => handleDateSelect(day)}
+                    disabled={isPast || isCurrentWorkoutDate}
+                    className={`h-8 rounded-lg text-xs font-medium transition-colors ${
+                      isPast 
+                        ? 'text-gray-300 cursor-not-allowed bg-gray-50' 
+                        : isCurrentWorkoutDate
+                          ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                          : isSelected
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : isToday
+                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
