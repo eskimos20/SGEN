@@ -45,7 +45,7 @@ public class UserService {
     @Value("${jwt.mobile-expiration:31536000000}")
     private long mobileExpiration;
 
-    @Value("${strava.oauth.redirect-uri:http://localhost:8084/api/strava/callback}")
+    @Value("${strava.oauth.redirect-uri:http://localhost:8081/api/strava/callback}")
     private String stravaRedirectUri;
 
     @Transactional

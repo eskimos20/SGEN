@@ -42,7 +42,7 @@ spring:
         '[format_sql]': true
 
 server:
-  port: 8084
+  port: 8081
   address: 0.0.0.0
   servlet:
     encoding:
@@ -161,7 +161,7 @@ strava:
   oauth:
     authorize-url: https://www.strava.com/oauth/authorize
     token-url: https://www.strava.com/oauth/token
-    redirect-uri: ${STRAVA_REDIRECT_URI:http://localhost:8084/api/strava/callback}
+    redirect-uri: ${STRAVA_REDIRECT_URI:http://localhost:8081/api/strava/callback}
 
 # CORS Configuration
 cors:

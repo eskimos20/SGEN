@@ -16,13 +16,13 @@ SGEN_BRANCH="main"
 # Protocol: http or https (use https if behind stunnel/reverse proxy)
 SGEN_PROTOCOL="http"
 
-# Backend port - the port your Spring Boot server actually runs on (default: 8084)
-SGEN_BACKEND_PORT="8084"
+# Backend port - the port your Spring Boot server actually runs on (default: 8081)
+SGEN_BACKEND_PORT="8081"
 
 # External port - the port clients use to connect (e.g., stunnel/reverse proxy port)
-# If using stunnel: set this to the external port (e.g., 50505), BACKEND_PORT to internal (8084)
-# If no proxy: set both to the same value (e.g., 8084)
-SGEN_EXTERNAL_PORT="8084"
+# If using stunnel: set this to the external port (e.g., 50505), BACKEND_PORT to internal (8081)
+# If no proxy: set both to the same value (e.g., 8081)
+SGEN_EXTERNAL_PORT="8081"
 
 # Server directories
 SERVER_DIR="/root/SERVER/SGEN"
@@ -43,7 +43,7 @@ ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS:-sgen}"
 JWT_SECRET="${JWT_SECRET:-default-local-secret-key-do-not-use-in-production}"
 
 # CORS Origins - will auto-include your domain below
-CORS_BASE_ORIGINS="http://localhost:3000,http://localhost:5173,http://localhost:8084,capacitor://localhost,file://"
+CORS_BASE_ORIGINS="http://localhost:3000,http://localhost:5173,http://localhost:8081,capacitor://localhost,file://"
 
 # =============================================================================
 # VALIDATION - DO NOT EDIT BELOW THIS LINE

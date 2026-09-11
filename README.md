@@ -137,7 +137,7 @@ workout-library/
 1. Builds frontend with Vite
 2. Copies to backend static resources
 3. Builds Android APK (if SDK available)
-4. Starts Spring Boot server on port 8084
+4. Starts Spring Boot server on port 8081
 
 Both scripts automatically install Android SDK if not present.
 
@@ -291,7 +291,7 @@ JWT_SECRET=your-256-bit-secret-key-minimum-32-characters
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://your-domain.com
 
 # Optional for Android app builds
-VITE_API_URL=http://your-server:8084/api
+VITE_API_URL=http://your-server:8081/api
 ANDROID_SDK_ROOT=/path/to/android-sdk
 ```
 
@@ -312,7 +312,7 @@ This automatically:
 2. Copies build to backend static resources
 3. Builds Android APK (if Android SDK available)
 4. Creates the H2 database file on first startup (at `./data/sgen` by default)
-5. Starts Spring Boot server on `http://localhost:8084`
+5. Starts Spring Boot server on `http://localhost:8081`
 
 ### Manual Setup
 
@@ -346,7 +346,7 @@ The frontend dev server starts on `http://localhost:5173`
 ./rebuild-and-start.sh
 ```
 
-This builds and starts the application locally on `http://localhost:8084`.
+This builds and starts the application locally on `http://localhost:8081`.
 
 ### Deploy to Production Server
 
@@ -358,7 +358,7 @@ This builds and starts the application locally on `http://localhost:8084`.
 - `SGEN_DDNS_OR_IP` - Your domain or IP address
 - `SGEN_BRANCH` - Git branch to deploy (default: main)
 - `SGEN_PROTOCOL` - http or https
-- `SGEN_BACKEND_PORT` - Internal backend port (default: 8084)
+- `SGEN_BACKEND_PORT` - Internal backend port (default: 8081)
 - `SGEN_EXTERNAL_PORT` - External port clients connect to (may differ if behind reverse proxy)
 - `SERVER_DIR` - Server directory path
 - `GITHUB_REPO` - Your GitHub repository URL
@@ -519,7 +519,7 @@ The Android app is automatically built when running `./rebuild-and-start.sh` or 
 
 Once deployed, users can download the Android app directly:
 ```
-http://your-server:8084/downloads/sgen-android.apk
+http://your-server:8081/downloads/sgen-android.apk
 ```
 
 ### Version Management

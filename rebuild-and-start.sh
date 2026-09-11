@@ -5,8 +5,8 @@
 # =============================================================================
 # 
 # Environment Variables:
-#   VITE_API_URL      - Backend API URL for Android app (e.g., http://192.168.1.100:8084/api)
-#                      If not set, defaults to http://192.168.1.100:8084/api
+#   VITE_API_URL      - Backend API URL for Android app (e.g., http://192.168.1.100:8081/api)
+#                      If not set, defaults to http://192.168.1.100:8081/api
 #                      You MUST update this for the Android app to work!
 #
 #   ANDROID_SDK_ROOT  - Path to Android SDK (auto-installed if not set)
@@ -14,7 +14,7 @@
 #   CORS_ALLOWED_ORIGINS - Comma-separated list of allowed CORS origins
 #
 # Example:
-#   VITE_API_URL=http://192.168.1.50:8084/api ./rebuild-and-start.sh
+#   VITE_API_URL=http://192.168.1.50:8081/api ./rebuild-and-start.sh
 # =============================================================================
 
 # Cleanup function
@@ -158,12 +158,12 @@ fi
 # Set required environment variables for local development
 # For production builds, these should be set before running build.sh
 export JWT_SECRET=${JWT_SECRET:-default-local-secret-key-do-not-use-in-production}
-export CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8084}
+export CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8081}
 
 # Start backend
 echo "Starting backend..."
 echo ""
-echo "   URL: http://localhost:8084"
+echo "   URL: http://localhost:8081"
 echo "   Default login: admin / password"
 echo "========================================"
 echo ""

@@ -70,7 +70,7 @@ public class StravaService {
     @Value("${strava.oauth.token-url:https://www.strava.com/oauth/token}")
     private String stravaTokenUrl;
 
-    @Value("${strava.oauth.redirect-uri:http://localhost:8084/api/strava/callback}")
+    @Value("${strava.oauth.redirect-uri:http://localhost:8081/api/strava/callback}")
     private String redirectUri;
 
     public StravaService(UserRepository userRepository, ObjectMapper objectMapper) {

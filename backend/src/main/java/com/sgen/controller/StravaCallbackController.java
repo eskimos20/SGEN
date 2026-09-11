@@ -9,7 +9,7 @@ import org.springframework.web.servlet.view.RedirectView;
 @Controller
 public class StravaCallbackController {
 
-    @Value("${app.frontend.url:http://localhost:8084}")
+    @Value("${app.frontend.url:http://localhost:8081}")
     private String frontendUrl;
 
     @GetMapping("/api/strava/callback")
