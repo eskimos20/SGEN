@@ -211,6 +211,17 @@ public class UserService {
         if (request.getShareWorkoutsEnabled() != null) {
             user.setShareWorkoutsEnabled(request.getShareWorkoutsEnabled());
         }
+        // Zwift configuration
+        if (request.getZwiftEnabled() != null) {
+            user.setZwiftEnabled(request.getZwiftEnabled());
+        }
+        if (request.getZwiftUsername() != null) {
+            user.setZwiftUsername(request.getZwiftUsername());
+            user.setZwiftPlayerId(null);
+        }
+        if (request.getZwiftPassword() != null) {
+            user.setZwiftPassword(request.getZwiftPassword());
+        }
         userRepository.save(user);
     }
 
@@ -249,6 +260,10 @@ public class UserService {
                 .stravaClientId(user.getStravaClientId())
                 .stravaAuthorizationUrl(buildStravaAuthUrl(user, redirectUri))
                 .shareWorkoutsEnabled(user.getShareWorkoutsEnabled())
+                // Zwift configuration
+                .zwiftEnabled(user.getZwiftEnabled())
+                .hasZwiftConfig(user.getZwiftUsername() != null && user.getZwiftPassword() != null)
+                .zwiftUsername(user.getZwiftUsername())
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
                 .lastActivity(user.getLastActivity())

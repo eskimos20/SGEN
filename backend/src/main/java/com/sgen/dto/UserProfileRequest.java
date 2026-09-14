@@ -24,4 +24,9 @@ public class UserProfileRequest {
     private String stravaClientSecret;
 
     private Boolean shareWorkoutsEnabled;
+
+    // Zwift configuration
+    private Boolean zwiftEnabled;
+    private String zwiftUsername;
+    private String zwiftPassword;
 }

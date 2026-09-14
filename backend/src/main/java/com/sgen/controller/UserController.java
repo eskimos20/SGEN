@@ -2,10 +2,12 @@ package com.sgen.controller;
 
 import com.sgen.dto.UserProfileRequest;
 import com.sgen.dto.UserResponse;
+import com.sgen.entity.User;
 import com.sgen.service.AIUsageService;
 import com.sgen.service.IntervalsService;
 import com.sgen.service.OpenAIService;
 import com.sgen.service.UserService;
+import com.sgen.service.ZwiftService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class UserController {
     private final IntervalsService intervalsService;
     private final OpenAIService openAIService;
     private final AIUsageService aiUsageService;
+    private final ZwiftService zwiftService;
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(
@@ -182,6 +185,52 @@ public class UserController {
         request.setStravaEnabled(false);
         userService.updateUserProfile(authentication.getName(), request);
         return ResponseEntity.ok(Map.of("message", "Strava disabled and OAuth tokens cleared"));
+    }
+
+    // User-level Zwift Configuration
+    @PostMapping("/zwift/enable")
+    public ResponseEntity<Map<String, String>> enableUserZwift(Authentication authentication) {
+        UserProfileRequest request = new UserProfileRequest();
+        request.setZwiftEnabled(true);
+        userService.updateUserProfile(authentication.getName(), request);
+        return ResponseEntity.ok(Map.of("message", "Zwift enabled for user"));
+    }
+
+    @PostMapping("/zwift/disable")
+    public ResponseEntity<Map<String, String>> disableUserZwift(Authentication authentication) {
+        UserProfileRequest request = new UserProfileRequest();
+        request.setZwiftEnabled(false);
+        userService.updateUserProfile(authentication.getName(), request);
+        return ResponseEntity.ok(Map.of("message", "Zwift disabled for user"));
+    }
+
+    @PostMapping("/zwift/test")
+    public ResponseEntity<Map<String, Object>> testZwiftConnection(
+            Authentication authentication,
+            @RequestBody(required = false) Map<String, String> request) {
+        User user = userService.getUserEntityByUsername(authentication.getName());
+        String zwiftUsername = request != null ? request.get("username") : null;
+        String zwiftPassword = request != null ? request.get("password") : null;
+        if (zwiftUsername == null || zwiftUsername.isBlank()) {
+            zwiftUsername = user.getZwiftUsername();
+        }
+        if (zwiftPassword == null || zwiftPassword.isBlank() || zwiftPassword.contains("•")) {
+            zwiftPassword = user.getZwiftPassword();
+        }
+        if (zwiftUsername == null || zwiftPassword == null) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "No Zwift credentials configured"));
+        }
+        try {
+            Map<String, Object> result = zwiftService.testConnection(zwiftUsername, zwiftPassword);
+            // Persist credentials and player id on successful verification
+            user.setZwiftUsername(zwiftUsername);
+            user.setZwiftPassword(zwiftPassword);
+            user.setZwiftPlayerId(((Number) result.get("playerId")).longValue());
+            userService.saveUser(user);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "Connection failed: " + e.getMessage()));
+        }
     }
 
     // User AI Usage Statistics

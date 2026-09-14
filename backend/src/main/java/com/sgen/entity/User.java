@@ -85,6 +85,20 @@ public class User {
     @Column(name = "strava_token_expires_at")
     private Long stravaTokenExpiresAt;
 
+    // Zwift configuration
+    @Column(name = "zwift_enabled", columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean zwiftEnabled = false;
+
+    @Column(name = "zwift_username")
+    private String zwiftUsername;
+
+    @Column(name = "zwift_password")
+    private String zwiftPassword;
+
+    @Column(name = "zwift_player_id")
+    private Long zwiftPlayerId;
+
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 

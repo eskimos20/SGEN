@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink, Share2 } from 'lucide-react';
+import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink, Share2, Bike } from 'lucide-react';
 import { openStravaAuthPopup } from '../utils/stravaOAuth';
 
 const Profile = () => {
@@ -34,6 +34,15 @@ const Profile = () => {
   const [exchangingStrava, setExchangingStrava] = useState(false);
   const [savingStrava, setSavingStrava] = useState(false);
 
+  // Zwift state
+  const [zwiftEnabled, setZwiftEnabled] = useState(false);
+  const [zwiftUsername, setZwiftUsername] = useState('');
+  const [zwiftPassword, setZwiftPassword] = useState('');
+  const [hasZwiftConfig, setHasZwiftConfig] = useState(false);
+  const [zwiftMessage, setZwiftMessage] = useState({ type: '', text: '' });
+  const [savingZwift, setSavingZwift] = useState(false);
+  const [testingZwift, setTestingZwift] = useState(false);
+
   // Workout sharing state
   const [shareWorkoutsEnabled, setShareWorkoutsEnabled] = useState(false);
   const [shareWorkoutsMessage, setShareWorkoutsMessage] = useState({ type: '', text: '' });
@@ -61,6 +70,13 @@ const Profile = () => {
         setStravaAuthUrl(response.data.stravaAuthorizationUrl || '');
       }
       setHasStravaToken(response.data.hasStravaToken || false);
+      // Load Zwift config
+      setZwiftEnabled(response.data.zwiftEnabled || false);
+      setZwiftUsername(response.data.zwiftUsername || '');
+      if (response.data.hasZwiftConfig) {
+        setZwiftPassword('••••••••••••••••');
+        setHasZwiftConfig(true);
+      }
       setShareWorkoutsEnabled(response.data.shareWorkoutsEnabled || false);
     } catch (err) {
       // Silently fail
@@ -197,6 +213,64 @@ const Profile = () => {
            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
            `&response_type=code` +
            `&scope=read,activity:read_all,profile:read_all`;
+  };
+
+  // Zwift handlers
+  const toggleZwift = async (enabled) => {
+    try {
+      setZwiftMessage({ type: '', text: '' });
+      await api.post(enabled ? '/user/zwift/enable' : '/user/zwift/disable');
+      setZwiftEnabled(enabled);
+      const userResponse = await api.get('/user/me');
+      if (userResponse.data) {
+        window.dispatchEvent(new CustomEvent('userUpdated', { detail: userResponse.data }));
+      }
+    } catch (err) {
+      setZwiftMessage({ type: 'error', text: 'Failed to update Zwift settings' });
+    }
+  };
+
+  const handleSaveZwift = async () => {
+    setSavingZwift(true);
+    setZwiftMessage({ type: '', text: '' });
+
+    try {
+      await api.put('/user/profile', {
+        zwiftUsername: zwiftUsername || undefined,
+        zwiftPassword: zwiftPassword.includes('•') ? undefined : zwiftPassword,
+      });
+      setHasZwiftConfig(true);
+      setZwiftMessage({ type: 'success', text: 'Zwift settings saved!' });
+    } catch (err) {
+      setZwiftMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save Zwift settings' });
+    } finally {
+      setSavingZwift(false);
+    }
+  };
+
+  const testZwiftConnection = async () => {
+    setTestingZwift(true);
+    setZwiftMessage({ type: '', text: '' });
+
+    try {
+      const response = await api.post('/user/zwift/test', {
+        username: zwiftUsername || undefined,
+        password: zwiftPassword.includes('•') ? undefined : zwiftPassword,
+      });
+      if (response.data.success) {
+        setHasZwiftConfig(true);
+        setZwiftMessage({
+          type: 'success',
+          text: `Connected as ${response.data.name} — Zwift FTP: ${response.data.ftp} W`,
+        });
+      } else {
+        setZwiftMessage({ type: 'error', text: response.data.message || 'Connection failed' });
+      }
+    } catch (err) {
+      setZwiftMessage({ type: 'error', text: 'Connection failed. Check your credentials.' });
+    } finally {
+      setTestingZwift(false);
+    }
   };
 
   // Workout sharing handlers
@@ -688,6 +762,113 @@ const Profile = () => {
                         )}
                       </button>
                     )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Zwift Configuration */}
+          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Bike className="h-5 w-5 text-orange-500" />
+              <h2 className="text-lg font-semibold text-gray-900">Zwift</h2>
+            </div>
+            <p className="text-gray-600 text-sm mb-6">
+              Connect your Zwift account to automatically push your indoor FTP to your Zwift profile whenever it is updated here.
+            </p>
+
+            <div className="space-y-6">
+              {zwiftMessage.text && (
+                <div className={`p-3 rounded-xl text-sm ${
+                  zwiftMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                }`}>
+                  {zwiftMessage.text}
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div
+                  onClick={() => toggleZwift(!zwiftEnabled)}
+                  className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                    zwiftEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                  }`}
+                >
+                  {zwiftEnabled && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="font-medium text-gray-900">Enable Zwift Integration</span>
+              </label>
+
+              {zwiftEnabled && (
+                <>
+                  <div>
+                    <label htmlFor="zwiftUsername" className="block text-sm font-medium text-gray-700 mb-1">
+                      Zwift Username (email)
+                    </label>
+                    <input
+                      id="zwiftUsername"
+                      type="text"
+                      value={zwiftUsername}
+                      onChange={(e) => setZwiftUsername(e.target.value)}
+                      className="input-field max-w-md"
+                      placeholder="you@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="zwiftPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                      Zwift Password
+                    </label>
+                    <input
+                      id="zwiftPassword"
+                      type="password"
+                      value={zwiftPassword}
+                      onChange={(e) => setZwiftPassword(e.target.value)}
+                      className="input-field max-w-md"
+                      placeholder={hasZwiftConfig ? "•••••••••••••••• (enter new to change)" : "Enter your Zwift password"}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Stored securely and only used to sign in to Zwift.
+                      {hasZwiftConfig && " Type a new value only if you want to change it."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSaveZwift}
+                      disabled={savingZwift || !zwiftUsername}
+                      className="btn-primary flex items-center justify-center gap-2 min-w-[150px]"
+                    >
+                      {savingZwift ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Save className="h-5 w-5" />
+                          Save Zwift Settings
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={testZwiftConnection}
+                      disabled={testingZwift || !zwiftUsername || !zwiftPassword}
+                      className="btn-secondary flex items-center justify-center gap-2 min-w-[150px] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {testingZwift ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="h-5 w-5" />
+                          Test Connection
+                        </>
+                      )}
+                    </button>
                   </div>
                 </>
               )}

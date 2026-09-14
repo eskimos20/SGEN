@@ -34,6 +34,11 @@ public class UserResponse {
 
     private Boolean shareWorkoutsEnabled;
 
+    // Zwift configuration
+    private Boolean zwiftEnabled;
+    private boolean hasZwiftConfig;
+    private String zwiftUsername;
+
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
     private LocalDateTime lastActivity;

@@ -23,6 +23,7 @@ public class IntervalsAthleteService {
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
+    private final ZwiftService zwiftService;
 
     @Value("${intervals.api.base-url}")
     private String intervalsBaseUrl;
@@ -125,11 +126,53 @@ public class IntervalsAthleteService {
                             ctx.user.getIntervalsAthleteId(), ((Map<?, ?>) updates).get("id"))
                     .bodyValue(updates)
                     .retrieve().bodyToMono(String.class).block();
-            return objectMapper.readTree(responseJson);
+            JsonNode result = objectMapper.readTree(responseJson);
+            maybePushIndoorFtpToZwift(username, (Map<?, ?>) updates, result);
+            return result;
         } catch (Exception e) {
             log.error("Failed to update athlete sport settings: {}", e.getMessage());
             throw new RuntimeException("Failed to update athlete sport settings: " + e.getMessage());
         }
+    }
+
+    /**
+     * If the update set a new indoor_ftp on a cycling sport setting, push it
+     * to the user's Zwift profile (when connected). Never fails the request.
+     */
+    private void maybePushIndoorFtpToZwift(String username, Map<?, ?> updates, JsonNode response) {
+        try {
+            Object indoorFtp = updates.get("indoor_ftp");
+            if (!(indoorFtp instanceof Number) || ((Number) indoorFtp).intValue() <= 0) {
+                return;
+            }
+            JsonNode types = response != null ? response.path("types") : null;
+            if (types == null || !types.isArray() || types.isEmpty()) {
+                types = findSportSettingTypes(username, updates.get("id"));
+            }
+            if (types == null) {
+                return;
+            }
+            for (JsonNode type : types) {
+                if (type.asText("").toLowerCase().contains("ride")) {
+                    zwiftService.pushFtp(username, ((Number) indoorFtp).intValue());
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to push indoor FTP to Zwift: {}", e.getMessage());
+        }
+    }
+
+    private JsonNode findSportSettingTypes(String username, Object sportId) {
+        JsonNode settings = getSportSettings(username);
+        if (settings != null && settings.isArray() && sportId instanceof Number) {
+            for (JsonNode setting : settings) {
+                if (setting.path("id").asInt() == ((Number) sportId).intValue()) {
+                    return setting.path("types");
+                }
+            }
+        }
+        return null;
     }
 
     public JsonNode createAthleteSportSettings(String username, Object sportData) {
