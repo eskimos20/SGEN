@@ -495,9 +495,7 @@ public class IntervalsService {
             double hrAfterRecovery = hrAfterSum / hrAfterCount;
 
             double hrr = hrAtEnd - hrAfterRecovery;
-            if (hrr > 0) {
-                ((ObjectNode) rest).put("hrr", Math.round(hrr));
-            }
+            ((ObjectNode) rest).put("hrr", Math.round(hrr));
         }
     }
 

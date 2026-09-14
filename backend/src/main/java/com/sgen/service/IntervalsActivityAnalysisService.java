@@ -193,8 +193,7 @@ public class IntervalsActivityAnalysisService {
             double endHr = interval.path("end_hr").asDouble(0);
             if (endHr > 0) data.put("end_hr", Math.round(endHr));
             if (avgHr > 0) data.put("avg_hr", Math.round(avgHr));
-            double hrr = interval.path("hrr").asDouble(0);
-            if (hrr > 0) data.put("hrr", Math.round(hrr));
+            if (interval.has("hrr")) data.put("hrr", Math.round(interval.path("hrr").asDouble(0)));
             double maxWatts = interval.path("max_watts").asDouble(0);
             if (maxWatts > 0) data.put("max_watts", Math.round(maxWatts));
             String zone = interval.path("icu_zone").asText(null);

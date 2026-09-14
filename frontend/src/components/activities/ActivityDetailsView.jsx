@@ -118,90 +118,9 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   // Get pace (intervals.icu stores pace as m/s)
   const paceValue = activityData.pace;
 
-  const workIntervals = Array.isArray(allIntervals) 
+  const workIntervals = Array.isArray(allIntervals)
     ? allIntervals.filter(i => i.type === 'WORK')
     : [];
-  const restIntervals = Array.isArray(allIntervals) 
-    ? allIntervals.filter(i => i.type === 'RECOVERY' || i.type === 'REST')
-    : [];
-
-  const getHRRecoveryForRest = (restIdx) => {
-    const restInterval = restIntervals[restIdx];
-    const restIdxInAll = allIntervals.indexOf(restInterval);
-    if (restIdxInAll <= 0) return null;
-    
-    const prevInterval = allIntervals[restIdxInAll - 1];
-    if (prevInterval.type !== 'WORK') return null;
-    
-    if (!streams) return null;
-    
-    // Handle both array format [{type: 'heartrate', data: [...]}, ...]
-    // and object format {heartrate: [...], time: [...]}
-    let hrData = null;
-    let timeData = null;
-    
-    if (Array.isArray(streams)) {
-      // Array format
-      const hrStream = streams.find(s => s.type === 'heartrate');
-      const timeStream = streams.find(s => s.type === 'time');
-      hrData = hrStream?.data || null;
-      timeData = timeStream?.data || null;
-    } else if (typeof streams === 'object') {
-      // Object format - direct arrays or wrapped in data property
-      hrData = Array.isArray(streams.heartrate) ? streams.heartrate : (streams.heartrate?.data || null);
-      timeData = Array.isArray(streams.time) ? streams.time : (streams.time?.data || null);
-    }
-    
-    if (!hrData || !timeData || hrData.length === 0 || timeData.length === 0) return null;
-    
-    const restStartTime = prevInterval.end_index !== undefined && prevInterval.end_index < timeData.length
-      ? timeData[prevInterval.end_index]
-      : (restInterval.start_index !== undefined && restInterval.start_index < timeData.length
-          ? timeData[restInterval.start_index]
-          : null);
-    
-    if (restStartTime === null) return null;
-    
-    const endWinStart = Math.max(0, restStartTime - 10);
-    const endWinEnd = restStartTime;
-    
-    let hrAtEndSum = 0;
-    let hrAtEndCount = 0;
-    
-    for (let i = 0; i < timeData.length; i++) {
-      const t = timeData[i];
-      if (t >= endWinStart && t <= endWinEnd && hrData[i] > 0) {
-        hrAtEndSum += hrData[i];
-        hrAtEndCount++;
-      }
-    }
-    
-    if (hrAtEndCount === 0) return null;
-    const hrAtEnd = hrAtEndSum / hrAtEndCount;
-    
-    const HRR_MEASUREMENT_SECONDS = 60;
-    const recoveryCenter = restStartTime + HRR_MEASUREMENT_SECONDS;
-    const window = 5.0;
-    const recWinStart = recoveryCenter - window / 2.0;
-    const recWinEnd = recoveryCenter + window / 2.0;
-    
-    let hrAfterSum = 0;
-    let hrAfterCount = 0;
-    
-    for (let i = 0; i < timeData.length; i++) {
-      const t = timeData[i];
-      if (t >= recWinStart && t <= recWinEnd && hrData[i] > 0) {
-        hrAfterSum += hrData[i];
-        hrAfterCount++;
-      }
-    }
-    
-    if (hrAfterCount === 0) return null;
-    const hrAfterRecovery = hrAfterSum / hrAfterCount;
-    
-    const hrr = hrAtEnd - hrAfterRecovery;
-    return hrr > 0 ? Math.round(hrr) : null;
-  };
 
   const hrDrift = activityData.decoupling;
 
@@ -617,13 +536,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
                 {allIntervals.map((interval, idx) => {
                   const isWork = interval.type === 'WORK';
                   const isRest = interval.type === 'RECOVERY' || interval.type === 'REST';
-                  let hrr = null;
-                  if (isRest) {
-                    const restIdx = restIntervals.indexOf(interval);
-                    if (restIdx >= 0) {
-                      hrr = getHRRecoveryForRest(restIdx);
-                    }
-                  }
+                  const hrr = isRest && interval.hrr != null ? interval.hrr : null;
                   return (
                     <tr key={idx} className={`border-t border-gray-100 ${isWork ? 'bg-blue-50' : isRest ? 'bg-green-50' : 'bg-white'}`}>
                       <td className="py-2 px-1">
