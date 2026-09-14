@@ -754,7 +754,16 @@ public class IntervalsService {
             Map<String, Object> details = getActivityDetails(username, activityId);
             JsonNode activityNode = (JsonNode) details.get("activity");
             JsonNode streamsNode = (JsonNode) details.get("streams");
-            return analysisService.updateActivityIntervals(username, activityId, intervals, searchDuration, activityNode, streamsNode);
+            JsonNode result = analysisService.updateActivityIntervals(username, activityId, intervals, searchDuration, activityNode, streamsNode);
+            // Enrich the returned intervals with start/end HR and HRR so the values
+            // are available immediately without refetching activity details.
+            if (result != null) {
+                JsonNode resultIntervals = result.isArray() ? result : result.path("icu_intervals");
+                if (resultIntervals.isArray()) {
+                    enrichIntervalsFromStreams(resultIntervals, streamsNode);
+                }
+            }
+            return result;
         } catch (Exception e) {
             log.error("Failed to update intervals for activity {}: {}", activityId, e.getMessage(), e);
             throw new RuntimeException("Failed to update intervals: " + e.getMessage());
