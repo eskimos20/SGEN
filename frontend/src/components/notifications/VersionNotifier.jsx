@@ -6,6 +6,27 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Indoor FTP',
+    date: '2026-09-14',
+    features: [
+      {
+        icon: '🏠',
+        title: 'Indoor FTP in Sport Settings',
+        description: 'Each sport with FTP now has a separate Indoor FTP field. Indoor activities (trainer, VirtualRide, VirtualRun, etc.) use Indoor FTP for all zone, TSS and kcal calculations – with automatic fallback to regular FTP when not set.'
+      },
+      {
+        icon: '⚡',
+        title: 'Choose FTP Source',
+        description: 'Pick Outdoor or Indoor FTP when scheduling in the Scheduler, scheduling from workout search, creating a workout, or previewing search results.'
+      },
+      {
+        icon: '🏆',
+        title: 'Indoor-Aware Achievements & Top 3',
+        description: 'FTP achievements from indoor activities update Indoor FTP (outdoor updates regular FTP), and the Statistics page now shows separate Indoor/Outdoor Top 3 lists for FTP and VO2Max.'
+      }
+    ]
+  },
+  {
     title: 'Sport-Specific Lap Interval Settings',
     date: '2026-09-07',
     features: [
