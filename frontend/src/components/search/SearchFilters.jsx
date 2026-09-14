@@ -17,6 +17,8 @@ const SearchFilters = ({
   setSearchLibrary,
   searchSportType,
   setSearchSportType,
+  useIndoorFtp,
+  setUseIndoorFtp,
   onSearch,
   isSearching,
   handleSortChange
@@ -134,6 +136,30 @@ const SearchFilters = ({
               <option value="Ride">Ride</option>
               <option value="Run">Run</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">FTP Source</label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-300">
+              <button
+                type="button"
+                onClick={() => setUseIndoorFtp(false)}
+                className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                  !useIndoorFtp ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🌳 Outdoor
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseIndoorFtp(true)}
+                className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                  useIndoorFtp ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🏠 Indoor
+              </button>
+            </div>
           </div>
           
           <div className="flex items-end">

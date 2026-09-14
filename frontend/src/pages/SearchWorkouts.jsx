@@ -200,6 +200,8 @@ const SearchWorkouts = () => {
           setSearchLibrary={setSearchLibrary}
           searchSportType={searchSportType}
           setSearchSportType={setSearchSportType}
+          useIndoorFtp={previewIndoor}
+          setUseIndoorFtp={setPreviewIndoor}
           onSearch={onSearch}
           isSearching={isSearching}
           handleSortChange={handleSortChange}
@@ -210,30 +212,8 @@ const SearchWorkouts = () => {
         <div className="bg-white rounded-xl sm:shadow-sm p-3 sm:p-6">
           <div className="flex items-center justify-between mb-4 gap-3">
             <h2 className="text-lg font-semibold text-gray-900">Results</h2>
-            <div className="flex items-center gap-3">
-              <div className="flex rounded-lg overflow-hidden border border-gray-300" title="Choose which FTP is used for the displayed metrics">
-                <button
-                  type="button"
-                  onClick={() => setPreviewIndoor(false)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    !previewIndoor ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  🌳 Outdoor FTP
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewIndoor(true)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    previewIndoor ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  🏠 Indoor FTP
-                </button>
-              </div>
-              <div className="text-sm text-gray-600">
-                {filteredResults.length}{textFilter.trim() ? ` of ${searchResults.length}` : ''} workout{filteredResults.length !== 1 ? 's' : ''} found
-              </div>
+            <div className="text-sm text-gray-600">
+              {filteredResults.length}{textFilter.trim() ? ` of ${searchResults.length}` : ''} workout{filteredResults.length !== 1 ? 's' : ''} found
             </div>
           </div>
 

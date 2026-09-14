@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Zap, Heart } from 'lucide-react';
-import { calculateActivityZones } from '../../utils/zoneUtils';
+import { calculateActivityZones, getSportSettingsForType, isIndoorActivity } from '../../utils/zoneUtils';
 import { formatHoursMinutes } from '../../utils/dataUtils';
 
 const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
@@ -9,6 +9,16 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
     const sportSettings = athleteProfile?.athlete?.sportSettings;
     return calculateActivityZones(activity, sportSettings, streams);
   }, [activity, athleteProfile, streams]);
+
+  // Which FTP source drives the power zones for this activity
+  const indoor = isIndoorActivity(activity);
+  const sportSettingsUsed = getSportSettingsForType(
+    athleteProfile?.athlete?.sportSettings,
+    activity?.type || activity?.icu_type || ''
+  );
+  const indoorFtpConfigured = indoor && sportSettingsUsed.indoorFtp > 0
+    && sportSettingsUsed.indoorFtp !== sportSettingsUsed.ftp;
+  const ftpUsed = indoorFtpConfigured ? sportSettingsUsed.indoorFtp : sportSettingsUsed.ftp;
 
   if (!hasPower && !hasHR) return null;
 
@@ -21,9 +31,12 @@ const ActivityZoneBreakdown = ({ activity, athleteProfile, streams }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {hasPower && (
           <div>
-            <h5 className="text-sm font-semibold text-gray-900 mb-3 text-center">
+            <h5 className="text-sm font-semibold text-gray-900 mb-1 text-center">
               Time in Power Zones
             </h5>
+            <div className="text-xs text-gray-500 text-center mb-3">
+              {indoorFtpConfigured ? '🏠 Indoor' : '🌳 Outdoor'} FTP Used: {Math.round(ftpUsed)} W
+            </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
