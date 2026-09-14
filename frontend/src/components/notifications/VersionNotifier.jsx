@@ -6,6 +6,32 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Zwift Integration',
+    date: '2026-09-14',
+    features: [
+      {
+        icon: '🔗',
+        title: 'Connect Your Zwift Account',
+        description: 'A new Zwift section in your Profile lets you enter your Zwift username and password and test the connection before saving.'
+      },
+      {
+        icon: '🚴',
+        title: 'Automatic FTP Sync to Zwift',
+        description: 'Whenever your Indoor FTP is updated – by an accepted achievement or a manual edit – the new value is pushed straight to your Zwift profile and verified automatically.'
+      },
+      {
+        icon: '⚖️',
+        title: 'Weight & Height Sync',
+        description: 'Your weight and height from intervals.icu are synced to your Zwift profile on every update, keeping FTP, weight and height consistent across both platforms.'
+      },
+      {
+        icon: '🏠',
+        title: 'Indoor/Outdoor Top 3 Fix',
+        description: 'Older FTP and VO2Max records are now correctly classified as indoor (VirtualRide, trainer activities) or outdoor, so the separate Top 3 lists on the Statistics page show the right rides in each group.'
+      }
+    ]
+  },
+  {
     title: 'Indoor FTP',
     date: '2026-09-14',
     features: [
