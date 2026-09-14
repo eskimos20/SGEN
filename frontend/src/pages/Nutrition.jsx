@@ -83,11 +83,12 @@ const Nutrition = () => {
 
   const bmr = calculateBMR(weight, heightCm, age, sex);
 
-  // Get items for selected date
+  // Get items for selected date (completed activities and planned workouts only)
   const dayItems = useMemo(() => {
     const activities = calendarActivities || [];
     const events = calendarEvents || [];
-    return getItemsForDate(selectedDate, activities, events, []);
+    const items = getItemsForDate(selectedDate, activities, events, []);
+    return items.filter(i => i.isCompleted || i.category === 'WORKOUT');
   }, [selectedDate, calendarActivities, calendarEvents]);
 
   const completedActivities = dayItems.filter(i => i.isCompleted);
