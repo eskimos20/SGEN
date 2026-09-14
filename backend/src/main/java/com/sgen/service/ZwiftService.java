@@ -69,10 +69,12 @@ public class ZwiftService {
     }
 
     /**
-     * Push a new FTP to the user's Zwift profile when the integration is
-     * enabled and credentials are configured. Never throws.
+     * Push the user's profile values to Zwift when the integration is enabled
+     * and credentials are configured. Mirrors weight and height from the
+     * intervals.icu athlete profile; {@code ftp} may be null to leave the
+     * Zwift FTP unchanged. Never throws.
      */
-    public void pushFtp(String username, int ftp) {
+    public void syncProfile(String username, Integer ftp) {
         try {
             User user = userService.getUserEntityByUsername(username);
             if (!Boolean.TRUE.equals(user.getZwiftEnabled())
@@ -104,15 +106,15 @@ public class ZwiftService {
                         username, e.getMessage());
             }
 
-            boolean ftpMatch = profile.path("ftp").asInt(0) == ftp;
+            boolean ftpMatch = ftp == null || profile.path("ftp").asInt(0) == ftp;
             boolean weightMatch = weightGrams == null || profile.path("weight").asInt(0) == weightGrams;
             boolean heightMatch = heightMm == null || profile.path("height").asInt(0) == heightMm;
             if (ftpMatch && weightMatch && heightMatch) {
-                log.info("Zwift profile {} already in sync (FTP {} W) for user {}", playerId, ftp, username);
+                log.info("Zwift profile {} already in sync for user {}", playerId, username);
                 return;
             }
             ObjectNode body = profile.deepCopy();
-            body.put("ftp", ftp);
+            if (ftp != null) body.put("ftp", ftp);
             if (weightGrams != null) body.put("weight", weightGrams);
             if (heightMm != null) body.put("height", heightMm);
             HttpRequest request = HttpRequest.newBuilder()
@@ -127,19 +129,20 @@ public class ZwiftService {
                     .build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("Zwift FTP update failed with status {} for user {}", response.statusCode(), username);
+                log.warn("Zwift profile update failed with status {} for user {}", response.statusCode(), username);
                 return;
             }
             JsonNode readBack = fetchProfile(token.accessToken);
-            int readBackFtp = readBack.path("ftp").asInt(0);
+            boolean ftpOk = ftp == null || readBack.path("ftp").asInt(0) == ftp;
             boolean weightOk = weightGrams == null || readBack.path("weight").asInt(0) == weightGrams;
             boolean heightOk = heightMm == null || readBack.path("height").asInt(0) == heightMm;
-            if (readBackFtp == ftp && weightOk && heightOk) {
-                log.info("Pushed FTP {} W{} to Zwift profile {} for user {}", ftp,
+            if (ftpOk && weightOk && heightOk) {
+                log.info("Pushed profile{}{} to Zwift profile {} for user {}",
+                        ftp != null ? " (FTP " + ftp + " W)" : "",
                         describeExtras(weightGrams, heightMm), playerId, username);
             } else {
                 log.warn("Zwift update accepted but read-back differs (ftp={}, weight={}, height={}) for user {}",
-                        readBackFtp, readBack.path("weight").asInt(0),
+                        readBack.path("ftp").asInt(0), readBack.path("weight").asInt(0),
                         readBack.path("height").asInt(0), username);
             }
         } catch (Exception e) {

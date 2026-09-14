@@ -94,7 +94,11 @@ public class IntervalsAthleteService {
                     .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                     .bodyValue(filtered)
                     .retrieve().bodyToMono(String.class).block();
-            return objectMapper.readTree(responseJson);
+            JsonNode result = objectMapper.readTree(responseJson);
+            if (filtered.containsKey("weight") || filtered.containsKey("height")) {
+                zwiftService.syncProfile(username, null);
+            }
+            return result;
         } catch (WebClientResponseException e) {
             log.error("Failed to update athlete profile: {} - Response body: {}", e.getMessage(), e.getResponseBodyAsString());
             throw new RuntimeException("Failed to update athlete profile: " + e.getMessage());
@@ -154,7 +158,7 @@ public class IntervalsAthleteService {
             }
             for (JsonNode type : types) {
                 if (type.asText("").toLowerCase().contains("ride")) {
-                    zwiftService.pushFtp(username, ((Number) indoorFtp).intValue());
+                    zwiftService.syncProfile(username, ((Number) indoorFtp).intValue());
                     return;
                 }
             }
