@@ -2,6 +2,7 @@ package com.sgen.config;
 
 import com.sgen.entity.User;
 import com.sgen.repository.UserRepository;
+import com.sgen.service.PerformanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -16,6 +17,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PerformanceService performanceService;
 
     @Override
     @Transactional
@@ -30,6 +32,12 @@ public class DataInitializer implements CommandLineRunner {
             
             userRepository.save(admin);
             log.info("Default admin user created (username: admin, password: password)");
-        } 
+        }
+
+        try {
+            performanceService.backfillIndoorClassification();
+        } catch (Exception e) {
+            log.error("Failed to backfill indoor classification: {}", e.getMessage(), e);
+        }
     }
 }
