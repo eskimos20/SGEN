@@ -2,12 +2,12 @@ package com.sgen.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -19,10 +19,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Talks to the unofficial Zwift mobile API (same endpoints as the Zwift
- * Companion app). Used to push FTP updates to the rider's Zwift profile via
- * PUT /api/profiles/{id}/in-game-fields, the same call the game client makes
- * with a protobuf PlayerProfile body.
+ * Talks to the unofficial Zwift API (same endpoints as the Zwift Companion
+ * app / zwift.com). FTP updates are pushed via
+ * PUT https://www.zwift.com/api/profiles/me/{id} — the same call the zwift.com
+ * profile editor makes — with the full JSON profile as body. Note that the
+ * protobuf endpoints on the game host (PUT /api/profiles/{id} and
+ * /in-game-fields) return 2xx but silently discard profile fields, so a
+ * read-back verification is required.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class ZwiftService {
 
     private static final String AUTH_URL = "https://secure.zwift.com/auth/realms/zwift/tokens/access/codes";
     private static final String BASE_URL = "https://us-or-rly101.zwift.com";
+    private static final String WEB_URL = "https://www.zwift.com";
     private static final String CLIENT_ID = "Zwift_Mobile_Link";
     private static final String USER_AGENT = "Zwift/115 CFNetwork/758.0.2 Darwin/15.0.0";
 
@@ -74,27 +78,39 @@ public class ZwiftService {
                 return;
             }
             ZwiftToken token = ensureToken(user);
-            Long playerId = user.getZwiftPlayerId();
-            if (playerId == null) {
-                playerId = fetchProfile(token.accessToken).path("id").asLong();
+            JsonNode profile = fetchProfile(token.accessToken);
+            long playerId = profile.path("id").asLong();
+            if (user.getZwiftPlayerId() == null || user.getZwiftPlayerId() != playerId) {
                 user.setZwiftPlayerId(playerId);
                 userService.saveUser(user);
             }
-            byte[] body = encodePlayerProfile(playerId, ftp);
+            if (profile.path("ftp").asInt(0) == ftp) {
+                log.info("Zwift profile {} already at FTP {} W for user {}", playerId, ftp, username);
+                return;
+            }
+            ObjectNode body = profile.deepCopy();
+            body.put("ftp", ftp);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/api/profiles/" + playerId + "/in-game-fields"))
+                    .uri(URI.create(WEB_URL + "/api/profiles/me/" + playerId))
                     .header("Authorization", "Bearer " + token.accessToken)
-                    .header("Content-Type", "application/x-protobuf-lite; version=2.0")
-                    .header("Accept", "application/x-protobuf-lite")
-                    .header("User-Agent", USER_AGENT)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .header("Source", "zwift-web")
+                    .header("Cache-Control", "no-cache")
                     .timeout(Duration.ofSeconds(15))
-                    .PUT(HttpRequest.BodyPublishers.ofByteArray(body))
+                    .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
-            HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Zwift FTP update failed with status {} for user {}", response.statusCode(), username);
+                return;
+            }
+            int readBack = fetchProfile(token.accessToken).path("ftp").asInt(0);
+            if (readBack == ftp) {
                 log.info("Pushed FTP {} W to Zwift profile {} for user {}", ftp, playerId, username);
             } else {
-                log.warn("Zwift FTP update failed with status {} for user {}", response.statusCode(), username);
+                log.warn("Zwift FTP update was accepted but read-back shows {} W instead of {} W for user {}",
+                        readBack, ftp, username);
             }
         } catch (Exception e) {
             log.warn("Failed to push FTP to Zwift for {}: {}", username, e.getMessage());
@@ -164,26 +180,5 @@ public class ZwiftService {
             throw new RuntimeException("Zwift profile fetch failed: " + response.statusCode());
         }
         return objectMapper.readTree(response.body());
-    }
-
-    /**
-     * Encode a minimal PlayerProfile protobuf ({id, ftp}) — byte-identical to
-     * what the game client / protobufjs produces for those two fields.
-     */
-    private byte[] encodePlayerProfile(long playerId, int ftp) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        writeVarint(out, 1L << 3);   // field 1 (id), varint wire type
-        writeVarint(out, playerId);
-        writeVarint(out, 10L << 3);  // field 10 (ftp), varint wire type
-        writeVarint(out, ftp);
-        return out.toByteArray();
-    }
-
-    private void writeVarint(ByteArrayOutputStream out, long value) {
-        while ((value & ~0x7FL) != 0) {
-            out.write((int) (value & 0x7F) | 0x80);
-            value >>>= 7;
-        }
-        out.write((int) value);
     }
 }
