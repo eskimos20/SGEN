@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.User;
+import com.sgen.service.IntervalsClientFactory.ApiContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class ZwiftService {
     private static final String USER_AGENT = "Zwift/115 CFNetwork/758.0.2 Darwin/15.0.0";
 
     private final UserService userService;
+    private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15)).build();
@@ -84,12 +86,35 @@ public class ZwiftService {
                 user.setZwiftPlayerId(playerId);
                 userService.saveUser(user);
             }
-            if (profile.path("ftp").asInt(0) == ftp) {
-                log.info("Zwift profile {} already at FTP {} W for user {}", playerId, ftp, username);
+
+            // Mirror height/weight from intervals.icu athlete profile
+            Integer weightGrams = null;
+            Integer heightMm = null;
+            try {
+                JsonNode athlete = fetchIntervalsAthlete(username);
+                if (athlete != null) {
+                    double weightKg = athlete.path("icu_weight").asDouble(0);
+                    if (weightKg <= 0) weightKg = athlete.path("weight").asDouble(0);
+                    if (weightKg > 0) weightGrams = (int) Math.round(weightKg * 1000);
+                    double height = athlete.path("height").asDouble(0);
+                    if (height > 0) heightMm = (int) Math.round(height < 3 ? height * 1000 : height * 10);
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch intervals.icu athlete data for {}, pushing FTP only: {}",
+                        username, e.getMessage());
+            }
+
+            boolean ftpMatch = profile.path("ftp").asInt(0) == ftp;
+            boolean weightMatch = weightGrams == null || profile.path("weight").asInt(0) == weightGrams;
+            boolean heightMatch = heightMm == null || profile.path("height").asInt(0) == heightMm;
+            if (ftpMatch && weightMatch && heightMatch) {
+                log.info("Zwift profile {} already in sync (FTP {} W) for user {}", playerId, ftp, username);
                 return;
             }
             ObjectNode body = profile.deepCopy();
             body.put("ftp", ftp);
+            if (weightGrams != null) body.put("weight", weightGrams);
+            if (heightMm != null) body.put("height", heightMm);
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(WEB_URL + "/api/profiles/me/" + playerId))
                     .header("Authorization", "Bearer " + token.accessToken)
@@ -105,15 +130,39 @@ public class ZwiftService {
                 log.warn("Zwift FTP update failed with status {} for user {}", response.statusCode(), username);
                 return;
             }
-            int readBack = fetchProfile(token.accessToken).path("ftp").asInt(0);
-            if (readBack == ftp) {
-                log.info("Pushed FTP {} W to Zwift profile {} for user {}", ftp, playerId, username);
+            JsonNode readBack = fetchProfile(token.accessToken);
+            int readBackFtp = readBack.path("ftp").asInt(0);
+            boolean weightOk = weightGrams == null || readBack.path("weight").asInt(0) == weightGrams;
+            boolean heightOk = heightMm == null || readBack.path("height").asInt(0) == heightMm;
+            if (readBackFtp == ftp && weightOk && heightOk) {
+                log.info("Pushed FTP {} W{} to Zwift profile {} for user {}", ftp,
+                        describeExtras(weightGrams, heightMm), playerId, username);
             } else {
-                log.warn("Zwift FTP update was accepted but read-back shows {} W instead of {} W for user {}",
-                        readBack, ftp, username);
+                log.warn("Zwift update accepted but read-back differs (ftp={}, weight={}, height={}) for user {}",
+                        readBackFtp, readBack.path("weight").asInt(0),
+                        readBack.path("height").asInt(0), username);
             }
         } catch (Exception e) {
             log.warn("Failed to push FTP to Zwift for {}: {}", username, e.getMessage());
+        }
+    }
+
+    private String describeExtras(Integer weightGrams, Integer heightMm) {
+        StringBuilder sb = new StringBuilder();
+        if (weightGrams != null) sb.append(", weight ").append(weightGrams / 1000.0).append(" kg");
+        if (heightMm != null) sb.append(", height ").append(heightMm / 10.0).append(" cm");
+        return sb.toString();
+    }
+
+    private JsonNode fetchIntervalsAthlete(String username) {
+        ApiContext ctx = clientFactory.buildContext(userService, username);
+        String json = ctx.client.get()
+                .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
+                .retrieve().bodyToMono(String.class).block();
+        try {
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            return null;
         }
     }
 
