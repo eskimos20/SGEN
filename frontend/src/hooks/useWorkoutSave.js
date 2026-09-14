@@ -143,7 +143,8 @@ export const useWorkoutSave = (refreshCalendarData) => {
     overwriteFilename,
     usePace = false,
     thresholdPace = null,
-    paceUnits = null
+    paceUnits = null,
+    indoor = true
   ) => {
     if (saveAndSchedule && !scheduleDate) {
       throw new Error('Please select a date to schedule your workout.');
@@ -207,7 +208,7 @@ export const useWorkoutSave = (refreshCalendarData) => {
           category: 'WORKOUT',
           moving_time: durationSeconds,
           icu_training_load: workoutLoad,
-          indoor: true,
+          indoor: indoor,
           // For pace workouts the Intervals.icu builder parses the description text.
           // Sending a pre-built workout_doc object is ignored, so we omit it for Run/pace.
           ...(isPaceWorkout ? {} : { workout_doc: workoutDoc }),

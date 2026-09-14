@@ -8,7 +8,7 @@ import WorkoutStats from '../workout/WorkoutStats';
 import ActivityDetailsView from '../activities/ActivityDetailsView';
 import FindIntervalsPanel from '../activities/FindIntervalsPanel';
 import AddCalendarEntryModal from './AddCalendarEntryModal';
-import { getSportSettingsForType } from '../../utils/zoneUtils';
+import { getSportSettingsForType, getEffectiveFtp, isIndoorActivity } from '../../utils/zoneUtils';
 import { formatDuration } from '../../utils/dataUtils';
 import { extractTSSFromName, calculateWorkoutMetrics, parseWorkoutName } from '../../utils/workoutUtils';
 import { workKjToKcal } from '../../utils/nutritionUtils';
@@ -446,7 +446,7 @@ const EventDetailModal = ({
                   athleteProfile?.sportSettings,
                   activityType
                 );
-                const metrics = calculateWorkoutMetrics(selectedEvent.workout_doc, sportSettings.ftp);
+                const metrics = calculateWorkoutMetrics(selectedEvent.workout_doc, isIndoorActivity(selectedEvent) ? sportSettings.indoorFtp : sportSettings.ftp);
                 const estimatedKcal = metrics?.work ? workKjToKcal(metrics.work) : 0;
                 return estimatedKcal > 0 ? (
                   <div className="bg-rose-50 rounded-lg p-2 sm:p-3 text-center">
@@ -490,7 +490,7 @@ const EventDetailModal = ({
             const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
               s.types && s.types.some(t => t === sportKey)
             );
-            const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
+            const ftp = getEffectiveFtp(actualSportSetting, isIndoorActivity(selectedEvent));
             const hasPaceSteps = selectedEvent.workout_doc?.steps?.some(s => s.pace);
             const usePace = selectedEvent.target === 'PACE' || selectedEvent.workout_doc?.target === 'PACE' || (isRun && hasPaceSteps);
             const thresholdPace = selectedEvent.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;
@@ -519,7 +519,7 @@ const EventDetailModal = ({
             const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
               s.types && s.types.some(t => t === sportKey)
             );
-            const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
+            const ftp = getEffectiveFtp(actualSportSetting, isIndoorActivity(selectedEvent));
             if (!ftp) return null;
             return (
               <div className="mb-6">

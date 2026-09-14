@@ -314,11 +314,17 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
       const events = response.data.events || [];
       
       if (events.length > 0) {
-        // Process events with metrics
-        const ftp = trainingConfig.activityType === 'Running' 
+        // Process events with metrics – indoor workouts use indoor FTP when configured
+        const sportKey = trainingConfig.activityType === 'Running' ? 'Run' : 'Ride';
+        const setting = athleteProfile?.sportSettings?.find(s =>
+          s.types && s.types.some(t => t === sportKey)
+        );
+        const baseFtp = trainingConfig.activityType === 'Running'
           ? (fitnessData?.runningFtp || fitnessData?.ftp || 250)
           : (fitnessData?.ftp || 250);
-        
+        const indoor = !!trainingConfig.indoor;
+        const ftp = indoor && setting?.indoor_ftp > 0 ? setting.indoor_ftp : baseFtp;
+
         const eventsWithMetrics = events.map((event, idx) => {
           const metrics = calculateWorkoutMetrics(event.workout_doc, ftp);
           // Get the original request to determine category
@@ -330,6 +336,7 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
           const eventWithMetadata = { 
             ...event, 
             ...metrics,
+            indoor, // Use indoor/outdoor FTP for all downstream calculations
             category: originalRequest.category,
             type: scheduleDateInfo?.type || 'Easy', // Add type field to distinguish hard/easy days
             activityType: trainingConfig.activityType, // Add activityType for FTP detection

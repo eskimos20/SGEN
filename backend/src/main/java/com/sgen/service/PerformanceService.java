@@ -26,39 +26,53 @@ public class PerformanceService {
      * Calculate and update FTP from pre-calculated best 5-min window
      */
     @Transactional
-    public void updateFtpIfBetter(String username, String activityId, String activityName, 
+    public void updateFtpIfBetter(String username, String activityId, String activityName,
                                    String activityType, LocalDate activityDate,
                                    double best5minAvg) {
+        updateFtpIfBetter(username, activityId, activityName, activityType, activityDate, best5minAvg, false);
+    }
+
+    /**
+     * Calculate and update FTP from pre-calculated best 5-min window.
+     * Indoor and outdoor results are ranked in separate top-3 lists.
+     */
+    @Transactional
+    public void updateFtpIfBetter(String username, String activityId, String activityName,
+                                   String activityType, LocalDate activityDate,
+                                   double best5minAvg, boolean indoor) {
         User user = userService.getUserEntityByUsername(username);
-        
+
         if (best5minAvg <= 0) {
             return;
         }
-        
+
         // Calculate FTP from the window
         FtpCalculationResult result = calculateFTPWithData(best5minAvg);
         if (result == null) {
             return;
         }
-        
+
         double ftpValue = result.ftpValue;
-        
-        // Get current top 3
-        List<FtpResult> currentTop3 = ftpResultRepository.findByUserOrderByRankAsc(user);
-        
+
+        // Get current top 3 for the same indoor/outdoor group
+        List<FtpResult> currentTop3 = new java.util.ArrayList<>(
+                ftpResultRepository.findByUserOrderByRankAsc(user).stream()
+                        .filter(r -> indoor == Boolean.TRUE.equals(r.getIndoor()))
+                        .toList());
+
         // Skip if this activity already exists with the same FTP value (avoid redundant updates)
         boolean alreadyExists = currentTop3.stream()
                 .anyMatch(r -> activityId.equals(r.getActivityId()) && Math.abs(r.getFtpValue() - ftpValue) < 0.01);
         if (alreadyExists) {
             return;
         }
-        
+
         // Check if this result should be in top 3
         if (shouldAddToTop3(ftpValue, currentTop3)) {
             // Remove old entry for this activity if exists (from DB and in-memory list)
             ftpResultRepository.deleteByUserAndActivityId(user, activityId);
             currentTop3.removeIf(r -> activityId.equals(r.getActivityId()));
-            
+
             // Add new result
             FtpResult newResult = FtpResult.builder()
                     .user(user)
@@ -70,8 +84,9 @@ public class PerformanceService {
                     .basisDurationSeconds(result.basisDuration)
                     .averageWatts(result.best5minAvg)
                     .rank(0)
+                    .indoor(indoor)
                     .build();
-            
+
             currentTop3.add(newResult);
             currentTop3.sort((a, b) -> Double.compare(b.getFtpValue(), a.getFtpValue()));
             
@@ -95,20 +110,35 @@ public class PerformanceService {
      * Calculate and update VO2Max from pre-calculated best 5-min window
      */
     @Transactional
-    public void updateVo2MaxIfBetter(String username, String activityId, String activityName, 
-                                      String activityType, LocalDate activityDate, 
+    public void updateVo2MaxIfBetter(String username, String activityId, String activityName,
+                                      String activityType, LocalDate activityDate,
                                       double weightKg, double best5minAvg) {
+        updateVo2MaxIfBetter(username, activityId, activityName, activityType, activityDate,
+                weightKg, best5minAvg, false);
+    }
+
+    /**
+     * Calculate and update VO2Max from pre-calculated best 5-min window.
+     * Indoor and outdoor results are ranked in separate top-3 lists.
+     */
+    @Transactional
+    public void updateVo2MaxIfBetter(String username, String activityId, String activityName,
+                                      String activityType, LocalDate activityDate,
+                                      double weightKg, double best5minAvg, boolean indoor) {
         User user = userService.getUserEntityByUsername(username);
-        
+
         // Calculate VO2Max from pre-calculated best 5-min window
         Vo2MaxData vo2Data = calculateVO2Max(activityType, weightKg, best5minAvg);
-        
+
         if (vo2Data == null || vo2Data.value <= 0) {
             return;
         }
-        
-        // Get current top 3
-        List<Vo2MaxResult> currentTop3 = vo2MaxResultRepository.findByUserOrderByRankAsc(user);
+
+        // Get current top 3 for the same indoor/outdoor group
+        List<Vo2MaxResult> currentTop3 = new java.util.ArrayList<>(
+                vo2MaxResultRepository.findByUserOrderByRankAsc(user).stream()
+                        .filter(r -> indoor == Boolean.TRUE.equals(r.getIndoor()))
+                        .toList());
         
         // Skip if this activity already exists with the same VO2Max value (avoid redundant updates)
         boolean alreadyExists = currentTop3.stream()
@@ -138,6 +168,7 @@ public class PerformanceService {
                     .weightKg(weightKg)
                     .rating(vo2Data.rating)
                     .rank(0)
+                    .indoor(indoor)
                     .build();
             
             currentTop3.add(newResult);

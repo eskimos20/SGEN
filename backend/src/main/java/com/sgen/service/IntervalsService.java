@@ -205,8 +205,12 @@ public class IntervalsService {
 
                 log.info("Fetching streams data for {} activities", activitiesNode.size());
                 List<CompletableFuture<ActivityProcessingResult>> futures = new ArrayList<>();
+                Map<String, Boolean> indoorByActivityId = new HashMap<>();
                 for (JsonNode activity : activitiesNode) {
                     final String actId = activity.path("id").asText();
+                    indoorByActivityId.put(actId,
+                            activity.path("trainer").asBoolean(false)
+                                    || activity.path("type").asText("").startsWith("Virtual"));
                     final JsonNode cachedIntervals = activity.path("icu_intervals").isArray()
                             ? activity.path("icu_intervals") : null;
                     final JsonNode cachedStreams = streamsMap.get(actId);
@@ -220,13 +224,14 @@ public class IntervalsService {
                     try {
                         ActivityProcessingResult result = future.get();
                         if (result != null && result.best5minAvg > 0) {
+                            boolean indoor = indoorByActivityId.getOrDefault(result.activityId, false);
                             performanceService.updateFtpIfBetter(
                                     username, result.activityId, result.activityName,
-                                    result.activityType, result.activityDate, result.best5minAvg);
+                                    result.activityType, result.activityDate, result.best5minAvg, indoor);
                             if (weightKg > 0) {
                                 performanceService.updateVo2MaxIfBetter(
                                         username, result.activityId, result.activityName,
-                                        result.activityType, result.activityDate, weightKg, result.best5minAvg);
+                                        result.activityType, result.activityDate, weightKg, result.best5minAvg, indoor);
                             }
                         }
                     } catch (Exception ignored) {}
@@ -900,11 +905,13 @@ public class IntervalsService {
 
             JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
             for (JsonNode setting : sportSettings) {
-                // Check if this sport has FTP configured (> 0)
+                // Check if this sport has FTP configured (> 0), or only indoor FTP
                 JsonNode ftpNode = setting.get("ftp");
                 int ftp = (ftpNode != null && !ftpNode.isNull()) ? ftpNode.asInt() : 0;
+                JsonNode indoorFtpNode = setting.get("indoor_ftp");
+                int indoorFtp = (indoorFtpNode != null && !indoorFtpNode.isNull()) ? indoorFtpNode.asInt() : 0;
 
-                if (ftp > 0) {
+                if (ftp > 0 || indoorFtp > 0) {
                     // Get the first sport type from the types array as the main type
                     JsonNode types = setting.get("types");
                     if (types != null && types.isArray() && types.size() > 0) {

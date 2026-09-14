@@ -220,6 +220,36 @@ public class IntervalsAthleteService {
         }
     }
 
+    public void updateSportSettingsIndoorFtp(String username, String sportType, Integer newFtp) {
+        ApiContext ctx = clientFactory.buildContext(userService, username);
+        try {
+            String sportSettingsJson = ctx.client.get()
+                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
+                    .retrieve().bodyToMono(String.class).block();
+            JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
+            for (JsonNode setting : sportSettings) {
+                JsonNode types = setting.get("types");
+                if (types != null && types.isArray()) {
+                    for (JsonNode type : types) {
+                        if (type.asText().equalsIgnoreCase(sportType)) {
+                            int sportId = setting.get("id").asInt();
+                            Map<String, Object> upd = new HashMap<>();
+                            upd.put("id", sportId);
+                            upd.put("indoor_ftp", newFtp);
+                            updateAthleteSportSettings(username, upd);
+                            log.info("Updated indoor FTP to {} for sport {} (id: {})", newFtp, sportType, sportId);
+                            return;
+                        }
+                    }
+                }
+            }
+            log.warn("No sport setting found for type: {}", sportType);
+        } catch (Exception e) {
+            log.error("Failed to update indoor FTP for sport {}: {}", sportType, e.getMessage());
+            throw new RuntimeException("Failed to update indoor FTP: " + e.getMessage());
+        }
+    }
+
     public void updateSportSettingsLthr(String username, String sportType, Integer newLthr) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
@@ -272,6 +302,15 @@ public class IntervalsAthleteService {
      */
     public Integer getFtpForSport(JsonNode sportSettings, String sportType) {
         return getValueForSport(sportSettings, sportType, "ftp");
+    }
+
+    /**
+     * Extract the current indoor FTP for a given sport type, falling back to
+     * regular FTP when no indoor FTP is configured.
+     */
+    public Integer getIndoorFtpForSport(JsonNode sportSettings, String sportType) {
+        Integer indoorFtp = getValueForSport(sportSettings, sportType, "indoor_ftp");
+        return (indoorFtp != null && indoorFtp > 0) ? indoorFtp : getFtpForSport(sportSettings, sportType);
     }
 
     /**

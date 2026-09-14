@@ -61,6 +61,7 @@ public class AchievementNotificationService {
                 String sportType = activity.get("type").asText();
                 String dateStr = activity.get("start_date_local").asText();
                 LocalDate activityDate = LocalDate.parse(dateStr.substring(0, 10));
+                boolean indoor = isIndoorActivity(activity);
                 
                 for (JsonNode achievement : achievements) {
                     String type = achievement.get("type").asText();
@@ -81,13 +82,18 @@ public class AchievementNotificationService {
                         if (existing.getStatus() != UserAchievement.AchievementStatus.PENDING) {
                             continue;
                         }
+                        // Backfill indoor flag for records created before it existed
+                        if (existing.getIndoor() == null) {
+                            existing.setIndoor(indoor);
+                            achievementRepository.save(existing);
+                        }
                         // If still pending, prepare it for the list
                         map = achievementToMap(existing);
                     } else {
                         // Create new pending achievement
                         UserAchievement userAchievement = createAchievementFromJson(
                                 user, activity, achievement, activityId, activityName, 
-                                sportType, activityDate, type
+                                sportType, activityDate, type, indoor
                         );
                         
                         achievementRepository.save(userAchievement);
@@ -140,10 +146,24 @@ public class AchievementNotificationService {
         }
     }
     
+    /**
+     * Whether the activity was performed indoors: trainer flag or a Virtual* type.
+     */
+    private boolean isIndoorActivity(JsonNode activity) {
+        if (activity == null) {
+            return false;
+        }
+        if (activity.path("trainer").asBoolean(false) || activity.path("indoor").asBoolean(false)) {
+            return true;
+        }
+        String type = activity.path("type").asText("");
+        return type != null && type.startsWith("Virtual");
+    }
+    
     private UserAchievement createAchievementFromJson(
             User user, JsonNode activity, JsonNode achievement, 
             String activityId, String activityName, String sportType, 
-            LocalDate activityDate, String type) {
+            LocalDate activityDate, String type, boolean indoor) {
         
         UserAchievement.UserAchievementBuilder builder = UserAchievement.builder()
                 .user(user)
@@ -153,6 +173,7 @@ public class AchievementNotificationService {
                 .sportType(sportType)
                 .achievementDate(activityDate)
                 .achievementType(type)
+                .indoor(indoor)
                 .status(UserAchievement.AchievementStatus.PENDING);
         
         if (type.equals("FTP_UP")) {
@@ -189,6 +210,7 @@ public class AchievementNotificationService {
         map.put("oldLthrValue", achievement.getOldLthrValue());
         map.put("status", achievement.getStatus().toString());
         map.put("respondedAt", achievement.getRespondedAt());
+        map.put("indoor", achievement.getIndoor());
         return map;
     }
     
@@ -207,7 +229,10 @@ public class AchievementNotificationService {
         String sportType = (String) map.get("sportType");
         
         if ("FTP_UP".equals(type)) {
-            Integer currentFtp = athleteService.getFtpForSport(sportSettings, sportType);
+            boolean indoor = Boolean.TRUE.equals(map.get("indoor"));
+            Integer currentFtp = indoor
+                    ? athleteService.getIndoorFtpForSport(sportSettings, sportType)
+                    : athleteService.getFtpForSport(sportSettings, sportType);
             if (currentFtp != null) {
                 map.put("oldFtpValue", currentFtp);
             }
@@ -240,8 +265,13 @@ public class AchievementNotificationService {
         
         // Update FTP/LTHR in user's sport settings
         if (achievement.getAchievementType().equals("FTP_UP") && achievement.getNewFtpValue() != null) {
-            athleteService.updateSportSettingsFtp(username, achievement.getSportType(),
-                    achievement.getNewFtpValue());
+            if (Boolean.TRUE.equals(achievement.getIndoor())) {
+                athleteService.updateSportSettingsIndoorFtp(username, achievement.getSportType(),
+                        achievement.getNewFtpValue());
+            } else {
+                athleteService.updateSportSettingsFtp(username, achievement.getSportType(),
+                        achievement.getNewFtpValue());
+            }
         } else if (achievement.getAchievementType().equals("LTHR_UP") && achievement.getNewLthrValue() != null) {
             athleteService.updateSportSettingsLthr(username, achievement.getSportType(),
                     achievement.getNewLthrValue());
@@ -279,7 +309,8 @@ public class AchievementNotificationService {
                                             Integer newFtpValue, Integer oldFtpValue,
                                             Integer effortWatts, Integer effortSeconds,
                                             Integer newLthrValue, Integer oldLthrValue,
-                                            String activityName, String sportType, LocalDate achievementDate) {
+                                            String activityName, String sportType, LocalDate achievementDate,
+                                            Boolean indoor) {
         User user = userService.getUserEntityByUsername(username);
 
         UserAchievement achievement = achievementRepository
@@ -299,6 +330,7 @@ public class AchievementNotificationService {
                             .effortSeconds(effortSeconds)
                             .newLthrValue(newLthrValue)
                             .oldLthrValue(oldLthrValue)
+                            .indoor(indoor)
                             .status(UserAchievement.AchievementStatus.PENDING);
                     return achievementRepository.save(b.build());
                 });
@@ -311,8 +343,13 @@ public class AchievementNotificationService {
         achievementRepository.save(achievement);
 
         if (achievementType.equals("FTP_UP") && achievement.getNewFtpValue() != null) {
-            athleteService.updateSportSettingsFtp(username, achievement.getSportType(),
-                    achievement.getNewFtpValue());
+            if (Boolean.TRUE.equals(achievement.getIndoor())) {
+                athleteService.updateSportSettingsIndoorFtp(username, achievement.getSportType(),
+                        achievement.getNewFtpValue());
+            } else {
+                athleteService.updateSportSettingsFtp(username, achievement.getSportType(),
+                        achievement.getNewFtpValue());
+            }
         } else if (achievementType.equals("LTHR_UP") && achievement.getNewLthrValue() != null) {
             athleteService.updateSportSettingsLthr(username, achievement.getSportType(),
                     achievement.getNewLthrValue());
@@ -329,7 +366,8 @@ public class AchievementNotificationService {
                                              Integer newFtpValue, Integer oldFtpValue,
                                              Integer effortWatts, Integer effortSeconds,
                                              Integer newLthrValue, Integer oldLthrValue,
-                                             String activityName, String sportType, LocalDate achievementDate) {
+                                             String activityName, String sportType, LocalDate achievementDate,
+                                             Boolean indoor) {
         User user = userService.getUserEntityByUsername(username);
 
         UserAchievement achievement = achievementRepository
@@ -349,6 +387,7 @@ public class AchievementNotificationService {
                             .effortSeconds(effortSeconds)
                             .newLthrValue(newLthrValue)
                             .oldLthrValue(oldLthrValue)
+                            .indoor(indoor)
                             .status(UserAchievement.AchievementStatus.PENDING);
                     return achievementRepository.save(b.build());
                 });
@@ -393,6 +432,7 @@ public class AchievementNotificationService {
                 String sportType = activity.get("type").asText();
                 String dateStr = activity.get("start_date_local").asText();
                 LocalDate activityDate = LocalDate.parse(dateStr.substring(0, 10));
+                boolean indoor = isIndoorActivity(activity);
                 
                 for (JsonNode achievement : achievements) {
                     String type = achievement.get("type").asText();
@@ -406,13 +446,16 @@ public class AchievementNotificationService {
                     achievementMap.put("achievementDate", activityDate.toString());
                     achievementMap.put("achievementType", type);
                     achievementMap.put("message", message);
+                    achievementMap.put("indoor", indoor);
                     
                     // Extract type-specific values
                     if (type.equals("FTP_UP")) {
                         Integer newFtp = activity.has("icu_rolling_ftp") ? activity.get("icu_rolling_ftp").asInt() : null;
                         Integer ftpDelta = activity.has("icu_rolling_ftp_delta") ? activity.get("icu_rolling_ftp_delta").asInt() : null;
                         // Use the user's current FTP as baseline; fall back to historic delta if unavailable
-                        Integer currentFtp = athleteService.getFtpForSport(sportSettings, sportType);
+                        Integer currentFtp = indoor
+                                ? athleteService.getIndoorFtpForSport(sportSettings, sportType)
+                                : athleteService.getFtpForSport(sportSettings, sportType);
                         Integer oldFtp = currentFtp != null ? currentFtp
                                 : ((newFtp != null && ftpDelta != null) ? newFtp - ftpDelta : null);
                         

@@ -49,4 +49,6 @@ public class FtpResult {
 
     @Column(nullable = false)
     private Integer rank;
+
+    private Boolean indoor;
 }

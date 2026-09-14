@@ -55,6 +55,63 @@ const StatisticsCharts = ({
 
   if (!weeklyData) return null;
 
+  // Split top-3 lists into indoor/outdoor groups
+  const ftpOutdoor = (top3Ftp || []).filter(r => !r.indoor);
+  const ftpIndoor = (top3Ftp || []).filter(r => r.indoor);
+  const vo2Outdoor = (top3Vo2Max || []).filter(r => !r.indoor);
+  const vo2Indoor = (top3Vo2Max || []).filter(r => r.indoor);
+
+  const renderFtpList = (list, label) => (
+    <div className="space-y-3">
+      {list.map((result) => (
+        <div key={result.id} className="border-l-4 border-amber-500 pl-4 py-2 bg-amber-50 rounded-r">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-600">{label} · Rank {result.rank}</span>
+            <span className="text-2xl font-bold text-amber-700">{Math.round(result.ftpValue)} W</span>
+          </div>
+          <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-xs text-gray-600">
+            <div className="flex items-center gap-4">
+              <span>{result.activityType}</span>
+              <span>{result.activityDate}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span>Avg: {Math.round(result.averageWatts)} W</span>
+              <span>Duration: {Math.floor(result.basisDurationSeconds / 60)}:{(result.basisDurationSeconds % 60).toString().padStart(2, '0')} min</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderVo2MaxList = (list, label) => (
+    <div className="space-y-3">
+      {list.map((result) => (
+        <div key={result.id} className="border-l-4 border-red-500 pl-4 py-2 bg-red-50 rounded-r">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-gray-600">{label} · Rank {result.rank}</span>
+            <span className="text-2xl font-bold text-red-700">{result.vo2MaxValue} ml/kg/min</span>
+          </div>
+          <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-xs text-gray-600">
+            <div className="flex items-center gap-4">
+              <span>{result.activityType}</span>
+              <span>{result.activityDate}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span>Avg: {Math.round(result.averageWatts)} W</span>
+              <span>Duration: {Math.floor(result.durationSeconds / 60)}:{(result.durationSeconds % 60).toString().padStart(2, '0')} min</span>
+            </div>
+          </div>
+          {result.rating && (
+            <div className="mt-1 text-xs font-medium text-red-700">{result.rating} based on age group and gender</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
 
@@ -71,63 +128,22 @@ const StatisticsCharts = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* FTP */}
               {top3Ftp.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-amber-700 mb-3 flex items-center gap-1">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-amber-700 flex items-center gap-1">
                     <Zap className="h-4 w-4" /> FTP Top 3
                   </h3>
-                  <div className="space-y-3">
-                    {top3Ftp.map((result) => (
-                      <div key={result.id} className="border-l-4 border-amber-500 pl-4 py-2 bg-amber-50 rounded-r">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-600">Rank {result.rank}</span>
-                          <span className="text-2xl font-bold text-amber-700">{Math.round(result.ftpValue)} W</span>
-                        </div>
-                        <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-xs text-gray-600">
-                          <div className="flex items-center gap-4">
-                            <span>{result.activityType}</span>
-                            <span>{result.activityDate}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span>Avg: {Math.round(result.averageWatts)} W</span>
-                            <span>Duration: {Math.floor(result.basisDurationSeconds / 60)}:{(result.basisDurationSeconds % 60).toString().padStart(2, '0')} min</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {ftpOutdoor.length > 0 && renderFtpList(ftpOutdoor, '🌳 Outdoor')}
+                  {ftpIndoor.length > 0 && renderFtpList(ftpIndoor, '🏠 Indoor')}
                 </div>
               )}
               {/* VO2Max */}
               {top3Vo2Max.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-1">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-red-700 flex items-center gap-1">
                     <Heart className="h-4 w-4" /> VO2Max Top 3
                   </h3>
-                  <div className="space-y-3">
-                    {top3Vo2Max.map((result) => (
-                      <div key={result.id} className="border-l-4 border-red-500 pl-4 py-2 bg-red-50 rounded-r">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-600">Rank {result.rank}</span>
-                          <span className="text-2xl font-bold text-red-700">{result.vo2MaxValue} ml/kg/min</span>
-                        </div>
-                        <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-1 text-xs text-gray-600">
-                          <div className="flex items-center gap-4">
-                            <span>{result.activityType}</span>
-                            <span>{result.activityDate}</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span>Avg: {Math.round(result.averageWatts)} W</span>
-                            <span>Duration: {Math.floor(result.durationSeconds / 60)}:{(result.durationSeconds % 60).toString().padStart(2, '0')} min</span>
-                          </div>
-                        </div>
-                        {result.rating && (
-                          <div className="mt-1 text-xs font-medium text-red-700">{result.rating} based on age group and gender</div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {vo2Outdoor.length > 0 && renderVo2MaxList(vo2Outdoor, '🌳 Outdoor')}
+                  {vo2Indoor.length > 0 && renderVo2MaxList(vo2Indoor, '🏠 Indoor')}
                 </div>
               )}
             </div>

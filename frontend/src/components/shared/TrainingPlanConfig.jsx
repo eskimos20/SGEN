@@ -39,7 +39,8 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
       buildWeeks: 3,
       deloadPercent: 60
     },
-    progressiveWeekLoad: false
+    progressiveWeekLoad: false,
+    indoor: false
   });
   const [isLoading, setIsLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState(new Set());
@@ -112,8 +113,9 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
     loadPreferences();
   }, [initialConfig, athleteProfile]);
 
-  // Check FTP status for selected activity type
-  const getFtpStatus = (activityType) => {
+  // Check FTP status for selected activity type. When `indoor` is true the
+  // indoor FTP is used, falling back to regular FTP when not configured.
+  const getFtpStatus = (activityType, indoor = config.indoor) => {
     if (!sportSettings || sportSettings.length === 0) {
       return { hasFtp: false, ftp: null, isDefault: true };
     }
@@ -123,11 +125,14 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
       setting.types && setting.types.some(type => type === sportTypeKey)
     );
 
-    const hasFtp = settings && settings.ftp;
-    const ftp = hasFtp ? settings.ftp : (activityType === 'Running' ? 240 : 275);
+    const baseFtp = settings?.ftp || 0;
+    const indoorFtp = settings?.indoor_ftp || 0;
+    const effectiveFtp = indoor && indoorFtp > 0 ? indoorFtp : baseFtp;
+    const hasFtp = !!(settings && effectiveFtp > 0);
+    const ftp = hasFtp ? effectiveFtp : (activityType === 'Running' ? 240 : 275);
     const isDefault = !hasFtp;
 
-    return { hasFtp, ftp, isDefault };
+    return { hasFtp, ftp, isDefault, hasIndoorFtp: indoorFtp > 0 };
   };
 
   const ftpStatus = getFtpStatus(config.activityType);
@@ -382,6 +387,38 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
                     </select>
                   </div>
                   
+                  {/* Indoor / Outdoor FTP choice */}
+                  <div className="w-full sm:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      FTP Source
+                    </label>
+                    <div className="flex rounded-lg overflow-hidden border border-gray-300">
+                      <button
+                        type="button"
+                        onClick={() => setConfig(prev => ({ ...prev, indoor: false }))}
+                        className={`px-3 py-2 text-sm font-medium transition-colors ${
+                          !config.indoor
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        🌳 Outdoor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfig(prev => ({ ...prev, indoor: true }))}
+                        className={`px-3 py-2 text-sm font-medium transition-colors ${
+                          config.indoor
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                        title={!ftpStatus.hasIndoorFtp ? 'No Indoor FTP set – falls back to regular FTP' : ''}
+                      >
+                        🏠 Indoor
+                      </button>
+                    </div>
+                  </div>
+
                   {/* FTP Status */}
                   <div className="flex-shrink-0 w-full sm:w-auto sm:self-end">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -389,7 +426,7 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
                         <div className="w-full px-3 py-1.5 rounded-lg text-sm font-medium bg-green-100 text-green-800 border border-green-200">
                           <div className="flex items-center gap-2">
                             <span>⚡</span>
-                            <span className="font-semibold">FTP: {ftpStatus.ftp}</span>
+                            <span className="font-semibold">{config.indoor ? 'Indoor FTP' : 'FTP'}: {ftpStatus.ftp}</span>
                             <span className="text-xs">From your settings</span>
                           </div>
                         </div>

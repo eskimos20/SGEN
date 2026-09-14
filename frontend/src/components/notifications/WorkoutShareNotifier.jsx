@@ -64,6 +64,10 @@ const WorkoutShareNotifier = () => {
         setting.types && setting.types.some(type => type === sportKey)
       );
 
+      // Shared workouts are scheduled indoors – prefer indoor FTP when configured
+      if (sportSetting && sportSetting.indoor_ftp > 0) {
+        return sportSetting.indoor_ftp;
+      }
       if (sportSetting && sportSetting.ftp) {
         return sportSetting.ftp;
       }

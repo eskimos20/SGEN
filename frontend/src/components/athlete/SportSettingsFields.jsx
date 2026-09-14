@@ -172,8 +172,8 @@ const SportSettingsFields = ({
         </div>
       )}
 
-      {/* Top row: FTP, Max HR, LTHR, Threshold Pace */}
-      <div className={`grid gap-4 ${editForm.supportsPower ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+      {/* Top row: FTP, Indoor FTP, Max HR, LTHR, Threshold Pace */}
+      <div className={`grid gap-4 ${editForm.supportsPower ? 'grid-cols-1 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'}`}>
         {editForm.supportsPower && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">FTP (W)</label>
@@ -183,6 +183,19 @@ const SportSettingsFields = ({
               onChange={(e) => setEditForm(prev => ({ ...prev, sportFtp: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter FTP"
+            />
+          </div>
+        )}
+
+        {editForm.supportsPower && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Indoor FTP (W)</label>
+            <input
+              type="number"
+              value={editForm.sportIndoorFtp}
+              onChange={(e) => setEditForm(prev => ({ ...prev, sportIndoorFtp: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Defaults to FTP"
             />
           </div>
         )}

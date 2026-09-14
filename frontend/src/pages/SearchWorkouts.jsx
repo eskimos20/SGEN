@@ -21,6 +21,7 @@ const SearchWorkouts = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, workout: null, filename: '' });
   const [detailWorkout, setDetailWorkout] = useState(null);
+  const [previewIndoor, setPreviewIndoor] = useState(false);
   const [shareWorkout, setShareWorkout] = useState(null);
   const [athleteProfile, setAthleteProfile] = useState(null);
   
@@ -62,7 +63,9 @@ const SearchWorkouts = () => {
     setScheduleDate,
     handleScheduleWorkout,
     openScheduleModal,
-    closeScheduleModal
+    closeScheduleModal,
+    scheduleIndoor,
+    setScheduleIndoor
   } = useWorkoutSchedule(refreshCalendarData, getSportType);
 
   React.useEffect(() => {
@@ -205,10 +208,32 @@ const SearchWorkouts = () => {
         
         {/* Search Results */}
         <div className="bg-white rounded-xl sm:shadow-sm p-3 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-3">
             <h2 className="text-lg font-semibold text-gray-900">Results</h2>
-            <div className="text-sm text-gray-600">
-              {filteredResults.length}{textFilter.trim() ? ` of ${searchResults.length}` : ''} workout{filteredResults.length !== 1 ? 's' : ''} found
+            <div className="flex items-center gap-3">
+              <div className="flex rounded-lg overflow-hidden border border-gray-300" title="Choose which FTP is used for the displayed metrics">
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndoor(false)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    !previewIndoor ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  🌳 Outdoor FTP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndoor(true)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewIndoor ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  🏠 Indoor FTP
+                </button>
+              </div>
+              <div className="text-sm text-gray-600">
+                {filteredResults.length}{textFilter.trim() ? ` of ${searchResults.length}` : ''} workout{filteredResults.length !== 1 ? 's' : ''} found
+              </div>
             </div>
           </div>
 
@@ -245,6 +270,7 @@ const SearchWorkouts = () => {
                 canShare={user?.shareWorkoutsEnabled === true}
                 athleteProfile={athleteProfile}
                 getFtpForWorkout={getFtpForWorkout}
+                useIndoorFtp={previewIndoor}
                 getSportType={getSportType}
                 getSportTypeDisplayName={getSportTypeDisplayName}
               />
@@ -264,6 +290,7 @@ const SearchWorkouts = () => {
         isOpen={!!detailWorkout}
         workout={detailWorkout}
         athleteProfile={athleteProfile}
+        useIndoorFtp={previewIndoor}
         onClose={() => setDetailWorkout(null)}
         onSchedule={openScheduleModal}
         getSportType={getSportType}
@@ -275,6 +302,8 @@ const SearchWorkouts = () => {
         workout={selectedWorkout}
         scheduleDate={scheduleDate}
         setScheduleDate={setScheduleDate}
+        indoor={scheduleIndoor}
+        setIndoor={setScheduleIndoor}
         onSchedule={onScheduleWorkout}
         onClose={closeScheduleModal}
         getSportTypeDisplayName={getSportTypeDisplayName}

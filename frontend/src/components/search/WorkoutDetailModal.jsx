@@ -13,6 +13,7 @@ const WorkoutDetailModal = ({
   isOpen,
   workout,
   athleteProfile,
+  useIndoorFtp = false,
   onClose,
   onSchedule,
   getSportType,
@@ -31,7 +32,10 @@ const WorkoutDetailModal = ({
   const actualSportSetting = athleteProfile?.sportSettings?.find(s =>
     s.types && s.types.some(t => t === sportKey)
   );
-  const ftp = actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0;
+  const indoorFtp = actualSportSetting?.indoor_ftp || 0;
+  const ftp = useIndoorFtp && indoorFtp > 0
+    ? indoorFtp
+    : (actualSportSetting?.ftp > 0 ? actualSportSetting.ftp : 0);
   const isPaceWorkout = workout.workout_doc?.target === 'PACE' ||
     (sportType === 'run' && workout.workout_doc?.steps?.some(s => s.pace));
   const thresholdPace = workout.workout_doc?.threshold_pace || sportSettings?.thresholdPace || 0;

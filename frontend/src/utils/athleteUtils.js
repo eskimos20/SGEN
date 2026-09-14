@@ -118,6 +118,7 @@ export const extractSportSettings = (athlete) => {
   return athlete.sportSettings.map(settings => ({
     types: settings.types,
     ftp: settings.ftp,
+    indoorFtp: settings.indoor_ftp,
     lthr: settings.lthr,
     maxHr: settings.max_hr,
     hrZones: settings.hr_zones,

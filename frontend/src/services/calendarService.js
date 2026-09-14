@@ -229,7 +229,9 @@ export const handleRegenerateWorkout = async (
       // Handle all variants of running (Running, Run, run)
       const isRunning = (activityType === 'Running' || activityType === 'Run' || activityType === 'run');
       
-      // Get FTP from sportSettings instead of athleteProfile
+      // Get FTP from sportSettings instead of athleteProfile.
+      // Indoor workouts use indoor FTP when configured, otherwise regular FTP.
+      const isIndoor = originalEvent?.indoor === true;
       let runningFtp = 240; // default
       let cyclingFtp = 275; // default
       
@@ -241,8 +243,12 @@ export const handleRegenerateWorkout = async (
           setting.types && setting.types.some(type => type === 'Ride')
         );
         
-        runningFtp = runningSettings?.ftp || 240;
-        cyclingFtp = cyclingSettings?.ftp || 275;
+        runningFtp = isIndoor && runningSettings?.indoor_ftp > 0
+          ? runningSettings.indoor_ftp
+          : (runningSettings?.ftp || 240);
+        cyclingFtp = isIndoor && cyclingSettings?.indoor_ftp > 0
+          ? cyclingSettings.indoor_ftp
+          : (cyclingSettings?.ftp || 275);
       }
       
       const ftp = isRunning ? runningFtp : cyclingFtp;
@@ -253,6 +259,7 @@ export const handleRegenerateWorkout = async (
       const eventWithMetrics = { 
         ...newEvent, 
         ...metrics,
+        indoor: isIndoor, // Preserve indoor/outdoor FTP mode for future regenerates
         category: workoutCategory, // Set the category that was used for generation
         hardCategories: originalEvent?.hardCategories || [],
         isDeloadWeek: originalEvent?.isDeloadWeek || false,

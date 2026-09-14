@@ -4,7 +4,7 @@ import WorkoutChart from './WorkoutChart';
 import { formatDuration } from '../../utils/dataUtils';
 import { extractTSSFromName, parseWorkoutName } from '../../utils/workoutUtils';
 import { getActivityKcal } from '../../utils/nutritionUtils';
-import { getSportSettingsForType } from '../../utils/zoneUtils';
+import { getSportSettingsForType, isIndoorActivity } from '../../utils/zoneUtils';
 import { getSportEmoji, getEventEmoji } from '../../utils/sportTypeUtils';
 
 const WorkoutItemCard = ({
@@ -27,7 +27,7 @@ const WorkoutItemCard = ({
   // Prioritize 'type' from Intervals.icu as it's always consistent (e.g., 'Ride', 'Run', 'VirtualRide')
   const activityType = item.type || item.activityType || item.sport_type || item.workout_doc?.sport_type;
   const itemSportSettings = getSportSettingsForType(sportSettings, activityType);
-  const ftp = itemSportSettings.ftp;
+  const ftp = isIndoorActivity(item) ? itemSportSettings.indoorFtp : itemSportSettings.ftp;
   
   // Use event emoji for special categories, sport emoji for workouts
   const itemIcon = item.category && ['SICK', 'HOLIDAY', 'NOTE', 'INJURED', 'RACE_A', 'RACE_B', 'RACE_C', 'SEASON_START', 'WELLNESS'].includes(item.category) 

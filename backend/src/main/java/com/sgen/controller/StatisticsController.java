@@ -410,10 +410,11 @@ public class StatisticsController {
             String sportType = (String) body.get("sportType");
             java.time.LocalDate achievementDate = body.get("achievementDate") != null
                     ? java.time.LocalDate.parse((String) body.get("achievementDate")) : null;
+            Boolean indoor = body.get("indoor") != null ? (Boolean) body.get("indoor") : null;
             achievementNotificationService.acceptAchievementByActivity(
                     authentication.getName(), activityId, achievementType,
                     newFtpValue, oldFtpValue, effortWatts, effortSeconds,
-                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate);
+                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate, indoor);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.error("Failed to accept achievement by activity for {}: {}", authentication.getName(), e.getMessage());
@@ -438,10 +439,11 @@ public class StatisticsController {
             String sportType = (String) body.get("sportType");
             java.time.LocalDate achievementDate = body.get("achievementDate") != null
                     ? java.time.LocalDate.parse((String) body.get("achievementDate")) : null;
+            Boolean indoor = body.get("indoor") != null ? (Boolean) body.get("indoor") : null;
             achievementNotificationService.dismissAchievementByActivity(
                     authentication.getName(), activityId, achievementType,
                     newFtpValue, oldFtpValue, effortWatts, effortSeconds,
-                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate);
+                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate, indoor);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.error("Failed to dismiss achievement by activity for {}: {}", authentication.getName(), e.getMessage());

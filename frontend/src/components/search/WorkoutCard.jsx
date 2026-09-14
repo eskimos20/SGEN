@@ -18,6 +18,7 @@ const WorkoutCard = ({
   canShare,
   athleteProfile,
   getFtpForWorkout,
+  useIndoorFtp = false,
   getSportType,
   getSportTypeDisplayName
 }) => {
@@ -111,7 +112,7 @@ const WorkoutCard = ({
           <WorkoutChart 
             workoutDoc={workout.workout_doc}
             height="h-20"
-            ftp={getFtpForWorkout(workout)}
+            ftp={getFtpForWorkout(workout, useIndoorFtp)}
             showTooltip={true}
             usePace={isPaceWorkout}
             thresholdPace={thresholdPace}

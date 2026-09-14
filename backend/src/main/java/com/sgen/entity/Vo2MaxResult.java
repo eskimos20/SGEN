@@ -55,4 +55,6 @@ public class Vo2MaxResult {
 
     @Column(nullable = false)
     private Integer rank;
+
+    private Boolean indoor;
 }

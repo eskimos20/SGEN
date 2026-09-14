@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Activity, Heart, Zap, Clock, TrendingUp, Gauge, Timer, Flame, Target, MapPin, Trophy, Bike, Footprints, Mountain, RotateCcw, Route, Utensils, Scale } from 'lucide-react';
 import { getActivityKcal } from '../../utils/nutritionUtils';
+import { isIndoorActivity } from '../../utils/zoneUtils';
 import ActivityChart from './ActivityChart';
 import ActivityZoneBreakdown from './ActivityZoneBreakdown';
 import ActivityMap from './ActivityMap';
@@ -88,7 +89,10 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   const hasMap = mapData.latlngs && mapData.latlngs.length > 0;
 
   const sportSettings = athleteProfile?.athlete?.sportSettings?.[0] || {};
-  const ftp = sportSettings.ftp || athleteProfile?.athlete?.ftp;
+  // Indoor activities compare FTP achievements against indoor FTP (falls back to regular FTP)
+  const activityIsIndoor = isIndoorActivity(activityData) || isIndoorActivity(activity);
+  const ftp = (activityIsIndoor && sportSettings.indoor_ftp > 0 ? sportSettings.indoor_ftp : sportSettings.ftp)
+    || athleteProfile?.athlete?.ftp;
 
   // Determine if this is a running activity
   const activityType = activityData.type || activity?.type || '';

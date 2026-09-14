@@ -50,6 +50,9 @@ public class UserAchievement {
     // For LTHR achievements
     private Integer newLthrValue;
     private Integer oldLthrValue;
+
+    // Whether the activity that produced this achievement was performed indoors
+    private Boolean indoor;
     
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

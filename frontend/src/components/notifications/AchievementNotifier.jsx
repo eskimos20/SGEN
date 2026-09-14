@@ -122,7 +122,7 @@ const AchievementNotifier = ({ achievements, onAccept, onDismiss }) => {
                     {/* Value comparison */}
                     {oldValue && newValue && (
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="text-white/70">Update {isFtpAchievement ? 'FTP' : 'LTHR'}:</span>
+                        <span className="text-white/70">Update {isFtpAchievement && achievement.indoor ? 'Indoor FTP' : isFtpAchievement ? 'FTP' : 'LTHR'}:</span>
                         <span className="font-mono">{oldValue}</span>
                         <span className="text-white/70">→</span>
                         <span className="font-mono font-bold">{newValue}</span>

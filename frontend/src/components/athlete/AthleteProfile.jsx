@@ -101,6 +101,7 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
       sportId: settings.id,
       sportName: category.name,
       sportFtp: ftp || '',
+      sportIndoorFtp: settings.indoor_ftp || '',
       sportLthr: settings.lthr || '',
       sportMaxHr: settings.max_hr || '',
       sportHrZones: settings.hr_zones || [],

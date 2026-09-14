@@ -148,7 +148,7 @@ const Nutrition = () => {
     if (e.workout_doc?.steps) {
       const activityType = e.workout_doc?.sport_type || e.activityType || e.sport_type || e.type || 'Ride';
       const sportSettings = getSportSettingsForType(athleteProfile?.sportSettings, activityType);
-      const metrics = calculateWorkoutMetrics(e.workout_doc, sportSettings.ftp);
+      const metrics = calculateWorkoutMetrics(e.workout_doc, e.indoor ? sportSettings.indoorFtp : sportSettings.ftp);
       return sum + (metrics?.work ? workKjToKcal(metrics.work) : 0);
     }
     return sum;
@@ -362,7 +362,7 @@ const Nutrition = () => {
           } else if (item.workout_doc?.steps) {
             const actType = item.workout_doc?.sport_type || item.activityType || item.sport_type || item.type || 'Ride';
             const sportSettings = getSportSettingsForType(athleteProfile?.sportSettings, actType);
-            plannedMetrics = calculateWorkoutMetrics(item.workout_doc, sportSettings.ftp);
+            plannedMetrics = calculateWorkoutMetrics(item.workout_doc, item.indoor ? sportSettings.indoorFtp : sportSettings.ftp);
             itemKcal = plannedMetrics?.work ? workKjToKcal(plannedMetrics.work) : 0;
           }
 

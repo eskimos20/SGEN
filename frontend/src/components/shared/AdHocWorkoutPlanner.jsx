@@ -16,6 +16,7 @@ const AdHocWorkoutPlanner = ({ sportSettings, weightKg, onKcalEstimated }) => {
   const [intensityPercent, setIntensityPercent] = useState(75);
   const [zoneValue, setZoneValue] = useState(2);
   const [showResults, setShowResults] = useState(false);
+  const [useIndoorFtp, setUseIndoorFtp] = useState(false);
 
   const availableSports = useMemo(() => getAvailableSports(sportSettings), [sportSettings]);
 
@@ -36,14 +37,19 @@ const AdHocWorkoutPlanner = ({ sportSettings, weightKg, onKcalEstimated }) => {
   // Zone metrics for non-FTP sports
   const zoneMetrics = useMemo(() => getZoneMetrics(zoneValue, currentSportZones), [zoneValue, currentSportZones]);
 
+  // FTP for the chosen indoor/outdoor mode (indoor falls back to regular FTP)
+  const effectiveFtp = useIndoorFtp && (currentSport?.indoorFtp || 0) > 0
+    ? currentSport.indoorFtp
+    : (currentSport?.ftp || 0);
+
   // Calculate estimated kcal
   const estimatedKcal = useMemo(() => {
     if (!currentSport || !durationMinutes) return 0;
     if (hasPower) {
-      return estimateKcalFromPower(currentSport.ftp, intensityPercent, durationMinutes);
+      return estimateKcalFromPower(effectiveFtp, intensityPercent, durationMinutes);
     }
     return estimateKcalFromMET(weightKg, null, durationMinutes, zoneMetrics.met);
-  }, [currentSport, durationMinutes, intensityPercent, hasPower, weightKg, zoneMetrics]);
+  }, [currentSport, durationMinutes, intensityPercent, hasPower, weightKg, zoneMetrics, effectiveFtp]);
 
   // Map intensity to a 0-1 factor for continuous carb scaling
   // FTP-based: %FTP / 100, clamped to 0-1. 60% FTP → 0.6 IF.
@@ -109,12 +115,39 @@ const AdHocWorkoutPlanner = ({ sportSettings, weightKg, onKcalEstimated }) => {
               >
                 <div>{sport.label}</div>
                 {sport.hasPower && (
-                  <div className="text-[10px] opacity-75">FTP: {sport.ftp}W</div>
+                  <div className="text-[10px] opacity-75">FTP: {useIndoorFtp ? sport.indoorFtp : sport.ftp}W</div>
                 )}
               </button>
             ))}
           </div>
         </div>
+
+        {/* Indoor / Outdoor FTP source */}
+        {hasPower && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">FTP Source</label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-300 max-w-xs">
+              <button
+                type="button"
+                onClick={() => setUseIndoorFtp(false)}
+                className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                  !useIndoorFtp ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🌳 Outdoor
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseIndoorFtp(true)}
+                className={`flex-1 px-3 py-1.5 text-xs font-medium transition-colors ${
+                  useIndoorFtp ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🏠 Indoor
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Duration */}
         <div>
@@ -154,7 +187,7 @@ const AdHocWorkoutPlanner = ({ sportSettings, weightKg, onKcalEstimated }) => {
         {hasPower ? (
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Intensity: {intensityPercent}% of FTP ({Math.round(currentSport.ftp * intensityPercent / 100)}W)
+              Intensity: {intensityPercent}% of FTP ({Math.round(effectiveFtp * intensityPercent / 100)}W)
             </label>
             <input
               type="range"
@@ -227,7 +260,7 @@ const AdHocWorkoutPlanner = ({ sportSettings, weightKg, onKcalEstimated }) => {
               <div className="text-sm text-rose-600 font-medium">Estimated kcal</div>
               <div className="text-xs text-gray-500 mt-1">
                 {currentSport?.label} · {durationMinutes} min ·{' '}
-                {hasPower ? `${intensityPercent}% FTP (${Math.round(currentSport.ftp * intensityPercent / 100)}W)` : `Z${zoneValue.toFixed(1)} ${zoneMetrics.zoneName}`}
+                {hasPower ? `${intensityPercent}% FTP (${Math.round(effectiveFtp * intensityPercent / 100)}W)` : `Z${zoneValue.toFixed(1)} ${zoneMetrics.zoneName}`}
               </div>
             </div>
 

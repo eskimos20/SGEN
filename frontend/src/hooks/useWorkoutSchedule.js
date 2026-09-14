@@ -6,6 +6,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleIndoor, setScheduleIndoor] = useState(true);
   const [ftp, setFtp] = useState(280);
 
   useEffect(() => {
@@ -24,8 +25,9 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
             setting.types && setting.types.some(type => type === sportKey)
           );
           
-          if (sportSetting && sportSetting.ftp) {
-            setFtp(sportSetting.ftp);
+          if (sportSetting) {
+            const indoorFtp = sportSetting.indoor_ftp || 0;
+            setFtp(scheduleIndoor && indoorFtp > 0 ? indoorFtp : (sportSetting.ftp || (sportKey === 'Run' ? 240 : 280)));
           } else {
             setFtp(sportKey === 'Run' ? 240 : 280);
           }
@@ -39,7 +41,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     };
     
     fetchFtp();
-  }, [showScheduleModal, selectedWorkout, getSportType]);
+  }, [showScheduleModal, selectedWorkout, getSportType, scheduleIndoor]);
 
   const handleScheduleWorkout = useCallback(async () => {
     if (!selectedWorkout || !scheduleDate) {
@@ -93,7 +95,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
       category: 'WORKOUT',
       moving_time: durationSeconds,
       icu_training_load: workoutLoad,
-      indoor: true,
+      indoor: scheduleIndoor,
       workout_doc: {
         ...workoutDoc,
         sport_type: workoutSportType
@@ -114,11 +116,12 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     setScheduleDate('');
     
     return selectedWorkout.name;
-  }, [selectedWorkout, scheduleDate, getSportType, refreshCalendarData]);
+  }, [selectedWorkout, scheduleDate, scheduleIndoor, getSportType, refreshCalendarData]);
 
   const openScheduleModal = useCallback((workout) => {
     setSelectedWorkout(workout);
     setScheduleDate(new Date().toISOString().split('T')[0]);
+    setScheduleIndoor(true);
     setShowScheduleModal(true);
   }, []);
 
@@ -126,6 +129,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     setShowScheduleModal(false);
     setSelectedWorkout(null);
     setScheduleDate('');
+    setScheduleIndoor(true);
   }, []);
 
   return {
@@ -133,6 +137,8 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     showScheduleModal,
     scheduleDate,
     setScheduleDate,
+    scheduleIndoor,
+    setScheduleIndoor,
     ftp,
     handleScheduleWorkout,
     openScheduleModal,

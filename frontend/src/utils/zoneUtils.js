@@ -23,6 +23,35 @@ const DEFAULT_HR_ZONES = [
   { name: 'Z5', label: 'VO2max', min: 106, max: 120, color: ZONE_COLOR_HEX[4] }
 ];
 
+/**
+ * Check if an activity or calendar event was performed indoors.
+ * Activities expose `trainer: true`; events expose `indoor: true`;
+ * Virtual* types (VirtualRide, VirtualRun, ...) are always indoor.
+ * @param {Object} obj - Activity or event object
+ * @returns {boolean}
+ */
+export const isIndoorActivity = (obj) => {
+  if (!obj) return false;
+  if (obj.indoor === true || obj.trainer === true) return true;
+  const type = obj.type || obj.activityType || obj.sport_type || '';
+  return type.startsWith('Virtual');
+};
+
+/**
+ * Pick the right FTP for a sport settings entry depending on whether the
+ * workout/activity is indoor. Falls back to regular FTP when no indoor FTP
+ * is configured.
+ * @param {Object} sportSetting - Raw sport settings entry (or null)
+ * @param {boolean} indoor
+ * @returns {number} FTP in watts (0 when unavailable)
+ */
+export const getEffectiveFtp = (sportSetting, indoor) => {
+  if (!sportSetting) return 0;
+  const indoorFtp = sportSetting.indoor_ftp ?? sportSetting.indoorFtp ?? 0;
+  if (indoor && indoorFtp > 0) return indoorFtp;
+  return sportSetting.ftp || 0;
+};
+
 // Zone colors for consistent styling
 export const ZONE_COLORS = {
   Z1: { bg: 'bg-gray-400', hex: ZONE_COLOR_HEX[0], label: 'Recovery' },
@@ -122,6 +151,7 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
   if (!sportSettings || !Array.isArray(sportSettings)) {
     return {
       ftp: 280,
+      indoorFtp: 280,
       lthr: 165,
       maxHr: 190,
       powerZones: DEFAULT_POWER_ZONES,
@@ -154,6 +184,7 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
     const defaultSettings = sportSettings[0];
     return {
       ftp: defaultSettings?.ftp || 280,
+      indoorFtp: (defaultSettings?.indoor_ftp > 0 ? defaultSettings.indoor_ftp : defaultSettings?.ftp) || 280,
       lthr: defaultSettings?.lthr || 165,
       maxHr: defaultSettings?.max_hr || defaultSettings?.maxHr || 190,
       powerZones: parsePowerZones(defaultSettings?.power_zones || defaultSettings?.powerZones),
@@ -165,6 +196,7 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
 
   return {
     ftp: settings.ftp || 280,
+    indoorFtp: (settings.indoor_ftp > 0 ? settings.indoor_ftp : settings.ftp) || 280,
     lthr: settings.lthr || 165,
     maxHr: settings.max_hr || settings.maxHr || 190,
     powerZones: parsePowerZones(settings.power_zones || settings.powerZones),
@@ -291,7 +323,8 @@ const HR_ZONE_LABELS = ['Recovery', 'Aerobic', 'Tempo', 'SubThreshold', 'SuperTh
 export const calculateActivityZones = (activity, sportSettings, streams) => {
   const activityType = activity?.type || activity?.icu_type || '';
   const settings = getSportSettingsForType(sportSettings, activityType);
-  const { ftp, lthr, maxHr, powerZones, hrZones } = settings;
+  const { lthr, maxHr, powerZones, hrZones } = settings;
+  const ftp = isIndoorActivity(activity) ? settings.indoorFtp : settings.ftp;
 
   // --- Power zones ---
   let powerZoneSeconds = [0, 0, 0, 0, 0, 0, 0];

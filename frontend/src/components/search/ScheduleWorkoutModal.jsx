@@ -7,6 +7,8 @@ const ScheduleWorkoutModal = ({
   workout,
   scheduleDate,
   setScheduleDate,
+  indoor,
+  setIndoor,
   onSchedule,
   onClose,
   getSportTypeDisplayName
@@ -66,6 +68,39 @@ const ScheduleWorkoutModal = ({
               onChange={(e) => setScheduleDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              FTP Source
+            </label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-300">
+              <button
+                type="button"
+                onClick={() => setIndoor(false)}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  !indoor
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🌳 Outdoor
+              </button>
+              <button
+                type="button"
+                onClick={() => setIndoor(true)}
+                className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
+                  indoor
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                🏠 Indoor
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Indoor uses your Indoor FTP when configured, otherwise regular FTP.
+            </p>
           </div>
         </div>
         

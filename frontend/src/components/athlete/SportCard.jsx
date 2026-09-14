@@ -20,6 +20,7 @@ const SportCard = ({
   onCancelUpdate
 }) => {
   const ftp = settings.ftp;
+  const indoorFtp = settings.indoor_ftp;
   const lthr = settings.lthr;
   const maxHr = settings.max_hr;
   const hrZones = settings.hr_zones;
@@ -144,6 +145,12 @@ const SportCard = ({
           <span className="px-2 py-1 bg-white/90 sm:bg-white sm:rounded text-sm font-medium">
             FTP: {ftp}W
             {weight > 0 && <span className="text-gray-500 ml-1">({(ftp/weight).toFixed(2)} W/kg)</span>}
+          </span>
+        )}
+        {indoorFtp > 0 && (
+          <span className="px-2 py-1 bg-white/90 sm:bg-white sm:rounded text-sm font-medium">
+            Indoor FTP: {indoorFtp}W
+            {weight > 0 && <span className="text-gray-500 ml-1">({(indoorFtp/weight).toFixed(2)} W/kg)</span>}
           </span>
         )}
         {thresholdPace > 0 && (

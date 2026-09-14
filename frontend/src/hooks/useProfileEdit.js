@@ -36,8 +36,10 @@ export const useProfileEdit = (athleteProfile, onProfileUpdate) => {
         if (editForm.supportsPower) {
           if (editForm.sportFtp !== '') {
             sportUpdate.ftp = parseInt(editForm.sportFtp);
-            sportUpdate.indoor_ftp = parseInt(editForm.sportFtp);
           }
+          sportUpdate.indoor_ftp = editForm.sportIndoorFtp !== '' && editForm.sportIndoorFtp != null
+            ? parseInt(editForm.sportIndoorFtp)
+            : 0;
         } else if (editForm.originalSupportsPower) {
           sportUpdate.ftp = 0;
           sportUpdate.indoor_ftp = 0;

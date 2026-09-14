@@ -61,6 +61,7 @@ const Achievements = () => {
         activityName: achievement.activityName,
         sportType: achievement.sportType,
         achievementDate: achievement.achievementDate,
+        indoor: achievement.indoor ?? null,
       });
       setRespondedMap(prev => ({ ...prev, [key]: 'accepted' }));
     } catch (err) {
@@ -89,6 +90,7 @@ const Achievements = () => {
         activityName: achievement.activityName,
         sportType: achievement.sportType,
         achievementDate: achievement.achievementDate,
+        indoor: achievement.indoor ?? null,
       });
       setRespondedMap(prev => ({ ...prev, [key]: 'dismissed' }));
     } catch (err) {
@@ -391,7 +393,7 @@ const Achievements = () => {
                           {/* Value comparison for FTP/LTHR */}
                           {canUpdate && oldValue && newValue && (
                             <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
-                              <span className="font-medium">Update {isFtp ? 'FTP' : 'LTHR'}:</span>
+                              <span className="font-medium">Update {isFtp && achievement.indoor ? 'Indoor FTP' : isFtp ? 'FTP' : 'LTHR'}:</span>
                               <span className="font-mono">{oldValue}{unit}</span>
                               <span>→</span>
                               <span className="font-mono font-bold text-gray-900">{newValue}{unit}</span>

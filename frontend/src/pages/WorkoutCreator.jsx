@@ -29,6 +29,7 @@ const WorkoutCreator = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [ftp, setFtp] = useState(280);
   const [ftpMissing, setFtpMissing] = useState(false);
+  const [useIndoorFtp, setUseIndoorFtp] = useState(true);
   const [usePace, setUsePace] = useState(() => editingWorkout?.workout_doc?.steps?.some(s => s.pace) || false);
   const [thresholdPace, setThresholdPace] = useState(null);
   const [paceZones, setPaceZones] = useState(null);
@@ -106,8 +107,10 @@ const WorkoutCreator = () => {
             setting.types && setting.types.some(type => type === sportKey)
           );
           
-          if (sportSetting && sportSetting.ftp > 0) {
-            setFtp(sportSetting.ftp);
+          const indoorFtp = sportSetting?.indoor_ftp || 0;
+          const effectiveFtp = useIndoorFtp && indoorFtp > 0 ? indoorFtp : (sportSetting?.ftp || 0);
+          if (effectiveFtp > 0) {
+            setFtp(effectiveFtp);
             setFtpMissing(false);
           } else {
             setFtp(sportType === 'Run' ? 240 : 275);
@@ -134,7 +137,7 @@ const WorkoutCreator = () => {
     };
     
     fetchSportSettings();
-  }, [sportType]);
+  }, [sportType, useIndoorFtp]);
 
   // Calculate workout metrics
   const workoutMetrics = useMemo(() => {
@@ -218,7 +221,8 @@ const WorkoutCreator = () => {
         editingFilename,
         usePace && sportType === 'Run',
         thresholdPace,
-        paceUnits
+        paceUnits,
+        useIndoorFtp
       );
 
       setConfirmDialog({
@@ -248,7 +252,7 @@ const WorkoutCreator = () => {
         onCancel: null
       });
     }
-  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, shortDescription, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps, usePace, thresholdPace, paceUnits]);
+  }, [steps, workoutSteps, workoutMetrics, selectedCategory, description, shortDescription, sportType, autoWorkoutName, saveAndSchedule, scheduleDate, saveWorkout, resetSaveState, setSteps, usePace, thresholdPace, paceUnits, useIndoorFtp]);
 
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -264,6 +268,8 @@ const WorkoutCreator = () => {
           autoWorkoutName={autoWorkoutName}
           sportType={sportType}
           setSportType={setSportType}
+          useIndoorFtp={useIndoorFtp}
+          setUseIndoorFtp={setUseIndoorFtp}
           selectedCategory={selectedCategory}
           setSelectedCategory={setSelectedCategory}
           description={description}

@@ -39,7 +39,7 @@ export const useWorkoutSearch = () => {
     fetchAthleteProfileData();
   }, []);
 
-  const getFtpForWorkout = useCallback((workout) => {
+  const getFtpForWorkout = useCallback((workout, indoor = false) => {
     try {
       const sportSettings = athleteProfile?.sportSettings;
       if (!sportSettings || !Array.isArray(sportSettings)) {
@@ -53,11 +53,12 @@ export const useWorkoutSearch = () => {
         setting.types && setting.types.some(type => type === sportKey)
       );
       
-      if (sportSetting && sportSetting.ftp) {
-        return sportSetting.ftp;
-      } else {
-        return sportKey === 'Run' ? 240 : 280;
+      if (sportSetting) {
+        const indoorFtp = sportSetting.indoor_ftp || 0;
+        if (indoor && indoorFtp > 0) return indoorFtp;
+        if (sportSetting.ftp) return sportSetting.ftp;
       }
+      return sportKey === 'Run' ? 240 : 280;
     } catch (err) {
       console.error('Failed to get FTP for workout:', err);
       return 280;

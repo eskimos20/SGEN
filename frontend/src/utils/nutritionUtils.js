@@ -456,7 +456,8 @@ export const getAvailableSports = (sportSettings) => {
         key: groupKey,
         label,
         ftp: setting.ftp || 0,
-        hasPower: (setting.ftp || 0) > 0,
+        indoorFtp: (setting.indoor_ftp > 0 ? setting.indoor_ftp : setting.ftp) || 0,
+        hasPower: (setting.ftp || 0) > 0 || (setting.indoor_ftp || 0) > 0,
         types,
       });
     });
