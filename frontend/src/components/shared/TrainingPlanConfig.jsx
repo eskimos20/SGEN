@@ -96,7 +96,8 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
             hardDays: response.data.hardDays || [],
             hardCategories: response.data.hardCategories || [],
             deloadWeek: normalizeDeloadWeek(response.data.deloadWeek, prev.deloadWeek),
-            progressiveWeekLoad: response.data.progressiveWeekLoad ?? prev.progressiveWeekLoad
+            progressiveWeekLoad: response.data.progressiveWeekLoad ?? prev.progressiveWeekLoad,
+            indoor: response.data.indoor ?? prev.indoor
           }));
           
           // Load day-specific hard categories if available

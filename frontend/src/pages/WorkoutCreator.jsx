@@ -29,7 +29,7 @@ const WorkoutCreator = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [ftp, setFtp] = useState(280);
   const [ftpMissing, setFtpMissing] = useState(false);
-  const [useIndoorFtp, setUseIndoorFtp] = useState(true);
+  const [useIndoorFtp, setUseIndoorFtp] = useState(false);
   const [usePace, setUsePace] = useState(() => editingWorkout?.workout_doc?.steps?.some(s => s.pace) || false);
   const [thresholdPace, setThresholdPace] = useState(null);
   const [paceZones, setPaceZones] = useState(null);

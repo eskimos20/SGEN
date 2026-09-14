@@ -6,7 +6,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleIndoor, setScheduleIndoor] = useState(true);
+  const [scheduleIndoor, setScheduleIndoor] = useState(false);
   const [ftp, setFtp] = useState(280);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
   const openScheduleModal = useCallback((workout) => {
     setSelectedWorkout(workout);
     setScheduleDate(new Date().toISOString().split('T')[0]);
-    setScheduleIndoor(true);
+    setScheduleIndoor(false);
     setShowScheduleModal(true);
   }, []);
 
@@ -129,7 +129,7 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     setShowScheduleModal(false);
     setSelectedWorkout(null);
     setScheduleDate('');
-    setScheduleIndoor(true);
+    setScheduleIndoor(false);
   }, []);
 
   return {

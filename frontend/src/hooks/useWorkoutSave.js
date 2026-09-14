@@ -144,7 +144,7 @@ export const useWorkoutSave = (refreshCalendarData) => {
     usePace = false,
     thresholdPace = null,
     paceUnits = null,
-    indoor = true
+    indoor = false
   ) => {
     if (saveAndSchedule && !scheduleDate) {
       throw new Error('Please select a date to schedule your workout.');

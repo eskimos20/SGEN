@@ -144,7 +144,7 @@ const SearchFilters = ({
               <button
                 type="button"
                 onClick={() => setUseIndoorFtp(false)}
-                className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-1 px-2 py-2 text-sm font-medium transition-colors ${
                   !useIndoorFtp ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -153,7 +153,7 @@ const SearchFilters = ({
               <button
                 type="button"
                 onClick={() => setUseIndoorFtp(true)}
-                className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex-1 px-2 py-2 text-sm font-medium transition-colors ${
                   useIndoorFtp ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
