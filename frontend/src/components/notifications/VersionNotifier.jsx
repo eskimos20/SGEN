@@ -6,6 +6,17 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Unified Top 3',
+    date: '2026-09-16',
+    features: [
+      {
+        icon: '🏆',
+        title: 'One Top 3 for FTP & VO2Max',
+        description: 'The Statistics page now shows a single Top 3 list for FTP and VO2Max. Indoor and outdoor results compete in the same ranking – each entry is marked 🏠 Indoor or 🌳 Outdoor.'
+      }
+    ]
+  },
+  {
     title: 'Zwift Integration',
     date: '2026-09-14',
     features: [

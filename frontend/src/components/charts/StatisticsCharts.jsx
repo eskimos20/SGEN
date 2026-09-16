@@ -55,18 +55,18 @@ const StatisticsCharts = ({
 
   if (!weeklyData) return null;
 
-  // Split top-3 lists into indoor/outdoor groups
-  const ftpOutdoor = (top3Ftp || []).filter(r => !r.indoor);
-  const ftpIndoor = (top3Ftp || []).filter(r => r.indoor);
-  const vo2Outdoor = (top3Vo2Max || []).filter(r => !r.indoor);
-  const vo2Indoor = (top3Vo2Max || []).filter(r => r.indoor);
+  // Single merged top-3 lists (indoor and outdoor compete together)
+  const ftpTop3 = [...(top3Ftp || [])].sort((a, b) => b.ftpValue - a.ftpValue);
+  const vo2Top3 = [...(top3Vo2Max || [])].sort((a, b) => b.vo2MaxValue - a.vo2MaxValue);
 
-  const renderFtpList = (list, label) => (
+  const indoorBadge = (result) => (result.indoor ? '🏠 Indoor' : '🌳 Outdoor');
+
+  const renderFtpList = (list) => (
     <div className="space-y-3">
-      {list.map((result) => (
+      {list.map((result, index) => (
         <div key={result.id} className="border-l-4 border-amber-500 pl-4 py-2 bg-amber-50 rounded-r">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-600">{label} · Rank {result.rank}</span>
+            <span className="text-sm font-medium text-gray-600">{indoorBadge(result)} · Rank {index + 1}</span>
             <span className="text-2xl font-bold text-amber-700">{Math.round(result.ftpValue)} W</span>
           </div>
           <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
@@ -85,12 +85,12 @@ const StatisticsCharts = ({
     </div>
   );
 
-  const renderVo2MaxList = (list, label) => (
+  const renderVo2MaxList = (list) => (
     <div className="space-y-3">
-      {list.map((result) => (
+      {list.map((result, index) => (
         <div key={result.id} className="border-l-4 border-red-500 pl-4 py-2 bg-red-50 rounded-r">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-gray-600">{label} · Rank {result.rank}</span>
+            <span className="text-sm font-medium text-gray-600">{indoorBadge(result)} · Rank {index + 1}</span>
             <span className="text-2xl font-bold text-red-700">{result.vo2MaxValue} ml/kg/min</span>
           </div>
           <div className="text-sm text-gray-700 font-medium">{result.activityName}</div>
@@ -132,8 +132,7 @@ const StatisticsCharts = ({
                   <h3 className="text-sm font-semibold text-amber-700 flex items-center gap-1">
                     <Zap className="h-4 w-4" /> FTP Top 3
                   </h3>
-                  {ftpOutdoor.length > 0 && renderFtpList(ftpOutdoor, '🌳 Outdoor')}
-                  {ftpIndoor.length > 0 && renderFtpList(ftpIndoor, '🏠 Indoor')}
+                  {renderFtpList(ftpTop3)}
                 </div>
               )}
               {/* VO2Max */}
@@ -142,8 +141,7 @@ const StatisticsCharts = ({
                   <h3 className="text-sm font-semibold text-red-700 flex items-center gap-1">
                     <Heart className="h-4 w-4" /> VO2Max Top 3
                   </h3>
-                  {vo2Outdoor.length > 0 && renderVo2MaxList(vo2Outdoor, '🌳 Outdoor')}
-                  {vo2Indoor.length > 0 && renderVo2MaxList(vo2Indoor, '🏠 Indoor')}
+                  {renderVo2MaxList(vo2Top3)}
                 </div>
               )}
             </div>

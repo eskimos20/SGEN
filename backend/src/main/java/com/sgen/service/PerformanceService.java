@@ -36,7 +36,8 @@ public class PerformanceService {
 
     /**
      * Calculate and update FTP from pre-calculated best 5-min window.
-     * Indoor and outdoor results are ranked in separate top-3 lists.
+     * Indoor and outdoor results are ranked in a single shared top-3 list;
+     * the indoor flag is only stored for display purposes.
      */
     @Transactional
     public void updateFtpIfBetter(String username, String activityId, String activityName,
@@ -56,10 +57,10 @@ public class PerformanceService {
 
         double ftpValue = result.ftpValue;
 
-        // Get current top 3 for the same indoor/outdoor group
+        // Get current top 3 across both indoor and outdoor results
         List<FtpResult> currentTop3 = new java.util.ArrayList<>(
                 ftpResultRepository.findByUserOrderByRankAsc(user).stream()
-                        .filter(r -> indoor == Boolean.TRUE.equals(r.getIndoor()))
+                        .sorted((a, b) -> Double.compare(b.getFtpValue(), a.getFtpValue()))
                         .toList());
 
         // Skip if this activity already exists with the same FTP value (avoid redundant updates)
@@ -121,7 +122,8 @@ public class PerformanceService {
 
     /**
      * Calculate and update VO2Max from pre-calculated best 5-min window.
-     * Indoor and outdoor results are ranked in separate top-3 lists.
+     * Indoor and outdoor results are ranked in a single shared top-3 list;
+     * the indoor flag is only stored for display purposes.
      */
     @Transactional
     public void updateVo2MaxIfBetter(String username, String activityId, String activityName,
@@ -136,10 +138,10 @@ public class PerformanceService {
             return;
         }
 
-        // Get current top 3 for the same indoor/outdoor group
+        // Get current top 3 across both indoor and outdoor results
         List<Vo2MaxResult> currentTop3 = new java.util.ArrayList<>(
                 vo2MaxResultRepository.findByUserOrderByRankAsc(user).stream()
-                        .filter(r -> indoor == Boolean.TRUE.equals(r.getIndoor()))
+                        .sorted((a, b) -> Double.compare(b.getVo2MaxValue(), a.getVo2MaxValue()))
                         .toList());
         
         // Skip if this activity already exists with the same VO2Max value (avoid redundant updates)
@@ -209,33 +211,30 @@ public class PerformanceService {
     }
 
     /**
-     * Backfill the indoor flag for rows created before it existed (indoor = null,
-     * shown as outdoor) and re-rank each indoor/outdoor group. Virtual* activity
-     * types are treated as indoor, same rule as during sync.
+     * Startup migration: fills the indoor flag on rows created before it
+     * existed (indoor = null; Virtual* activity types count as indoor, same
+     * rule as during sync) and merges the old separate indoor/outdoor top-3
+     * lists into a single top-3 per user, ranked by value. Idempotent.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void backfillIndoorClassification() {
+    public void mergeTop3Lists() {
         List<FtpResult> ftpResults = ftpResultRepository.findAll();
-        if (ftpResults.stream().anyMatch(r -> r.getIndoor() == null)) {
-            for (FtpResult r : ftpResults) {
-                if (r.getIndoor() == null) {
-                    r.setIndoor(isVirtualType(r.getActivityType()));
-                }
+        for (FtpResult r : ftpResults) {
+            if (r.getIndoor() == null) {
+                r.setIndoor(isVirtualType(r.getActivityType()));
             }
-            rerankGroups(ftpResults, FtpResult::getUser, FtpResult::getIndoor,
-                    FtpResult::getFtpValue, FtpResult::setRank, ftpResultRepository::deleteAll);
         }
+        rerankGroups(ftpResults, FtpResult::getUser,
+                FtpResult::getFtpValue, FtpResult::setRank, ftpResultRepository::deleteAll);
 
         List<Vo2MaxResult> vo2Results = vo2MaxResultRepository.findAll();
-        if (vo2Results.stream().anyMatch(r -> r.getIndoor() == null)) {
-            for (Vo2MaxResult r : vo2Results) {
-                if (r.getIndoor() == null) {
-                    r.setIndoor(isVirtualType(r.getActivityType()));
-                }
+        for (Vo2MaxResult r : vo2Results) {
+            if (r.getIndoor() == null) {
+                r.setIndoor(isVirtualType(r.getActivityType()));
             }
-            rerankGroups(vo2Results, Vo2MaxResult::getUser, Vo2MaxResult::getIndoor,
-                    Vo2MaxResult::getVo2MaxValue, Vo2MaxResult::setRank, vo2MaxResultRepository::deleteAll);
         }
+        rerankGroups(vo2Results, Vo2MaxResult::getUser,
+                Vo2MaxResult::getVo2MaxValue, Vo2MaxResult::setRank, vo2MaxResultRepository::deleteAll);
     }
 
     private boolean isVirtualType(String activityType) {
@@ -243,18 +242,17 @@ public class PerformanceService {
     }
 
     /**
-     * Re-rank results within each user + indoor/outdoor group and drop entries
+     * Re-rank results within each user's single top-3 list and drop entries
      * beyond top 3. Entities are managed, so rank changes flush automatically.
      */
     private <T> void rerankGroups(List<T> results,
                                   java.util.function.Function<T, User> getUser,
-                                  java.util.function.Function<T, Boolean> getIndoor,
                                   java.util.function.ToDoubleFunction<T> getValue,
                                   java.util.function.BiConsumer<T, Integer> setRank,
                                   java.util.function.Consumer<List<T>> deleteAll) {
-        Map<String, List<T>> groups = new java.util.HashMap<>();
+        Map<Long, List<T>> groups = new java.util.HashMap<>();
         for (T r : results) {
-            groups.computeIfAbsent(getUser.apply(r).getId() + ":" + getIndoor.apply(r),
+            groups.computeIfAbsent(getUser.apply(r).getId(),
                     k -> new java.util.ArrayList<>()).add(r);
         }
         List<T> toDelete = new java.util.ArrayList<>();

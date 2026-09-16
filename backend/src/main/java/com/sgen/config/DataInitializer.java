@@ -35,9 +35,9 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         try {
-            performanceService.backfillIndoorClassification();
+            performanceService.mergeTop3Lists();
         } catch (Exception e) {
-            log.error("Failed to backfill indoor classification: {}", e.getMessage(), e);
+            log.error("Failed to merge top-3 lists: {}", e.getMessage(), e);
         }
     }
 }
