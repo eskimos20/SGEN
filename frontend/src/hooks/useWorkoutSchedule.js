@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { getCalendarDisplayRange } from '../utils/calendarUtils';
 import api from '../api/axios';
 
-export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
+export const useWorkoutSchedule = (refreshCalendarData, getSportType, searchIndoor = false) => {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
@@ -121,9 +121,9 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
   const openScheduleModal = useCallback((workout) => {
     setSelectedWorkout(workout);
     setScheduleDate(new Date().toISOString().split('T')[0]);
-    setScheduleIndoor(false);
+    setScheduleIndoor(searchIndoor);
     setShowScheduleModal(true);
-  }, []);
+  }, [searchIndoor]);
 
   const closeScheduleModal = useCallback(() => {
     setShowScheduleModal(false);
@@ -138,7 +138,6 @@ export const useWorkoutSchedule = (refreshCalendarData, getSportType) => {
     scheduleDate,
     setScheduleDate,
     scheduleIndoor,
-    setScheduleIndoor,
     ftp,
     handleScheduleWorkout,
     openScheduleModal,

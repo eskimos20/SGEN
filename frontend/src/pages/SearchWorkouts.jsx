@@ -65,8 +65,8 @@ const SearchWorkouts = () => {
     openScheduleModal,
     closeScheduleModal,
     scheduleIndoor,
-    setScheduleIndoor
-  } = useWorkoutSchedule(refreshCalendarData, getSportType);
+    ftp
+  } = useWorkoutSchedule(refreshCalendarData, getSportType, previewIndoor);
 
   React.useEffect(() => {
     api.get('/statistics/athlete-profile').then(r => setAthleteProfile(r.data)).catch(() => {});
@@ -283,7 +283,7 @@ const SearchWorkouts = () => {
         scheduleDate={scheduleDate}
         setScheduleDate={setScheduleDate}
         indoor={scheduleIndoor}
-        setIndoor={setScheduleIndoor}
+        ftp={ftp}
         onSchedule={onScheduleWorkout}
         onClose={closeScheduleModal}
         getSportTypeDisplayName={getSportTypeDisplayName}
