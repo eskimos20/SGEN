@@ -20,10 +20,11 @@ export const useProfileEdit = (athleteProfile, onProfileUpdate) => {
 
       // Basic profile data
       const parsedWeight = parseFloat(editForm.weight);
-      const parsedHeight = parseFloat(editForm.height);
+      const parsedHeight = parseFloat(editForm.height?.toString().replace(',', '.'));
       const parsedRestingHr = parseInt(editForm.restingHr);
       if (!isNaN(parsedWeight)) profileUpdates.weight = parsedWeight;
-      if (!isNaN(parsedHeight)) profileUpdates.height = parsedHeight;
+      // The input is in cm but Intervals.icu expects height in meters
+      if (!isNaN(parsedHeight)) profileUpdates.height = parsedHeight > 3 ? parsedHeight / 100 : parsedHeight;
       if (!isNaN(parsedRestingHr)) profileUpdates.icu_resting_hr = parsedRestingHr;
       
       const wellnessUpdates = [];

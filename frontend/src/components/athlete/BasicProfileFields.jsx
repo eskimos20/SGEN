@@ -17,10 +17,10 @@ const BasicProfileFields = ({ editForm, setEditForm }) => {
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
         <input
-          key={`height-${editForm.height}`}
           type="number"
-          value={editForm.height ? parseFloat(editForm.height.toString().replace(',', '.')) : ''}
-          step="0.01"
+          value={editForm.height}
+          step="1"
+          min="0"
           onChange={(e) => setEditForm(prev => ({ ...prev, height: e.target.value }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter height"

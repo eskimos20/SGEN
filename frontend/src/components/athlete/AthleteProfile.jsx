@@ -2,6 +2,7 @@ import { Loader2, ChevronDown, ChevronUp, Trophy, Settings, Plus } from 'lucide-
 import { useState, useEffect } from 'react';
 import { calculateAge, getSportColorClasses, getSportCategory } from '../../utils/athleteUtils';
 import { formatPaceValue } from '../../utils/zoneUtils';
+import { normalizeHeightToCm } from '../../utils/nutritionUtils';
 import { fetchAvailableActivityTypes } from '../../utils/fitnessService';
 import { useProfileEdit } from '../../hooks/useProfileEdit';
 import { useAthleteSports } from '../../hooks/useAthleteSports';
@@ -168,7 +169,7 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
                   setIsEditModalOpen(true);
                   setEditForm({
                     weight: weight || '',
-                    height: height ? height.toString().replace(',', '.') : '',
+                    height: height ? normalizeHeightToCm(height) : '',
                     restingHr: restingHr || ''
                   });
                 }}
@@ -202,7 +203,7 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
             )}
             {height > 0 && (
               <div className="text-center p-2 bg-white/80 sm:bg-white sm:rounded-lg sm:shadow-sm">
-                <div className="text-lg font-bold text-gray-900">{height} cm</div>
+                <div className="text-lg font-bold text-gray-900">{normalizeHeightToCm(height)} cm</div>
                 <div className="text-xs text-gray-500">Height</div>
               </div>
             )}
