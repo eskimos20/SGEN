@@ -204,17 +204,17 @@ const EventDetailModal = ({
       <div className="bg-white rounded-t-2xl rounded-xl shadow-2xl w-full max-w-none sm:max-w-4xl h-[85vh] sm:h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col pt-4 sm:pt-0" style={{ overscrollBehavior: 'contain' }}>
         {/* Modal Header */}
         <div className="border-b border-gray-200 bg-gray-50 flex-shrink-0">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <Activity className="h-6 w-6 text-primary-600" />
-              <div>
+          <div className="flex items-center justify-between gap-2 p-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Activity className="h-6 w-6 text-primary-600 flex-shrink-0" />
+              <div className="min-w-0">
                 {(() => {
                   const { mainName, shortDescription } = parseWorkoutName(selectedEvent.name);
                   return (
                     <>
-                      <h2 className="text-xl font-bold text-gray-900">{mainName}</h2>
+                      <h2 className="text-xl font-bold text-gray-900 break-words">{mainName}</h2>
                       {shortDescription && (
-                        <p className="text-sm text-gray-600 font-medium mt-1">{shortDescription}</p>
+                        <p className="text-sm text-gray-600 font-medium mt-1 break-words">{shortDescription}</p>
                       )}
                       <p className="text-sm text-gray-500 mt-2">
                         {new Date(selectedEvent.start_date_local).toLocaleDateString('en-US', {
@@ -229,7 +229,7 @@ const EventDetailModal = ({
                 })()}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Edit button - only for completed activities AND custom events (SICK, HOLIDAY, NOTE, etc.) */}
               {(selectedEvent.isCompleted || (!selectedEvent.isCompleted && selectedEvent.category && editableEventCategories.includes(selectedEvent.category))) && (
                 <button
