@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/assets/**", "/static/**", "/**/*.js", "/**/*.css", "/**/*.ico", "/**/*.svg", "/**/*.png", "/**/*.jpg", "/**/*.jpeg", "/**/*.gif", "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.eot").permitAll()
-                        .requestMatchers("/login", "/dashboard", "/profile", "/statistics", "/calendar", "/workout-creator", "/search-workouts", "/achievements", "/nutrition", "/gear", "/bikefit", "/admin", "/monitoring", "/change-password").permitAll()
+                        .requestMatchers("/login", "/dashboard", "/profile", "/statistics", "/calendar", "/workout-creator", "/search-workouts", "/achievements", "/nutrition", "/gear", "/connections", "/bikefit", "/admin", "/monitoring", "/change-password").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/strava/callback").permitAll()
                         .requestMatchers("/strava-callback.html").permitAll()
