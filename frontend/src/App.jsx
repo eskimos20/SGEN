@@ -18,6 +18,7 @@ const BikeFit = lazy(() => import('./pages/BikeFit'));
 const Achievements = lazy(() => import('./pages/Achievements'));
 const Nutrition = lazy(() => import('./pages/Nutrition'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
+const Connections = lazy(() => import('./pages/Connections'));
 
 const ProtectedRoute = ({ children, adminOnly = false, userOnly = false, allowChangePassword = false }) => {
   const { user, loading } = useAuth();
@@ -86,6 +87,11 @@ const AppRoutes = () => {
         <Route path="gear" element={
           <ProtectedRoute userOnly>
             <Gear />
+          </ProtectedRoute>
+        } />
+        <Route path="connections" element={
+          <ProtectedRoute userOnly>
+            <Connections />
           </ProtectedRoute>
         } />
         <Route path="calendar" element={

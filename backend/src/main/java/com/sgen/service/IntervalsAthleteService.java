@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -67,14 +68,29 @@ public class IntervalsAthleteService {
         return profile;
     }
 
+    private static final Set<String> UPDATABLE_PROFILE_FIELDS = Set.of(
+            "name", "city", "country", "weight", "height", "sex", "locale",
+            "icu_date_of_birth", "icu_weight_target", "icu_resting_hr",
+            // Connection sync toggles
+            "strava_sync_activities", "strava_sync_other_activities", "update_strava_name",
+            "ignore_strava_gear", "add_weather_to_strava_descr",
+            "icu_garmin_sync_activities", "icu_garmin_download_wellness", "icu_garmin_health",
+            "icu_garmin_training", "icu_garmin_upload_workouts",
+            "zwift_sync_activities", "zwift_upload_workouts",
+            "polar_sync_activities", "polar_download_wellness",
+            "suunto_sync_activities", "suunto_download_wellness", "suunto_upload_workouts",
+            "coros_sync_activities", "coros_download_wellness", "coros_upload_workouts",
+            "wahoo_sync_activities", "wahoo_upload_workouts",
+            "concept2_sync_activities",
+            "zepp_sync_activities", "zepp_download_wellness", "zepp_upload_workouts",
+            "huawei_sync_activities", "huawei_download_wellness", "huawei_upload_workouts"
+    );
+
     public JsonNode updateAthleteProfile(String username, Map<String, Object> updates) {
         Map<String, Object> filtered = new HashMap<>();
         for (Map.Entry<String, Object> entry : updates.entrySet()) {
             String key = entry.getKey();
-            if ("name".equals(key) || "city".equals(key) || "country".equals(key) ||
-                    "weight".equals(key) || "height".equals(key) || "sex".equals(key) || "locale".equals(key) ||
-                    "icu_date_of_birth".equals(key) || "icu_weight_target".equals(key) ||
-                    "icu_resting_hr".equals(key)) {
+            if (UPDATABLE_PROFILE_FIELDS.contains(key)) {
                 filtered.put(key, entry.getValue());
             } else {
                 log.warn("Skipping unsupported athlete profile field: {} = {}", key, entry.getValue());
