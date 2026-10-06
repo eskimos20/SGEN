@@ -215,24 +215,33 @@ const Connections = () => {
                       <p className="text-sm text-gray-500">No sync options available for this provider.</p>
                     ) : (
                       <div className="space-y-2">
-                        {provider.options.map(opt => (
-                          <label
-                            key={opt.field}
-                            className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer select-none"
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                              checked={isChecked(opt.field, opt.invert)}
-                              disabled={savingField === opt.field}
-                              onChange={(e) => handleToggle(opt.field, opt.invert, e.target.checked)}
-                            />
-                            <span className="flex-1">{opt.label}</span>
-                            {savingField === opt.field && (
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                            )}
-                          </label>
-                        ))}
+                        {provider.options.map(opt => {
+                          const checked = isChecked(opt.field, opt.invert);
+                          const saving = savingField === opt.field;
+                          return (
+                            <label
+                              key={opt.field}
+                              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none"
+                            >
+                              <div
+                                onClick={() => !saving && handleToggle(opt.field, opt.invert, !checked)}
+                                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                                  checked ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                                } ${saving ? 'opacity-50' : ''}`}
+                              >
+                                {checked && (
+                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="flex-1">{opt.label}</span>
+                              {saving && (
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                              )}
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
