@@ -170,7 +170,8 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
                   setEditForm({
                     weight: weight || '',
                     height: height ? normalizeHeightToCm(height) : '',
-                    restingHr: restingHr || ''
+                    restingHr: restingHr || '',
+                    dateOfBirth: athlete.icu_date_of_birth || ''
                   });
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
