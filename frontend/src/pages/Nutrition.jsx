@@ -434,7 +434,7 @@ const Nutrition = () => {
                     <div className="bg-purple-50 border border-purple-200 sm:rounded-lg p-2 sm:p-4">
                       <h4 className="font-medium text-purple-800 mb-2 flex items-center gap-2 text-sm">
                         <Flame className="h-4 w-4" />
-                        Estimated Fuel Usage {normalizedIF > 0 && <span className="text-xs font-normal text-purple-600">(IF {normalizedIF}%)</span>}
+                        Estimated Fuel Usage {normalizedIF > 0 && <span className="text-xs font-normal text-purple-600">(Intensity Factor {Math.round(normalizedIF)}%)</span>}
                       </h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="text-center">
