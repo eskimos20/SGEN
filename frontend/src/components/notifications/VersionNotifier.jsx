@@ -6,6 +6,17 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Mobile Activity View',
+    date: '2026-10-07',
+    features: [
+      {
+        icon: '📱',
+        title: 'Better Long Activity Names on Mobile',
+        description: 'The edit/delete/close buttons in the activity view now sit on their own row on mobile, so long activity names use the full width instead of wrapping one word per line.'
+      }
+    ]
+  },
+  {
     title: 'Provider Connections',
     date: '2026-10-06',
     features: [
