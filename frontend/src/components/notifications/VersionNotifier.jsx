@@ -6,6 +6,17 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Longer Build Cycles',
+    date: '2026-10-21',
+    features: [
+      {
+        icon: '📅',
+        title: '4 Build / 1 Deload Weeks',
+        description: 'The Scheduler now supports a 4-week build cycle followed by 1 deload week, in addition to the existing 2- and 3-week options. Progressive week load ramps across all four build weeks.'
+      }
+    ]
+  },
+  {
     title: 'Mobile Activity View',
     date: '2026-10-07',
     features: [

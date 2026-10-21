@@ -556,6 +556,7 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
                 >
                   <option value={2}>2 build / 1 deload</option>
                   <option value={3}>3 build / 1 deload</option>
+                  <option value={4}>4 build / 1 deload</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2">
                   Repeat this pattern for the entire period.

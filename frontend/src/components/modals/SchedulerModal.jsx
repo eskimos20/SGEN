@@ -129,7 +129,7 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
     return new Date(utcMidnight - (day - 1) * 86400000);
   };
 
-  // TSS progression scale: Deload 60%, Week 1 = 0%, Week 2 = 10%, Week 3 = 20%
+  // TSS progression scale: Deload 60%, Week 1 = 0%, Week 2 = 10%, Week 3 = 20%, Week 4 = 30%
   const getProgressionScale = (date, deloadConfig, isDeload, progressiveEnabled, startDate) => {
     if (!progressiveEnabled) return 1;
     if (isDeload) return (deloadConfig?.deloadPercent ?? 60) / 100; // Deload = configured % of base TSS
@@ -138,8 +138,8 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
     if (buildIndex === null || buildIndex === undefined) return 1;
 
     const safeBuildIndex = Math.max(buildIndex, 0);
-    // Progressive TSS increase: Week 1 = 0%, Week 2 = 10%, Week 3 = 20%
-    const progressionValues = [0, 0.10, 0.20];
+    // Progressive TSS increase: Week 1 = 0%, Week 2 = 10%, Week 3 = 20%, Week 4 = 30%
+    const progressionValues = [0, 0.10, 0.20, 0.30];
     const progressionIndex = Math.min(safeBuildIndex, progressionValues.length - 1);
     return 1 + progressionValues[progressionIndex];
   };
@@ -150,7 +150,7 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
     const { buildIndex } = getCycleInfo(date, deloadConfig, startDate);
     if (buildIndex === null || buildIndex === undefined) return null;
 
-    return Math.min(Math.max(buildIndex, 0), 2);
+    return Math.min(Math.max(buildIndex, 0), 3);
   };
 
   // No longer needed - using TSS-based progression instead of duration
