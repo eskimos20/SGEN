@@ -13,6 +13,11 @@ const VERSION_NOTES = [
         icon: '📅',
         title: '4 Build / 1 Deload Weeks',
         description: 'The Scheduler now supports a 4-week build cycle followed by 1 deload week, in addition to the existing 2- and 3-week options. Progressive week load ramps across all four build weeks.'
+      },
+      {
+        icon: '🗓️',
+        title: 'Every Other Week Scheduling',
+        description: 'Schedule workouts on even or odd ISO weeks only (e.g. weeks 45, 47, 49). Available when deload weeks are not enabled – the schedule is generated without progression.'
       }
     ]
   },

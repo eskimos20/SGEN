@@ -173,9 +173,18 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
     const start = new Date(config.startDate);
     const end = new Date(config.endDate);
     
+    // Even/odd week scheduling is only available without deload weeks,
+    // and disables progression (flat load on the scheduled weeks)
+    const weekParity = config.deloadWeek?.enabled ? 'all' : (config.weekParity || 'all');
+    const effectiveProgressive = config.progressiveWeekLoad && weekParity === 'all';
+
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay();
       if (workoutDayIndices.includes(dayOfWeek)) {
+        if (weekParity !== 'all') {
+          const isEvenWeek = getIsoWeekNumber(d) % 2 === 0;
+          if ((weekParity === 'even') !== isEvenWeek) continue;
+        }
         const isHard = hardDayIndices.includes(dayOfWeek);
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -192,8 +201,8 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
         const actualIsHard = isHard && !(isDeload && config.deloadWeek?.enabled);
         const baseMinutes = dailyMinutes[dayName] || 60;
         const baseMinutesMin = (config.dailyMinutesMin || {})[dayName] || 0;
-        const progressionScale = getProgressionScale(d, config.deloadWeek, isDeload, config.progressiveWeekLoad, config.startDate);
-        const progressionLevel = getProgressionLevel(d, config.deloadWeek, isDeload, config.progressiveWeekLoad, config.startDate);
+        const progressionScale = getProgressionScale(d, config.deloadWeek, isDeload, effectiveProgressive, config.startDate);
+        const progressionLevel = getProgressionLevel(d, config.deloadWeek, isDeload, effectiveProgressive, config.startDate);
         
         // During deload weeks, scale down duration by deload percentage
         const deloadFactor = (config.deloadWeek?.deloadPercent ?? 60) / 100;
@@ -236,15 +245,23 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
     return durationsMap;
   };
 
+  // Helper to get ISO week number
+  const getIsoWeekNumber = (date) => {
+    const d = new Date(date);
+    const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // Sunday = 7
+    const thursday = new Date(d);
+    thursday.setDate(d.getDate() - dayOfWeek + 4); // Thursday of this week
+    const yearStart = new Date(thursday.getFullYear(), 0, 1);
+    return Math.ceil((((thursday - yearStart) / 86400000) + 1) / 7);
+  };
+
   // Helper to get week key (year-week)
   const getWeekKey = (date) => {
     const d = new Date(date);
     const dayOfWeek = d.getDay() === 0 ? 7 : d.getDay(); // Sunday = 7
     const thursday = new Date(d);
     thursday.setDate(d.getDate() - dayOfWeek + 4); // Thursday of this week
-    const yearStart = new Date(thursday.getFullYear(), 0, 1);
-    const weekNumber = Math.ceil((((thursday - yearStart) / 86400000) + 1) / 7);
-    return `${thursday.getFullYear()}-W${weekNumber}`;
+    return `${thursday.getFullYear()}-W${getIsoWeekNumber(d)}`;
   };
 
   const handleConfigComplete = (config) => {
@@ -528,6 +545,15 @@ const SchedulerModal = ({ isOpen, onClose, fitnessData, onEventsCreated, athlete
                         : 'Disabled'}
                     </p>
                   </div>
+
+                  {trainingConfig.weekParity && trainingConfig.weekParity !== 'all' && (
+                    <div>
+                      <span className="font-medium">Schedule frequency:</span>
+                      <p className="text-gray-600">
+                        {trainingConfig.weekParity === 'even' ? 'Even weeks only' : 'Odd weeks only'} (no progression)
+                      </p>
+                    </div>
+                  )}
                   
                   <div>
                     <span className="font-medium">Hard categories per day:</span>

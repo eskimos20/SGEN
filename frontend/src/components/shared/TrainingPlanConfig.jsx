@@ -40,6 +40,7 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
       deloadPercent: 60
     },
     progressiveWeekLoad: false,
+    weekParity: 'all',
     indoor: false
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +98,7 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
             hardCategories: response.data.hardCategories || [],
             deloadWeek: normalizeDeloadWeek(response.data.deloadWeek, prev.deloadWeek),
             progressiveWeekLoad: response.data.progressiveWeekLoad ?? prev.progressiveWeekLoad,
+            weekParity: response.data.weekParity || prev.weekParity,
             indoor: response.data.indoor ?? prev.indoor
           }));
           
@@ -135,6 +137,8 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
 
     return { hasFtp, ftp, isDefault, hasIndoorFtp: indoorFtp > 0 };
   };
+
+  const weekParitySelected = !config.deloadWeek?.enabled && (config.weekParity === 'even' || config.weekParity === 'odd');
 
   const ftpStatus = getFtpStatus(config.activityType);
   const cyclingFtpStatus = getFtpStatus('Cycling');
@@ -176,10 +180,18 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
   const handleDeloadToggle = (enabled) => {
     setConfig(prev => ({
       ...prev,
+      ...(enabled ? { weekParity: 'all' } : {}),
       deloadWeek: {
         ...prev.deloadWeek,
         enabled: enabled
       }
+    }));
+  };
+
+  const handleWeekParityChange = (weekParity) => {
+    setConfig(prev => ({
+      ...prev,
+      weekParity
     }));
   };
 
@@ -322,6 +334,7 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
         daySpecificHardCategories: finalConfig.daySpecificHardCategories,
         deloadWeek: finalConfig.deloadWeek,
         progressiveWeekLoad: finalConfig.progressiveWeekLoad,
+        weekParity: finalConfig.weekParity,
         planStartDate: finalConfig.startDate,
         planEndDate: finalConfig.endDate
       });
@@ -564,11 +577,36 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
               </div>
             )}
 
+            {!config.deloadWeek?.enabled && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Schedule Frequency
+                </label>
+                <select
+                  value={config.weekParity || 'all'}
+                  onChange={(e) => handleWeekParityChange(e.target.value)}
+                  className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                >
+                  <option value="all">Every week</option>
+                  <option value="even">Even weeks only</option>
+                  <option value="odd">Odd weeks only</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  Schedule workouts only on even or odd ISO week numbers (e.g. weeks 45, 47, 49).
+                </p>
+              </div>
+            )}
+
             <div className="mt-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <div
-                  onClick={() => setConfig(prev => ({ ...prev, progressiveWeekLoad: !prev.progressiveWeekLoad }))}
+                  onClick={() => {
+                    if (weekParitySelected) return;
+                    setConfig(prev => ({ ...prev, progressiveWeekLoad: !prev.progressiveWeekLoad }));
+                  }}
                   className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                    weekParitySelected ? 'opacity-50 cursor-not-allowed ' : ''
+                  }${
                     config.progressiveWeekLoad
                       ? 'bg-blue-600 border-blue-600'
                       : 'bg-white border-gray-300'
@@ -583,7 +621,9 @@ const TrainingPlanConfig = ({ onComplete, onCancel, initialConfig, athleteProfil
                 <span className="text-sm font-medium text-gray-700">Enable Progressive Week Load</span>
               </label>
               <p className="text-xs text-gray-500 mt-2">
-                Gradually increase load across build weeks (low → higher → highest), then reset after each deload.
+                {weekParitySelected
+                  ? 'Not available when scheduling every other week – the schedule is generated without progression.'
+                  : 'Gradually increase load across build weeks (low → higher → highest), then reset after each deload.'}
               </p>
             </div>
           </div>
