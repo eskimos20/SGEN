@@ -6,6 +6,17 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'One-Tap App Updates',
+    date: '2026-10-22',
+    features: [
+      {
+        icon: '⬆️',
+        title: 'In-App Update Installation',
+        description: 'App updates now download and install directly inside the app — no more hunting for the APK in your file manager. The first update may ask you to allow "install unknown apps" once.'
+      }
+    ]
+  },
+  {
     title: 'Calendar DST Fix',
     date: '2026-10-22',
     features: [
