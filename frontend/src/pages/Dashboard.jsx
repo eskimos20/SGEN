@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [apkVersion, setApkVersion] = useState(null);
   const [installedApkVersion, setInstalledApkVersion] = useState(null);
   const [showApkUpdate, setShowApkUpdate] = useState(false);
+  const [apkUpdating, setApkUpdating] = useState(false);
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   useEffect(() => {
@@ -218,126 +219,39 @@ const Dashboard = () => {
                     </p>
                     <button
                       onClick={async () => {
-                        // Download APK in-app and trigger installation
-                        // Version + timestamp make the URL unique so the WebView cannot
-                        // serve a cached copy of a previously deployed APK
+                        if (apkUpdating) return;
+                        setApkUpdating(true);
+                        // Version + timestamp make the URL unique so no cached copy is served
                         const directFileUrl = `${getServerBaseUrl()}/downloads/sgen-android.apk?v=${encodeURIComponent(apkVersion || 'latest')}&t=${Date.now()}`;
-                        
+
                         try {
-                          // Download the APK file
-                          const response = await fetch(directFileUrl, { cache: 'no-store' });
-                          if (!response.ok) {
-                            throw new Error(`Download failed: ${response.status}`);
+                          // Native plugin downloads the APK and fires the system
+                          // installer intent directly — same flow as GearLink.
+                          const { registerPlugin } = await import('@capacitor/core');
+                          const AppUpdate = registerPlugin('AppUpdate');
+                          const result = await AppUpdate.downloadAndInstall({ url: directFileUrl });
+                          if (result?.needsPermission) {
+                            alert('Allow "Install unknown apps" for SGEN in the settings screen that just opened, then tap Update App again.');
                           }
-                          
-                          const arrayBuffer = await response.arrayBuffer();
-                          
-                          if (arrayBuffer.byteLength === 0) {
-                            throw new Error('Downloaded APK is empty');
-                          }
-                          
-                          // Save using Filesystem - try multiple directories
-                          const { Filesystem, Directory } = await import('@capacitor/filesystem');
-                          
-                          // Convert to base64
-                          const uint8Array = new Uint8Array(arrayBuffer);
-                          let binary = '';
-                          for (let i = 0; i < uint8Array.byteLength; i++) {
-                            binary += String.fromCharCode(uint8Array[i]);
-                          }
-                          const base64Data = btoa(binary);
-                          
-                          const fileName = `sgen-android-${apkVersion || 'latest'}.apk`;
-                          let saved = false;
-                          let savedUri = null;
-                          let savedToPublicDownloads = false;
-                          let errors = [];
-                          
-                          // First, try to save to public Downloads directory using absolute path
-                          try {
-                            await Filesystem.writeFile({
-                              path: `Download/${fileName}`,
-                              data: base64Data,
-                              directory: Directory.ExternalStorage
-                            });
-                            
-                            savedUri = `file:///storage/emulated/0/Download/${fileName}`;
-                            saved = true;
-                            savedToPublicDownloads = true;
-                          } catch (publicErr) {
-                            errors.push(`Public Downloads: ${publicErr.message}`);
-                            
-                            // Fall back to app directories
-                            const directories = [
-                              Directory.External,
-                              Directory.Documents,
-                              Directory.Cache
-                            ];
-                            
-                            for (const dir of directories) {
-                              try {
-                                await Filesystem.writeFile({
-                                  path: fileName,
-                                  data: base64Data,
-                                  directory: dir
-                                });
-                                
-                                const fileUri = await Filesystem.getUri({
-                                  path: fileName,
-                                  directory: dir
-                                });
-                                
-                                saved = true;
-                                savedUri = fileUri.uri;
-                                break;
-                                
-                              } catch (err) {
-                                errors.push(`${dir}: ${err.message}`);
-                              }
-                            }
-                          }
-                          
-                          if (!saved) {
-                            throw new Error('Failed directories:\n' + errors.join('\n'));
-                          }
-                          
-                          // If saved to public Downloads, just show success message
-                          // If saved to app directory, use Share dialog
-                          if (savedToPublicDownloads) {
-                            alert(`✓ APK saved to Downloads!\n\nFile: ${fileName}\nSize: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB\nLocation: /storage/emulated/0/Download/${fileName}\n\nTo install:\n1. Open your file manager\n2. Go to Downloads folder\n3. Tap the APK file\n4. Allow installation from this source`);
-                          } else {
-                            // Share the file so user can save to Downloads or install
-                            try {
-                              const { Share } = await import('@capacitor/share');
-                              await Share.share({
-                                title: 'SGEN App Update',
-                                text: `SGEN Android App v${apkVersion || 'latest'}`,
-                                url: savedUri,
-                                dialogTitle: 'Save or Install APK'
-                              });
-                            } catch (shareErr) {
-                              // Share might not work with file URIs on all devices
-                              alert(`✓ APK saved to app folder!\nFile: ${fileName}\nSize: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB\n\nTo install:\n1. Open your file manager\n2. Navigate to: Android/data/com.sgen.app/files/\n3. Tap the APK file\n4. Allow installation from this source`);
-                            }
-                          }
-                          
                         } catch (err) {
-                          console.error('Download error:', err);
-                          alert('Failed to download update: ' + err.message);
-                          
-                          // Fallback to browser download
+                          console.error('Update error:', err);
+                          // Fallback: open the APK URL in the browser so it can be
+                          // downloaded and installed manually
                           try {
                             const { Browser } = await import('@capacitor/browser');
                             await Browser.open({ url: directFileUrl });
                           } catch (browserErr) {
                             window.open(directFileUrl, '_blank');
                           }
+                        } finally {
+                          setApkUpdating(false);
                         }
                       }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      disabled={apkUpdating}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
                     >
-                      <RefreshCw className="h-4 w-4" />
-                      Update App
+                      <RefreshCw className={`h-4 w-4 ${apkUpdating ? 'animate-spin' : ''}`} />
+                      {apkUpdating ? 'Downloading…' : 'Update App'}
                     </button>
                   </>
                 ) : (
