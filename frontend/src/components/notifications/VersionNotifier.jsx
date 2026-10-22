@@ -6,6 +6,17 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Calendar DST Fix',
+    date: '2026-10-22',
+    features: [
+      {
+        icon: '🕐',
+        title: 'Workouts Hidden Around Daylight Saving',
+        description: 'Fixed a bug where planned workouts could disappear from the calendar around the daylight saving time change (e.g. Sunday 25 Oct). Date ranges are now calculated without timezone side effects.'
+      }
+    ]
+  },
+  {
     title: 'Longer Build Cycles',
     date: '2026-10-21',
     features: [
