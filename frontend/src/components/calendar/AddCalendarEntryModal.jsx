@@ -102,9 +102,10 @@ const AddCalendarEntryModal = ({ isOpen, onClose, entryType, date, onCreated, ed
       
       if (editEvent.end_date_local && editEvent.category && isDateRangeCategory(editEvent.category)) {
         let parsedEndDate = editEvent.end_date_local.substring(0, 10);
+        const parsedStart = editEvent.start_date_local?.substring(0, 10) || '';
         // If end_date_local has T00:00:00, subtract 1 day to get correct display range
         // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day
-        if (editEvent.end_date_local.endsWith('T00:00:00')) {
+        if (editEvent.end_date_local.endsWith('T00:00:00') && parsedEndDate > parsedStart) {
           const endDateObj = new Date(parsedEndDate);
           endDateObj.setDate(endDateObj.getDate() - 1);
           parsedEndDate = endDateObj.toISOString().split('T')[0];

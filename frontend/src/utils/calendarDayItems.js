@@ -38,8 +38,10 @@ export const getItemsForDate = (dateStr, activities, events, pendingEvents) => {
       if (event.end_date_local) {
         eventEndDate = event.end_date_local.substring(0, 10);
         // If end_date_local has T00:00:00, subtract 1 day to get correct display range
-        // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day
-        if (event.end_date_local.endsWith('T00:00:00')) {
+        // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day.
+        // Only apply when the end is strictly after the start, otherwise a single-day
+        // event (end == start at midnight) would end up before its own start.
+        if (event.end_date_local.endsWith('T00:00:00') && eventEndDate > eventStartDate) {
           const endDateObj = new Date(eventEndDate);
           endDateObj.setDate(endDateObj.getDate() - 1);
           eventEndDate = endDateObj.toISOString().split('T')[0];
@@ -66,8 +68,10 @@ export const getItemsForDate = (dateStr, activities, events, pendingEvents) => {
     if (event.end_date_local) {
       eventEndDate = event.end_date_local.substring(0, 10);
       // If end_date_local has T00:00:00, subtract 1 day to get correct display range
-      // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day
-      if (event.end_date_local.endsWith('T00:00:00')) {
+      // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day.
+      // Only apply when the end is strictly after the start, otherwise a single-day
+      // event (end == start at midnight) would end up before its own start.
+      if (event.end_date_local.endsWith('T00:00:00') && eventEndDate > eventStartDate) {
         const endDateObj = new Date(eventEndDate);
         endDateObj.setDate(endDateObj.getDate() - 1);
         eventEndDate = endDateObj.toISOString().split('T')[0];
