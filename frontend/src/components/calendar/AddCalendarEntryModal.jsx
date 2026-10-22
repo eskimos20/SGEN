@@ -106,9 +106,9 @@ const AddCalendarEntryModal = ({ isOpen, onClose, entryType, date, onCreated, ed
         // If end_date_local has T00:00:00, subtract 1 day to get correct display range
         // because Intervals.icu interprets YYYY-MM-DDT00:00:00 as end of previous day
         if (editEvent.end_date_local.endsWith('T00:00:00') && parsedEndDate > parsedStart) {
-          const endDateObj = new Date(parsedEndDate);
-          endDateObj.setDate(endDateObj.getDate() - 1);
-          parsedEndDate = endDateObj.toISOString().split('T')[0];
+          // Pure UTC math — setDate()/toISOString() breaks across DST transitions
+          const [y, m, d] = parsedEndDate.split('-').map(Number);
+          parsedEndDate = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().split('T')[0];
         }
         setEndDate(parsedEndDate);
       }
@@ -198,9 +198,9 @@ const AddCalendarEntryModal = ({ isOpen, onClose, entryType, date, onCreated, ed
       if (showDateRangeFields) {
         eventPayload.start_date_local = `${startDate}T00:00:00`;
         // Intervals.icu API changes T23:59:59 to T00:00:00, so we send one day later with T23:59:59
-        const endDateObj = new Date(endDate);
-        endDateObj.setDate(endDateObj.getDate() + 1);
-        const adjustedEndDate = endDateObj.toISOString().split('T')[0];
+        // Pure UTC math — setDate()/toISOString() breaks across DST transitions
+        const [ey, em, ed] = endDate.split('-').map(Number);
+        const adjustedEndDate = new Date(Date.UTC(ey, em - 1, ed + 1)).toISOString().split('T')[0];
         eventPayload.end_date_local = `${adjustedEndDate}T23:59:59`;
       } else {
         // Handle single date events

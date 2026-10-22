@@ -3,6 +3,14 @@
  * Used by Calendar.jsx (getItemsForDay, getItemsForAnyDay) and useCalendarMobileNavigation.
  */
 
+// Subtract one day from a YYYY-MM-DD string using pure UTC math.
+// new Date()/setDate() is unsafe here: DST transitions (e.g. 2026-10-25 in
+// Europe) change the local offset so toISOString() lands one day too far back.
+const subtractOneDay = (dateStr) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().split('T')[0];
+};
+
 /**
  * Get all display items (activities, events, pending events) for a specific date.
  * @param {string} dateStr - Date string in YYYY-MM-DD format
@@ -42,9 +50,7 @@ export const getItemsForDate = (dateStr, activities, events, pendingEvents) => {
         // Only apply when the end is strictly after the start, otherwise a single-day
         // event (end == start at midnight) would end up before its own start.
         if (event.end_date_local.endsWith('T00:00:00') && eventEndDate > eventStartDate) {
-          const endDateObj = new Date(eventEndDate);
-          endDateObj.setDate(endDateObj.getDate() - 1);
-          eventEndDate = endDateObj.toISOString().split('T')[0];
+          eventEndDate = subtractOneDay(eventEndDate);
         }
       }
       
@@ -72,9 +78,7 @@ export const getItemsForDate = (dateStr, activities, events, pendingEvents) => {
       // Only apply when the end is strictly after the start, otherwise a single-day
       // event (end == start at midnight) would end up before its own start.
       if (event.end_date_local.endsWith('T00:00:00') && eventEndDate > eventStartDate) {
-        const endDateObj = new Date(eventEndDate);
-        endDateObj.setDate(endDateObj.getDate() - 1);
-        eventEndDate = endDateObj.toISOString().split('T')[0];
+        eventEndDate = subtractOneDay(eventEndDate);
       }
     }
     // Note: We don't try to infer multi-day events from duration anymore
