@@ -147,13 +147,20 @@ public class OpenAIService {
                 log.error("Token limit exceeded for OpenAI API. Data size: {} chars", data.length());
                 throw new RuntimeException("Too much data for AI analysis. Please select a shorter time period (max 1-2 months).");
             }
-            // If we get a parameter error, silently retry with the alternative parameter
-            if (e.getMessage() != null && e.getMessage().contains("max_tokens") && e.getMessage().contains("max_completion_tokens")) {
+            // Older and newer models differ in which token limit parameter they accept.
+            // Retry once with the alternative spelling when the API identifies either one.
+            if (isTokenParameterError(e.getMessage())) {
                 log.debug("Auto-correcting token parameter for model: {}", model);
                 return makeApiCall(username, apiKey, model, prompt, data, conversationHistory, true, true, startTime);
             }
             throw e;
         }
+    }
+
+    private boolean isTokenParameterError(String message) {
+        if (message == null) return false;
+        String normalized = message.toLowerCase(java.util.Locale.ROOT);
+        return normalized.contains("max_tokens") || normalized.contains("max_completion_tokens");
     }
     
     // Comprehensive system prompt for optimal AI analysis quality
@@ -240,11 +247,9 @@ public class OpenAIService {
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
 
-            // Determine model characteristics
-            // Note: All gpt-5 models (including chat variants) and o-series don't support temperature parameter
+            // Determine model characteristics used for token budgeting and message layout.
             boolean isReasoningModel = model.startsWith("o1") || model.startsWith("o3") ||
                     (model.startsWith("gpt-5") && !model.contains("chat"));
-            boolean isGpt5Model = model.startsWith("gpt-5");  // Includes both reasoning and chat variants
             boolean isOlderModel = model.startsWith("gpt-3.5") ||
                                    (model.startsWith("gpt-4") && !model.startsWith("gpt-4o") && !model.startsWith("gpt-4-turbo"));
 
@@ -280,15 +285,9 @@ public class OpenAIService {
                 requestBody.put("max_completion_tokens", maxTokens);
             }
 
-            // Dynamic temperature: lower for analysis (precise), higher for general questions
-            // Note: All GPT-5 models (including chat variants) and o-series only support temperature=1 (default)
-            boolean isAnalysisQuestion = prompt.toLowerCase().matches(".*(analyze|analysera|vad tycker|how is|trend|pattern|compare|jämför).*");
-            double temperature = (isReasoningModel || isGpt5Model) ? 1.0 : (isAnalysisQuestion ? 0.3 : 0.7);
-
-            // Only add temperature for non-GPT-5, non-reasoning models
-            if (!isReasoningModel && !isGpt5Model) {
-                requestBody.put("temperature", temperature);
-            }
+            // Leave temperature unset. It defaults to 1, and some newer models only
+            // accept that default when the parameter is omitted entirely. Model IDs
+            // are not a reliable capability registry, so don't infer support by prefix.
 
             ArrayNode messages = requestBody.putArray("messages");
 
