@@ -139,6 +139,11 @@ public class SmhiForecastService {
         double currentTemp = entries.isEmpty() ? tempStats.getAverage()
             : getData(entries.get(0), "air_temperature");
 
+        JsonNode currentEntry = entries.isEmpty() ? null : entries.get(0);
+        double currentWindSpeed = currentEntry == null ? -999 : getData(currentEntry, "wind_speed");
+        double currentWindDirection = currentEntry == null ? -999 : getData(currentEntry, "wind_from_direction");
+        double currentWindGust = currentEntry == null ? -999 : getData(currentEntry, "wind_speed_of_gust");
+
         return WeatherForecastResponse.builder()
             .forecastDate(date.atTime(12, 0))
             .temperatureMax(tempStats.getCount() > 0 ? tempStats.getMax() : 0)
@@ -147,6 +152,9 @@ public class SmhiForecastService {
             .windSpeed(windMax)
             .windDirection((int) Math.round(windDirAvg))
             .windGust(windGustMax > 0 ? windGustMax : null)
+            .currentWindSpeed(currentWindSpeed >= 0 ? currentWindSpeed : null)
+            .currentWindDirection(currentWindDirection >= 0 ? (int) Math.round(currentWindDirection) : null)
+            .currentWindGust(currentWindGust >= 0 ? currentWindGust : null)
             .precipitationSum(Math.round(precipSum * 10.0) / 10.0)
             .precipitationMin(precipMin > 0 && precipMin < precipMax ? Math.round(precipMin * 10.0) / 10.0 : null)
             .precipitationMax(precipMax > 0 && precipMax > precipMin ? Math.round(precipMax * 10.0) / 10.0 : null)

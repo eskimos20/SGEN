@@ -52,6 +52,13 @@ const getWindArrow = (degrees) => {
 };
 
 const WeatherDay = ({ day, isFirst }) => {
+    const hasCurrentWind = isFirst && day.currentWindSpeed != null;
+    const displayedWindSpeed = hasCurrentWind ? day.currentWindSpeed : day.windSpeed;
+    const displayedWindDirection = hasCurrentWind && day.currentWindDirection != null
+        ? day.currentWindDirection
+        : day.windDirection;
+    const displayedWindGust = hasCurrentWind ? day.currentWindGust : day.windGust;
+
     return (
         <div className="bg-gray-50 rounded-lg p-4 min-w-[140px] sm:min-w-0 flex-shrink-0">
             <div className="text-center mb-3">
@@ -74,11 +81,15 @@ const WeatherDay = ({ day, isFirst }) => {
                     {Math.round(day.temperatureMax)}° / {Math.round(day.temperatureMin)}°
                 </div>
                 <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-2">
-                    {day.windSpeed > 0 && (
-                        <span className="flex items-center gap-1" title="Wind direction, speed, and gusts">
+                    {(hasCurrentWind || displayedWindSpeed > 0) && (
+                        <span className="flex items-center gap-1" title={hasCurrentWind ? "Current wind speed and gusts" : "Wind direction, speed, and gusts"}>
                             <Wind className="h-3 w-3" />
-                            {getWindDirection(day.windDirection)} {getWindArrow(day.windDirection)} {Math.round(day.windSpeed)}
-                            {day.windGust > 0 && day.windGust > day.windSpeed && ` (${Math.round(day.windGust)})`} m/s
+                            {hasCurrentWind && 'Now '}
+                            {displayedWindDirection != null && `${getWindDirection(displayedWindDirection)} ${getWindArrow(displayedWindDirection)} `}
+                            {Math.round(displayedWindSpeed)} m/s
+                            {displayedWindGust > 0 && (hasCurrentWind
+                                ? `, gusts ${Math.round(displayedWindGust)} m/s`
+                                : displayedWindGust > displayedWindSpeed && ` (${Math.round(displayedWindGust)})`)}
                         </span>
                     )}
                     {(day.precipitationProbability > 0 || day.precipitationSum > 0 || day.precipitationMin > 0 || day.precipitationMax > 0) && (

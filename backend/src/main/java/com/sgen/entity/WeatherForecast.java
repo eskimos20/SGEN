@@ -52,6 +52,15 @@ public class WeatherForecast {
     @Column(name = "wind_gust")
     private Double windGust;
 
+    @Column(name = "current_wind_speed")
+    private Double currentWindSpeed;
+
+    @Column(name = "current_wind_direction")
+    private Integer currentWindDirection;
+
+    @Column(name = "current_wind_gust")
+    private Double currentWindGust;
+
     @Column(name = "precipitation_sum")
     private Double precipitationSum;
 

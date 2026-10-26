@@ -115,7 +115,9 @@ public class WeatherService {
 
             if (oldestCreatedAt != null) {
                 long hoursSinceFetch = ChronoUnit.HOURS.between(oldestCreatedAt, LocalDateTime.now());
-                if (hoursSinceFetch < WEATHER_CACHE_HOURS) {
+                boolean hasCurrentWind = cachedForecasts.stream()
+                        .anyMatch(forecast -> forecast.getCurrentWindSpeed() != null);
+                if (hoursSinceFetch < WEATHER_CACHE_HOURS && hasCurrentWind) {
                     log.debug("Returning cached weather data for user {} (fetched {} hours ago, {} days)",
                             userId, hoursSinceFetch, cachedForecasts.size());
                     return cachedForecasts.stream()
@@ -247,6 +249,9 @@ public class WeatherService {
             .windSpeed(response.getWindSpeed())
             .windDirection(response.getWindDirection())
             .windGust(response.getWindGust())
+            .currentWindSpeed(response.getCurrentWindSpeed())
+            .currentWindDirection(response.getCurrentWindDirection())
+            .currentWindGust(response.getCurrentWindGust())
             .precipitationSum(response.getPrecipitationSum())
             .precipitationMin(response.getPrecipitationMin())
             .precipitationMax(response.getPrecipitationMax())
@@ -266,6 +271,9 @@ public class WeatherService {
             .windSpeed(forecast.getWindSpeed())
             .windDirection(forecast.getWindDirection())
             .windGust(forecast.getWindGust())
+            .currentWindSpeed(forecast.getCurrentWindSpeed())
+            .currentWindDirection(forecast.getCurrentWindDirection())
+            .currentWindGust(forecast.getCurrentWindGust())
             .precipitationSum(forecast.getPrecipitationSum())
             .precipitationMin(forecast.getPrecipitationMin())
             .precipitationMax(forecast.getPrecipitationMax())

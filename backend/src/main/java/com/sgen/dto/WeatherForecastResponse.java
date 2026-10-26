@@ -33,6 +33,12 @@ public class WeatherForecastResponse {
 
     private Double windGust;
 
+    private Double currentWindSpeed;
+
+    private Integer currentWindDirection;
+
+    private Double currentWindGust;
+
     private Double precipitationSum;
 
     private Double precipitationMin;

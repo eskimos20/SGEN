@@ -39,6 +39,7 @@ public class OpenMeteoForecastService {
                 .queryParam("current", "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,relative_humidity_2m")
                 .queryParam("hourly", "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,cloud_cover,relative_humidity_2m")
                 .queryParam("daily", "temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,wind_gusts_10m_max")
+                .queryParam("wind_speed_unit", "ms")
                 .queryParam("timezone", "auto")
                 .queryParam("forecast_days", 10)
                 .toUriString();
@@ -118,7 +119,10 @@ public class OpenMeteoForecastService {
                     .countryName(countryName);
 
             if (i == 0) {
-                builder.currentTemperature(currentTemp);
+                builder.currentTemperature(currentTemp)
+                        .currentWindSpeed(getCurrentDouble(current, "wind_speed_10m"))
+                        .currentWindDirection(getCurrentInteger(current, "wind_direction_10m"))
+                        .currentWindGust(getCurrentDouble(current, "wind_gusts_10m"));
             }
 
             result.add(builder.build());
@@ -142,6 +146,16 @@ public class OpenMeteoForecastService {
             return arr.get(idx).asInt(0);
         }
         return 0;
+    }
+
+    private Double getCurrentDouble(JsonNode current, String field) {
+        JsonNode value = current.path(field);
+        return value.isNumber() ? value.asDouble() : null;
+    }
+
+    private Integer getCurrentInteger(JsonNode current, String field) {
+        JsonNode value = current.path(field);
+        return value.isNumber() ? (int) Math.round(value.asDouble()) : null;
     }
 
     private record HourEntry(double temperature, double cloudCover) {}
