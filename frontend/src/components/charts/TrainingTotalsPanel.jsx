@@ -63,7 +63,16 @@ const ZoneBars = ({ title, zones, sweetSpot = 0, totalOverride = null }) => {
   );
 };
 
-const TrainingTotalsPanel = ({ activities = [], periodDays = 30, loading = false }) => {
+const TrainingTotalsPanel = ({
+  activities = [],
+  periodDays = 30,
+  loading = false,
+  error = '',
+  oldest = '',
+  newest = '',
+  onOldestChange,
+  onNewestChange,
+}) => {
   const totals = useMemo(() => buildTrainingTotals(activities, periodDays), [activities, periodDays]);
   const { distribution, zones } = totals;
   const sharePercent = (value) => distribution.total ? value / distribution.total * 100 : 0;
@@ -73,12 +82,37 @@ const TrainingTotalsPanel = ({ activities = [], periodDays = 30, loading = false
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Training Totals</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Samma period som Fitness & Form-reglaget</p>
+          <p className="text-xs text-gray-500 mt-0.5">Välj datumintervall för träningssummeringen</p>
         </div>
         {loading && <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0 mt-1" aria-label="Laddar träningssummering" />}
       </div>
 
-      {activities.length === 0 && !loading ? (
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3 mb-4">
+        <label className="block text-xs font-medium text-gray-600">
+          Från
+          <input
+            type="date"
+            value={oldest}
+            max={newest || undefined}
+            onChange={(event) => onOldestChange?.(event.target.value)}
+            className="mt-1 block w-full sm:w-auto rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm text-gray-800"
+          />
+        </label>
+        <label className="block text-xs font-medium text-gray-600">
+          Till
+          <input
+            type="date"
+            value={newest}
+            min={oldest || undefined}
+            onChange={(event) => onNewestChange?.(event.target.value)}
+            className="mt-1 block w-full sm:w-auto rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm text-gray-800"
+          />
+        </label>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{error}</p>
+      ) : activities.length === 0 && !loading ? (
         <p className="text-sm text-gray-500 py-4">Inga aktiviteter i den valda perioden.</p>
       ) : (
         <>

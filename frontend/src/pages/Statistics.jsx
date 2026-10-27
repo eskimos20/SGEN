@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { differenceInCalendarDays, format, parseISO, subMonths } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
 import { Download, Bot, Copy, Loader2, CheckCircle, Activity, Zap, Clock, TrendingUp, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
@@ -34,6 +35,12 @@ const Statistics = () => {
   const [loadingWellness, setLoadingWellness] = useState(false);
   const [trainingTotalsActivities, setTrainingTotalsActivities] = useState([]);
   const [loadingTrainingTotals, setLoadingTrainingTotals] = useState(false);
+  const [trainingTotalsError, setTrainingTotalsError] = useState('');
+  const [trainingTotalsOldest, setTrainingTotalsOldest] = useState(() => {
+    const today = new Date();
+    return format(subMonths(today, 1), 'yyyy-MM-dd');
+  });
+  const [trainingTotalsNewest, setTrainingTotalsNewest] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   
   // State for power curve history
   const [powerCurveHistory, setPowerCurveHistory] = useState(null);
@@ -141,12 +148,11 @@ const Statistics = () => {
     localStorage.setItem('statistics-statsExpanded', isStatsExpanded.toString());
   }, [wellnessDays, isFitnessExpanded, isStatsExpanded]);
 
-  // Fetch wellness data on component mount and when wellnessDays changes
+  // Fetch wellness and power curve data on component mount and when wellnessDays changes
   useEffect(() => {
     const fetchWellnessAndPowerCurve = async () => {
       setLoadingWellness(true);
       setLoadingPowerCurve(true);
-      setLoadingTrainingTotals(true);
       try {
         // Get wellness data for selected number of days
         const endDate = new Date();
@@ -158,31 +164,23 @@ const Statistics = () => {
         const oldest = formatLocalDate(startDate);
         const newest = formatLocalDate(endDate);
         
-        // Fetch period-dependent Fitness & Form data together.
-        const [wellness, powerCurve, activities] = await Promise.all([
+        const [wellness, powerCurve] = await Promise.all([
           fetchWellnessData(oldest, newest),
           fetchPowerCurveHistory(oldest, newest).catch(err => {
             console.warn('Failed to fetch power curve history:', err);
             return null;
-          }),
-          fetchTrainingTotalsActivities(oldest, newest).catch(err => {
-            console.warn('Failed to fetch training totals:', err);
-            return [];
           })
         ]);
         
         setWellnessData(wellness);
         setPowerCurveHistory(powerCurve);
-        setTrainingTotalsActivities(activities);
       } catch (err) {
         console.error('Failed to fetch wellness data:', err);
         setWellnessData([]);
         setPowerCurveHistory(null);
-        setTrainingTotalsActivities([]);
       } finally {
         setLoadingWellness(false);
         setLoadingPowerCurve(false);
-        setLoadingTrainingTotals(false);
       }
     };
 
@@ -190,6 +188,42 @@ const Statistics = () => {
       fetchWellnessAndPowerCurve();
     }
   }, [wellnessDays, hasIntervalsConfig]);
+
+  // Training Totals uses its own date range, independent of the Fitness & Form slider.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!hasIntervalsConfig) return () => { cancelled = true; };
+    if (!trainingTotalsOldest || !trainingTotalsNewest || trainingTotalsOldest > trainingTotalsNewest) {
+      setTrainingTotalsActivities([]);
+      setTrainingTotalsError('Start date must be on or before end date.');
+      setLoadingTrainingTotals(false);
+      return () => { cancelled = true; };
+    }
+
+    setLoadingTrainingTotals(true);
+    setTrainingTotalsError('');
+    fetchTrainingTotalsActivities(trainingTotalsOldest, trainingTotalsNewest)
+      .then((activities) => {
+        if (!cancelled) setTrainingTotalsActivities(activities);
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch training totals:', err);
+        if (!cancelled) {
+          setTrainingTotalsActivities([]);
+          setTrainingTotalsError('Could not load training totals for this period.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTrainingTotals(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [hasIntervalsConfig, trainingTotalsOldest, trainingTotalsNewest]);
+
+  const trainingTotalsPeriodDays = trainingTotalsOldest && trainingTotalsNewest && trainingTotalsOldest <= trainingTotalsNewest
+    ? differenceInCalendarDays(parseISO(trainingTotalsNewest), parseISO(trainingTotalsOldest)) + 1
+    : 0;
 
   // Scroll to date range section when data arrives after a user-initiated fetch
   useEffect(() => {
@@ -353,6 +387,19 @@ const Statistics = () => {
 
       {/* Fitness & Form period summary and charts */}
       {hasIntervalsConfig && (
+        <TrainingTotalsPanel
+          activities={trainingTotalsActivities}
+          periodDays={trainingTotalsPeriodDays}
+          loading={loadingTrainingTotals}
+          error={trainingTotalsError}
+          oldest={trainingTotalsOldest}
+          newest={trainingTotalsNewest}
+          onOldestChange={setTrainingTotalsOldest}
+          onNewestChange={setTrainingTotalsNewest}
+        />
+      )}
+
+      {hasIntervalsConfig && (
         <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
           <div className="mb-4">
             <div 
@@ -369,42 +416,44 @@ const Statistics = () => {
                 <ChevronDown className="h-5 w-5 text-gray-600" />
               )}
             </div>
-            <div className="flex items-center gap-3 mt-2" onClick={(e) => e.stopPropagation()}>
-              <label className="text-sm font-medium text-gray-600 flex-shrink-0">
-                Period: {Math.round(sliderValue / 30)} months
-              </label>
-              <input
-                type="range"
-                min="30"
-                max="1095"
-                step="30"
-                value={sliderValue}
-                onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
-                onMouseUp={(e) => setWellnessDays(parseInt(e.target.value, 10))}
-                onTouchEnd={(e) => {
-                  const target = e.target;
-                  setWellnessDays(parseInt(target.value, 10));
-                }}
-                className="flex-1 max-w-[300px]"
-              />
-            </div>
           </div>
           
           {isFitnessExpanded && (
             <div className="space-y-6">
-              <TrainingTotalsPanel
-                activities={trainingTotalsActivities}
-                periodDays={wellnessDays}
-                loading={loadingTrainingTotals}
-              />
-
               {loadingWellness ? (
                 <div className="flex items-center justify-center py-6 text-sm text-gray-500">
                   <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
                   Loading fitness data...
                 </div>
               ) : wellnessData.length > 0 ? (
-                <FitnessChart wellness={wellnessData} athleteProfile={athleteProfile} />
+                <FitnessChart
+                  wellness={wellnessData}
+                  athleteProfile={athleteProfile}
+                  periodControl={(
+                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                      <label htmlFor="fitness-period-slider" className="text-sm font-medium text-gray-600 flex-shrink-0">
+                        Period: {Math.round(sliderValue / 30)} months
+                      </label>
+                      <input
+                        id="fitness-period-slider"
+                        type="range"
+                        min="30"
+                        max="1095"
+                        step="30"
+                        value={sliderValue}
+                        onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+                        onMouseUp={(e) => setWellnessDays(parseInt(e.target.value, 10))}
+                        onTouchEnd={(e) => setWellnessDays(parseInt(e.target.value, 10))}
+                        onKeyUp={(e) => {
+                          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+                            setWellnessDays(parseInt(e.currentTarget.value, 10));
+                          }
+                        }}
+                        className="flex-1 max-w-[300px]"
+                      />
+                    </div>
+                  )}
+                />
               ) : (
                 <div className="py-5 text-center text-sm text-gray-500">No fitness or wellness data for this period.</div>
               )}
