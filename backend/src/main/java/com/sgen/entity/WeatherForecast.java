@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Entity
 @Table(name = "weather_forecasts", indexes = {
@@ -36,6 +37,12 @@ public class WeatherForecast {
 
     @Column(name = "temperature_min")
     private Double temperatureMin;
+
+    @Column(name = "sunrise")
+    private LocalTime sunrise;
+
+    @Column(name = "sunset")
+    private LocalTime sunset;
 
     @Column(name = "weather_code")
     private Integer weatherCode;
