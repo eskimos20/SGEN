@@ -894,6 +894,28 @@ public class IntervalsService {
         }
     }
 
+    /** Fetch only the fields used by the Fitness & Form training totals panel. */
+    public JsonNode getTrainingTotalsActivities(String username, String oldest, String newest) {
+        ApiContext ctx = getValidatedContext(username);
+        String fields = "id,type,start_date_local,moving_time,distance,icu_distance,coasting_time,total_elevation_gain,icu_training_load,calories,kg_lifted,icu_joules,icu_zone_times,icu_hr_zone_times,pace_zone_times,gap_zone_times,use_gap_zone_times,tiz_order";
+        try {
+            rateLimiter.acquire();
+            String responseJson = ctx.client.get()
+                    .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                            .queryParam("oldest", oldest)
+                            .queryParam("newest", newest)
+                            .queryParam("fields", fields)
+                            .build(ctx.user.getIntervalsAthleteId()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return objectMapper.readTree(responseJson);
+        } catch (Exception e) {
+            log.error("Failed to fetch training totals for user {}: {}", username, e.getMessage());
+            throw new RuntimeException("Failed to fetch training totals: " + e.getMessage(), e);
+        }
+    }
+
     private List<String> fetchSportsWithFtp(WebClient client, String athleteId) {
         List<String> sportsWithFtp = new ArrayList<>();
         try {

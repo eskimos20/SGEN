@@ -93,3 +93,10 @@ export const fetchPowerCurveHistory = async (oldest, newest, type = 'all') => {
     throw err;
   }
 };
+
+export const fetchTrainingTotalsActivities = async (oldest, newest) => {
+  const response = await api.get('/statistics/training-totals', {
+    params: { oldest, newest }
+  });
+  return Array.isArray(response.data) ? response.data : [];
+};

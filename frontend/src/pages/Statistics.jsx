@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
 import { Download, Bot, Copy, Loader2, CheckCircle, Activity, Zap, Clock, TrendingUp, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 import FitnessChart from '../components/charts/FitnessChart';
+import TrainingTotalsPanel from '../components/charts/TrainingTotalsPanel';
 import PowerCurveHistoryChart from '../components/charts/PowerCurveHistoryChart';
 import ChatWindow from '../components/shared/ChatWindow';
 import StatisticsCharts from '../components/charts/StatisticsCharts';
@@ -17,7 +18,8 @@ import {
   analyzeData as analyzeDataAPI,
   checkOpenAI,
   fetchCurrentUser as fetchCurrentUserAPI,
-  fetchPowerCurveHistory
+  fetchPowerCurveHistory,
+  fetchTrainingTotalsActivities
 } from '../services/statisticsService';
 import { useStatisticsState } from '../hooks/useStatisticsState';
 import { useStatisticsEventHandlers } from '../hooks/useStatisticsEventHandlers';
@@ -30,6 +32,8 @@ const Statistics = () => {
   // State for wellness data (separate from statistics data)
   const [wellnessData, setWellnessData] = useState([]);
   const [loadingWellness, setLoadingWellness] = useState(false);
+  const [trainingTotalsActivities, setTrainingTotalsActivities] = useState([]);
+  const [loadingTrainingTotals, setLoadingTrainingTotals] = useState(false);
   
   // State for power curve history
   const [powerCurveHistory, setPowerCurveHistory] = useState(null);
@@ -142,6 +146,7 @@ const Statistics = () => {
     const fetchWellnessAndPowerCurve = async () => {
       setLoadingWellness(true);
       setLoadingPowerCurve(true);
+      setLoadingTrainingTotals(true);
       try {
         // Get wellness data for selected number of days
         const endDate = new Date();
@@ -153,24 +158,31 @@ const Statistics = () => {
         const oldest = formatLocalDate(startDate);
         const newest = formatLocalDate(endDate);
         
-        // Fetch both wellness and power curve data in parallel
-        const [wellness, powerCurve] = await Promise.all([
+        // Fetch period-dependent Fitness & Form data together.
+        const [wellness, powerCurve, activities] = await Promise.all([
           fetchWellnessData(oldest, newest),
           fetchPowerCurveHistory(oldest, newest).catch(err => {
             console.warn('Failed to fetch power curve history:', err);
             return null;
+          }),
+          fetchTrainingTotalsActivities(oldest, newest).catch(err => {
+            console.warn('Failed to fetch training totals:', err);
+            return [];
           })
         ]);
         
         setWellnessData(wellness);
         setPowerCurveHistory(powerCurve);
+        setTrainingTotalsActivities(activities);
       } catch (err) {
         console.error('Failed to fetch wellness data:', err);
         setWellnessData([]);
         setPowerCurveHistory(null);
+        setTrainingTotalsActivities([]);
       } finally {
         setLoadingWellness(false);
         setLoadingPowerCurve(false);
+        setLoadingTrainingTotals(false);
       }
     };
 
@@ -339,8 +351,8 @@ const Statistics = () => {
         }}
       />
 
-      {/* Fitness Chart - Always show when wellness data is available */}
-      {!loadingWellness && wellnessData.length > 0 && (
+      {/* Fitness & Form period summary and charts */}
+      {hasIntervalsConfig && (
         <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
           <div className="mb-4">
             <div 
@@ -380,7 +392,22 @@ const Statistics = () => {
           
           {isFitnessExpanded && (
             <div className="space-y-6">
-              <FitnessChart wellness={wellnessData} athleteProfile={athleteProfile} />
+              <TrainingTotalsPanel
+                activities={trainingTotalsActivities}
+                periodDays={wellnessDays}
+                loading={loadingTrainingTotals}
+              />
+
+              {loadingWellness ? (
+                <div className="flex items-center justify-center py-6 text-sm text-gray-500">
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
+                  Loading fitness data...
+                </div>
+              ) : wellnessData.length > 0 ? (
+                <FitnessChart wellness={wellnessData} athleteProfile={athleteProfile} />
+              ) : (
+                <div className="py-5 text-center text-sm text-gray-500">No fitness or wellness data for this period.</div>
+              )}
               
               {/* Power Curve History */}
               {!loadingPowerCurve && powerCurveHistory && (
@@ -398,20 +425,6 @@ const Statistics = () => {
               )}
             </div>
           )}
-        </div>
-      )}
-      
-      {/* Show loading state for wellness data */}
-      {loadingWellness && (
-        <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
-            Fitness & Form
-          </h2>
-          <div className="text-center py-8 text-gray-500">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-            Loading fitness data...
-          </div>
         </div>
       )}
 

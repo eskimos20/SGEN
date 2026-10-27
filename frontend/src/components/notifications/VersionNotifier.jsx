@@ -6,6 +6,22 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Training Totals in Fitness & Form',
+    date: '2026-10-27',
+    features: [
+      {
+        icon: '📊',
+        title: 'Period Zone Distribution',
+        description: 'Fitness & Form now shows activity totals, Combined, Power, Heart Rate and Pace Zones, and the period training distribution classification with its polarization index.'
+      },
+      {
+        icon: '🗓️',
+        title: 'Totals Follow the Period Slider',
+        description: 'Changing the Fitness & Form period reloads the matching activities and recalculates the zone totals and classification for that date range.'
+      }
+    ]
+  },
+  {
     title: 'One-Tap App Updates',
     date: '2026-10-22',
     features: [

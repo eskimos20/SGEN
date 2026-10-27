@@ -119,6 +119,22 @@ public class StatisticsController {
         }
     }
 
+    @GetMapping("/training-totals")
+    public ResponseEntity<JsonNode> getTrainingTotals(
+            Authentication authentication,
+            @RequestParam String oldest,
+            @RequestParam String newest) {
+        try {
+            JsonNode activities = intervalsService.getTrainingTotalsActivities(
+                    authentication.getName(), oldest, newest);
+            return ResponseEntity.ok(activities);
+        } catch (Exception e) {
+            log.error("Failed to fetch training totals: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(objectMapper.createObjectNode()
+                    .put("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/openai-status")
     public ResponseEntity<Map<String, Object>> getOpenAIStatus(Authentication authentication) {
         var user = userService.getCurrentUser(authentication.getName());
