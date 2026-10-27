@@ -117,12 +117,18 @@ public class WeatherService {
                 long hoursSinceFetch = ChronoUnit.HOURS.between(oldestCreatedAt, LocalDateTime.now());
                 boolean hasCurrentWind = cachedForecasts.stream()
                         .anyMatch(forecast -> forecast.getCurrentWindSpeed() != null);
-                if (hoursSinceFetch < WEATHER_CACHE_HOURS && hasCurrentWind) {
+                boolean hasSunriseAndSunset = cachedForecasts.stream()
+                        .anyMatch(forecast -> forecast.getSunrise() != null && forecast.getSunset() != null);
+                boolean cacheMatchesProvider = !openMeteo || hasSunriseAndSunset;
+                if (hoursSinceFetch < WEATHER_CACHE_HOURS && hasCurrentWind && cacheMatchesProvider) {
                     log.debug("Returning cached weather data for user {} (fetched {} hours ago, {} days)",
                             userId, hoursSinceFetch, cachedForecasts.size());
                     return cachedForecasts.stream()
                             .map(this::convertToResponse)
                             .collect(Collectors.toList());
+                }
+                if (openMeteo && !hasSunriseAndSunset) {
+                    log.debug("Refreshing Open-Meteo cache for user {} because sunrise/sunset data is missing", userId);
                 }
             }
         }
