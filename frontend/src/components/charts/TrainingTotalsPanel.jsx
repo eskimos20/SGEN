@@ -24,19 +24,44 @@ const formatNumber = (value, digits = 0) => new Intl.NumberFormat('en-US', {
   minimumFractionDigits: digits,
 }).format(value || 0);
 
-const DistributionProfile = ({ profile, selected }) => (
+const DistributionProfile = ({ profile, selected, distribution }) => (
   <div
-    className={`rounded border px-1.5 py-1.5 min-w-[74px] ${selected ? 'border-blue-300 bg-blue-50/40 shadow-sm' : 'border-gray-200 bg-white'}`}
+    className={`relative rounded border px-2 py-2 transition-all origin-bottom ${selected ? 'z-10 min-w-[148px] border-gray-300 bg-white shadow-md scale-[1.06]' : 'min-w-[88px] border-gray-200 bg-white'}`}
     aria-current={selected ? 'true' : undefined}
   >
-    <div className="text-center text-[10px] leading-4 text-gray-700">{profile.label}</div>
-    <div className="space-y-1 mt-0.5">
-      {profile.shares.map((share, index) => (
-        <div key={index} className="h-2 rounded-full bg-gray-100 overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${share * 100}%`, backgroundColor: DISTRIBUTION_COLORS[index] }} />
-        </div>
-      ))}
+    <div className="text-center text-xs leading-5 text-gray-700">
+      {profile.label}{selected && distribution.polarizationIndex !== null && (
+        <> <strong className="text-gray-900">{distribution.polarizationIndex.toFixed(2)}</strong></>
+      )}
     </div>
+    {selected ? (
+      <div className="space-y-1 mt-1">
+        {[
+          { label: 'S1+2', value: distribution.s1 },
+          { label: 'S3+4', value: distribution.s2 },
+          { label: 'S5+', value: distribution.s3 },
+        ].map((zone, index) => {
+          const percent = distribution.total ? zone.value / distribution.total * 100 : 0;
+          return (
+            <div key={zone.label} className="grid grid-cols-[30px_minmax(0,1fr)_38px] items-center gap-1 text-[10px] text-gray-700 tabular-nums">
+              <span className="font-medium">{zone.label}</span>
+              <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: DISTRIBUTION_COLORS[index] }} />
+              </div>
+              <span className="text-right">{percent.toFixed(1)}%</span>
+            </div>
+          );
+        })}
+      </div>
+    ) : (
+      <div className="space-y-1 mt-1">
+        {profile.shares.map((share, index) => (
+          <div key={index} className="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${share * 100}%`, backgroundColor: DISTRIBUTION_COLORS[index] }} />
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 );
 
@@ -100,7 +125,6 @@ const TrainingTotalsPanel = ({
 }) => {
   const totals = useMemo(() => buildTrainingTotals(activities, periodDays), [activities, periodDays]);
   const { distribution, zones } = totals;
-  const sharePercent = (value) => distribution.total ? value / distribution.total * 100 : 0;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-3 sm:p-5">
@@ -164,17 +188,15 @@ const TrainingTotalsPanel = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-sm font-semibold text-gray-800">Training Intensity Distribution</h4>
             </div>
-            <div className="flex flex-wrap items-end gap-1.5 overflow-x-auto py-2">
+            <div className="flex flex-wrap items-end gap-2 py-3">
               {DISTRIBUTION_PROFILES.map((profile) => (
-                <DistributionProfile key={profile.label} profile={profile} selected={distribution.label === profile.label} />
+                <DistributionProfile
+                  key={profile.label}
+                  profile={profile}
+                  distribution={distribution}
+                  selected={distribution.label === profile.label}
+                />
               ))}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 tabular-nums">
-              <span className="font-semibold text-gray-800">{distribution.label}</span>
-              {distribution.polarizationIndex !== null && <span>PI {distribution.polarizationIndex.toFixed(2)}</span>}
-              <span>S1+2 {sharePercent(distribution.s1).toFixed(1)}%</span>
-              <span>S3+4 {sharePercent(distribution.s2).toFixed(1)}%</span>
-              <span>S5+ {sharePercent(distribution.s3).toFixed(1)}%</span>
             </div>
           </div>
 
