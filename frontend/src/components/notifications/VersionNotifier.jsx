@@ -6,18 +6,23 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
-    title: 'Training Totals in Fitness & Form',
+    title: 'Training Totals and Fitness & Form',
     date: '2026-10-27',
     features: [
       {
         icon: '📊',
-        title: 'Period Zone Distribution',
-        description: 'Fitness & Form now shows activity totals, Combined, Power, Heart Rate and Pace Zones, and the period training distribution classification with its polarization index.'
+        title: 'Training Totals Date Range',
+        description: 'Training Totals has its own date picker for activity totals, zone time, and intensity distribution. The selected date range is independent of the Fitness & Form period slider.'
       },
       {
         icon: '🗓️',
-        title: 'Totals Follow the Period Slider',
-        description: 'Changing the Fitness & Form period reloads the matching activities and recalculates the zone totals and classification for that date range.'
+        title: 'Fitness & Form Period Slider',
+        description: 'The period slider controls the CTL/ATL, Form, and power curve charts in Fitness & Form only. Changing it does not change Training Totals.'
+      },
+      {
+        icon: '📱',
+        title: 'Remembered Panel and Period Settings',
+        description: 'The Fitness & Form period and expanded or collapsed panel choices are remembered across sessions on web and Android.'
       }
     ]
   },
