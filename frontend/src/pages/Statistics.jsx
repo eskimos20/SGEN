@@ -24,6 +24,7 @@ import {
 } from '../services/statisticsService';
 import { useStatisticsState } from '../hooks/useStatisticsState';
 import { useStatisticsEventHandlers } from '../hooks/useStatisticsEventHandlers';
+import { usePersistentPreference } from '../hooks/usePersistentPreference';
 
 const Statistics = () => {
   const { hasIntervalsConfig, user } = useAuth();
@@ -46,18 +47,14 @@ const Statistics = () => {
   const [powerCurveHistory, setPowerCurveHistory] = useState(null);
   const [loadingPowerCurve, setLoadingPowerCurve] = useState(false);
   
-  const [wellnessDays, setWellnessDays] = useState(() => {
-    // Load saved preference from localStorage, default to 30 days
-    const saved = localStorage.getItem('statistics-wellnessDays');
-    return saved ? parseInt(saved, 10) : 30;
-  });
+  const [savedWellnessDays, setSavedWellnessDays, wellnessPreferenceReady] = usePersistentPreference('statistics-wellnessDays', '30');
+  const wellnessDays = Number.parseInt(savedWellnessDays, 10) || 30;
+  const setWellnessDays = (days) => setSavedWellnessDays(String(days));
   // Temporary slider value - updates while dragging, fetches only on release
   const [sliderValue, setSliderValue] = useState(wellnessDays);
-  const [isFitnessExpanded, setIsFitnessExpanded] = useState(() => {
-    // Load expanded state from localStorage, default to true
-    const saved = localStorage.getItem('statistics-fitnessExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
+  const [savedFitnessExpanded, setSavedFitnessExpanded] = usePersistentPreference('statistics-fitnessExpanded', 'true');
+  const isFitnessExpanded = savedFitnessExpanded === 'true';
+  const setIsFitnessExpanded = (expanded) => setSavedFitnessExpanded(String(expanded));
   const [isStatsExpanded, setIsStatsExpanded] = useState(() => {
     const saved = localStorage.getItem('statistics-statsExpanded');
     return saved !== null ? saved === 'true' : true;
@@ -136,20 +133,19 @@ const Statistics = () => {
     toggleEventExpansion
   } = useStatisticsState(user);
 
-  // Sync slider value when wellnessDays changes (e.g., from localStorage load)
+  // Sync the slider with the persisted period when it loads or changes.
   useEffect(() => {
     setSliderValue(wellnessDays);
-  }, []);
+  }, [wellnessDays]);
 
-  // Save preferences to localStorage - consolidated for better performance
+  // Save the remaining Statistics section preference.
   useEffect(() => {
-    localStorage.setItem('statistics-wellnessDays', wellnessDays.toString());
-    localStorage.setItem('statistics-fitnessExpanded', isFitnessExpanded.toString());
     localStorage.setItem('statistics-statsExpanded', isStatsExpanded.toString());
-  }, [wellnessDays, isFitnessExpanded, isStatsExpanded]);
+  }, [isStatsExpanded]);
 
   // Fetch wellness and power curve data on component mount and when wellnessDays changes
   useEffect(() => {
+    if (!wellnessPreferenceReady) return;
     const fetchWellnessAndPowerCurve = async () => {
       setLoadingWellness(true);
       setLoadingPowerCurve(true);
@@ -187,7 +183,7 @@ const Statistics = () => {
     if (hasIntervalsConfig) {
       fetchWellnessAndPowerCurve();
     }
-  }, [wellnessDays, hasIntervalsConfig]);
+  }, [wellnessDays, hasIntervalsConfig, wellnessPreferenceReady]);
 
   // Training Totals uses its own date range, independent of the Fitness & Form slider.
   useEffect(() => {
