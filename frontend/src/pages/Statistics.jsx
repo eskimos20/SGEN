@@ -420,6 +420,28 @@ const Statistics = () => {
           
           {isFitnessExpanded && (
             <div className="space-y-6">
+              <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                <label htmlFor="fitness-period-slider" className="text-sm font-medium text-gray-600 flex-shrink-0">
+                  Period: {Math.round(sliderValue / 30)} months
+                </label>
+                <input
+                  id="fitness-period-slider"
+                  type="range"
+                  min="30"
+                  max="1095"
+                  step="30"
+                  value={sliderValue}
+                  onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+                  onMouseUp={(e) => setWellnessDays(parseInt(e.target.value, 10))}
+                  onTouchEnd={(e) => setWellnessDays(parseInt(e.target.value, 10))}
+                  onKeyUp={(e) => {
+                    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+                      setWellnessDays(parseInt(e.currentTarget.value, 10));
+                    }
+                  }}
+                  className="flex-1 max-w-[300px]"
+                />
+              </div>
               {loadingWellness ? (
                 <div className="flex items-center justify-center py-6 text-sm text-gray-500">
                   <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
@@ -429,30 +451,6 @@ const Statistics = () => {
                 <FitnessChart
                   wellness={wellnessData}
                   athleteProfile={athleteProfile}
-                  periodControl={(
-                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                      <label htmlFor="fitness-period-slider" className="text-sm font-medium text-gray-600 flex-shrink-0">
-                        Period: {Math.round(sliderValue / 30)} months
-                      </label>
-                      <input
-                        id="fitness-period-slider"
-                        type="range"
-                        min="30"
-                        max="1095"
-                        step="30"
-                        value={sliderValue}
-                        onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
-                        onMouseUp={(e) => setWellnessDays(parseInt(e.target.value, 10))}
-                        onTouchEnd={(e) => setWellnessDays(parseInt(e.target.value, 10))}
-                        onKeyUp={(e) => {
-                          if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
-                            setWellnessDays(parseInt(e.currentTarget.value, 10));
-                          }
-                        }}
-                        className="flex-1 max-w-[300px]"
-                      />
-                    </div>
-                  )}
                 />
               ) : (
                 <div className="py-5 text-center text-sm text-gray-500">No fitness or wellness data for this period.</div>
