@@ -62,7 +62,7 @@ const getSleepScoreIndex = (v) => {
   return 3;
 };
 
-const FitnessChart = ({ wellness = [], athleteProfile = null, periodControl = null }) => {
+const FitnessChart = ({ wellness = [], athleteProfile = null }) => {
   const fitnessData = useMemo(() => {
     if (!wellness || wellness.length === 0) return [];
     
@@ -178,7 +178,6 @@ const FitnessChart = ({ wellness = [], athleteProfile = null, periodControl = nu
         <div className="text-center py-8 text-gray-500">
           No fitness data available for the selected period
         </div>
-        {periodControl && <div className="mt-4">{periodControl}</div>}
       </div>
     );
   }
@@ -341,12 +340,6 @@ const FitnessChart = ({ wellness = [], athleteProfile = null, periodControl = nu
           </p>
         </div>
       </div>
-
-      {periodControl && (
-        <div className="card-mobile py-3">
-          {periodControl}
-        </div>
-      )}
 
       {/* Form (TSB) Chart - Lower chart like intervals.icu */}
       <div className="card-mobile">

@@ -3,6 +3,15 @@ import { Activity, Clock3, Mountain, Route, Zap, Flame, Dumbbell, Gauge, Loader2
 import { buildTrainingTotals } from '../../utils/trainingTotalsUtils';
 
 const ZONE_COLORS = ['#36b6a1', '#31ad45', '#f5cf31', '#ff8b2b', '#ec4899', '#df3f78', '#7751a8'];
+const DISTRIBUTION_PROFILES = [
+  { label: 'Polarized', shares: [0.84, 0.08, 0.34] },
+  { label: 'Pyramidal', shares: [0.8, 0.55, 0.34] },
+  { label: 'Threshold', shares: [0.55, 0.82, 0.34] },
+  { label: 'HIIT', shares: [0.34, 0.42, 0.9] },
+  { label: 'Base', shares: [0.9, 0.22, 0.08] },
+  { label: 'Unique', shares: [0.48, 0.72, 0.52] },
+];
+const DISTRIBUTION_COLORS = ['#35b64b', '#ff9b36', '#e83e72'];
 const formatTime = (seconds) => {
   const hours = Math.floor((seconds || 0) / 3600);
   const minutes = Math.floor(((seconds || 0) % 3600) / 60);
@@ -10,10 +19,26 @@ const formatTime = (seconds) => {
   return `${hours}h${String(minutes).padStart(2, '0')}m`;
 };
 
-const formatNumber = (value, digits = 0) => new Intl.NumberFormat('sv-SE', {
+const formatNumber = (value, digits = 0) => new Intl.NumberFormat('en-US', {
   maximumFractionDigits: digits,
   minimumFractionDigits: digits,
 }).format(value || 0);
+
+const DistributionProfile = ({ profile, selected }) => (
+  <div
+    className={`rounded border px-1.5 py-1.5 min-w-[74px] ${selected ? 'border-blue-300 bg-blue-50/40 shadow-sm' : 'border-gray-200 bg-white'}`}
+    aria-current={selected ? 'true' : undefined}
+  >
+    <div className="text-center text-[10px] leading-4 text-gray-700">{profile.label}</div>
+    <div className="space-y-1 mt-0.5">
+      {profile.shares.map((share, index) => (
+        <div key={index} className="h-2 rounded-full bg-gray-100 overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${share * 100}%`, backgroundColor: DISTRIBUTION_COLORS[index] }} />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const Metric = ({ icon: Icon, label, value, detail }) => (
   <div className="rounded-lg bg-gray-50 px-3 py-3 text-center min-w-0">
@@ -31,7 +56,7 @@ const ZoneBars = ({ title, zones, sweetSpot = 0, totalOverride = null }) => {
     <section className="min-w-0">
       <h4 className="text-sm font-semibold text-gray-800 mb-2">{title}</h4>
       {total === 0 ? (
-        <p className="text-xs text-gray-400 py-2">Ingen zondata</p>
+        <p className="text-xs text-gray-400 py-2">No zone data</p>
       ) : (
         <div className="space-y-1.5">
           {zones.map((seconds, index) => {
@@ -82,14 +107,13 @@ const TrainingTotalsPanel = ({
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Training Totals</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Välj datumintervall för träningssummeringen</p>
         </div>
-        {loading && <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0 mt-1" aria-label="Laddar träningssummering" />}
+        {loading && <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0 mt-1" aria-label="Loading training totals" />}
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3 mb-4">
         <label className="block text-xs font-medium text-gray-600">
-          Från
+          From
           <input
             type="date"
             value={oldest}
@@ -99,7 +123,7 @@ const TrainingTotalsPanel = ({
           />
         </label>
         <label className="block text-xs font-medium text-gray-600">
-          Till
+          To
           <input
             type="date"
             value={newest}
@@ -113,19 +137,19 @@ const TrainingTotalsPanel = ({
       {error ? (
         <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">{error}</p>
       ) : activities.length === 0 && !loading ? (
-        <p className="text-sm text-gray-500 py-4">Inga aktiviteter i den valda perioden.</p>
+        <p className="text-sm text-gray-500 py-4">No activities in the selected period.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 mb-5">
-            <Metric icon={Activity} label="Aktiviteter" value={totals.activities} />
-            <Metric icon={Clock3} label="Veckor / dagar" value={`${totals.weeks} / ${totals.days}`} detail={`${totals.activeDays} aktiva dagar`} />
-            <Metric icon={Clock3} label="Tid" value={formatTime(totals.time)} />
-            <Metric icon={Route} label="Distans" value={`${formatNumber(totals.distance / 1000, 1)} km`} />
-            <Metric icon={Mountain} label="Stigning" value={`${formatNumber(totals.climbing)} m`} />
-            <Metric icon={Zap} label="Belastning" value={formatNumber(totals.load)} />
-            <Metric icon={Flame} label="Kalorier" value={formatNumber(totals.calories)} />
-            <Metric icon={Dumbbell} label="Lyft" value={`${formatNumber(totals.weightLifted)} kg`} />
-            <Metric icon={Gauge} label="Arbete" value={`${formatNumber(totals.work / 1000)} kJ`} />
+            <Metric icon={Activity} label="Activities" value={totals.activities} />
+            <Metric icon={Clock3} label="Weeks / days" value={`${totals.weeks} / ${totals.days}`} detail={`${totals.activeDays} active days`} />
+            <Metric icon={Clock3} label="Duration" value={formatTime(totals.time)} />
+            <Metric icon={Route} label="Distance" value={`${formatNumber(totals.distance / 1000, 1)} km`} />
+            <Metric icon={Mountain} label="Elevation" value={`${formatNumber(totals.climbing)} m`} />
+            <Metric icon={Zap} label="Load" value={formatNumber(totals.load)} />
+            <Metric icon={Flame} label="Calories" value={formatNumber(totals.calories)} />
+            <Metric icon={Dumbbell} label="Weight lifted" value={`${formatNumber(totals.weightLifted)} kg`} />
+            <Metric icon={Gauge} label="Work" value={`${formatNumber(totals.work / 1000)} kJ`} />
             <Metric label="Coasting" value={formatTime(totals.coasting)} />
           </div>
 
@@ -139,24 +163,18 @@ const TrainingTotalsPanel = ({
           <div className="border-t border-gray-100 mt-5 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-sm font-semibold text-gray-800">Training Intensity Distribution</h4>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{distribution.label}</span>
-                {distribution.polarizationIndex !== null && (
-                  <span className="text-xs text-gray-500">PI {distribution.polarizationIndex.toFixed(2)}</span>
-                )}
-              </div>
             </div>
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <div className="flex h-3 overflow-hidden rounded-full bg-white">
-                {[distribution.s1, distribution.s2, distribution.s3].map((value, index) => (
-                  <div key={index} style={{ width: `${sharePercent(value)}%`, backgroundColor: ['#35b6a1', '#ff9b36', '#e83e72'][index] }} />
-                ))}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 tabular-nums">
-                <span><span className="inline-block h-2 w-2 rounded-full bg-teal-500 mr-1" />S1+2 {sharePercent(distribution.s1).toFixed(1)}%</span>
-                <span><span className="inline-block h-2 w-2 rounded-full bg-orange-400 mr-1" />S3+4 {sharePercent(distribution.s2).toFixed(1)}%</span>
-                <span><span className="inline-block h-2 w-2 rounded-full bg-pink-600 mr-1" />S5+ {sharePercent(distribution.s3).toFixed(1)}%</span>
-              </div>
+            <div className="flex flex-wrap items-end gap-1.5 overflow-x-auto py-2">
+              {DISTRIBUTION_PROFILES.map((profile) => (
+                <DistributionProfile key={profile.label} profile={profile} selected={distribution.label === profile.label} />
+              ))}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 tabular-nums">
+              <span className="font-semibold text-gray-800">{distribution.label}</span>
+              {distribution.polarizationIndex !== null && <span>PI {distribution.polarizationIndex.toFixed(2)}</span>}
+              <span>S1+2 {sharePercent(distribution.s1).toFixed(1)}%</span>
+              <span>S3+4 {sharePercent(distribution.s2).toFixed(1)}%</span>
+              <span>S5+ {sharePercent(distribution.s3).toFixed(1)}%</span>
             </div>
           </div>
 
@@ -172,7 +190,7 @@ const TrainingTotalsPanel = ({
               </div>
             </div>
           )}
-          <p className="text-[11px] text-gray-400 mt-3">Combined Zones väljer aktivitetens första tillgängliga zonkälla enligt Intervals.icu:s tiz_order. Aktiviteter utan cardiovaskulär zondata ingår inte i klassningen.</p>
+          <p className="text-[11px] text-gray-400 mt-3">Combined Zones uses each activity’s first available zone source according to Intervals.icu’s tiz_order. Activities without cardiovascular zone data are not included in the classification.</p>
         </>
       )}
     </section>
