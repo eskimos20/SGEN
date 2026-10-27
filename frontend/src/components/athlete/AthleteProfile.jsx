@@ -1,5 +1,5 @@
 import { Loader2, ChevronDown, ChevronUp, Trophy, Settings, Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { calculateAge, getSportColorClasses, getSportCategory } from '../../utils/athleteUtils';
 import { formatPaceValue } from '../../utils/zoneUtils';
 import { normalizeHeightToCm } from '../../utils/nutritionUtils';
@@ -10,9 +10,12 @@ import ProfileEditModal from './ProfileEditModal';
 import AddSportModal from './AddSportModal';
 import SportCard from './SportCard';
 import ConfirmDialog from '../modals/ConfirmDialog';
+import { usePersistentPreference } from '../../hooks/usePersistentPreference';
 
 const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [sportsExpanded, setSportsExpanded] = usePersistentPreference('athleteProfile-sportsExpanded', 'true');
+  const isExpanded = sportsExpanded === 'true';
+  const setIsExpanded = (expanded) => setSportsExpanded(String(expanded));
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, sportId: null, sportName: '' });
   
   // Profile edit hook
@@ -46,19 +49,6 @@ const AthleteProfile = ({ athleteProfile, loadingProfile, onProfileUpdate }) => 
     toggleTypeSelection
   } = useAthleteSports(onProfileUpdate);
   
-  // Load expanded state from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('athleteProfile-sportsExpanded');
-    if (saved !== null) {
-      setIsExpanded(saved === 'true');
-    }
-  }, []);
-  
-  // Save expanded state to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('athleteProfile-sportsExpanded', isExpanded.toString());
-  }, [isExpanded]);
-
   if (loadingProfile) {
     return (
       <div className="card flex items-center justify-center py-8">
