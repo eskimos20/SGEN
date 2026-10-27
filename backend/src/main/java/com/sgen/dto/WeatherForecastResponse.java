@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -20,6 +21,10 @@ public class WeatherForecastResponse {
     private Double temperatureMax;
     
     private Double temperatureMin;
+
+    private LocalTime sunrise;
+
+    private LocalTime sunset;
     
     private Double currentTemperature;
     

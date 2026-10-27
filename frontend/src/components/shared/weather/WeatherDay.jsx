@@ -1,4 +1,4 @@
-import { Cloud, CloudRain, Sun, Wind, Zap, CloudDrizzle, Snowflake, Eye, CloudSun } from 'lucide-react';
+import { Cloud, CloudRain, Sun, Wind, Zap, CloudDrizzle, Snowflake, Eye, CloudSun, Sunrise, Sunset } from 'lucide-react';
 
 const SYMBOL_ICONS = {
     1: <Sun className="h-7 w-7 text-yellow-500" />,
@@ -50,6 +50,8 @@ const getWindArrow = (degrees) => {
     const index = Math.round(degrees / 45) % 8;
     return arrows[index];
 };
+
+const formatSunTime = (time) => time?.slice(0, 5);
 
 const WeatherDay = ({ day, isFirst }) => {
     const hasCurrentWind = isFirst && day.currentWindSpeed != null;
@@ -107,6 +109,18 @@ const WeatherDay = ({ day, isFirst }) => {
                         <span className="flex items-center gap-1">
                             <Cloud className="h-3 w-3" />
                             {day.cloudCover * 12.5}%
+                        </span>
+                    )}
+                    {day.sunrise && (
+                        <span className="flex items-center gap-1" title="Sunrise">
+                            <Sunrise className="h-3 w-3 text-orange-500" />
+                            {formatSunTime(day.sunrise)}
+                        </span>
+                    )}
+                    {day.sunset && (
+                        <span className="flex items-center gap-1" title="Sunset">
+                            <Sunset className="h-3 w-3 text-orange-600" />
+                            {formatSunTime(day.sunset)}
                         </span>
                     )}
                 </div>

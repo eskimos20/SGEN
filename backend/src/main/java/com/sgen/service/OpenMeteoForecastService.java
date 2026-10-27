@@ -11,7 +11,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -38,7 +40,7 @@ public class OpenMeteoForecastService {
                 .queryParam("longitude", longitude)
                 .queryParam("current", "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,relative_humidity_2m")
                 .queryParam("hourly", "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,cloud_cover,relative_humidity_2m")
-                .queryParam("daily", "temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,wind_gusts_10m_max")
+                .queryParam("daily", "temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,wind_gusts_10m_max,sunrise,sunset")
                 .queryParam("wind_speed_unit", "ms")
                 .queryParam("timezone", "auto")
                 .queryParam("forecast_days", 10)
@@ -105,6 +107,8 @@ public class OpenMeteoForecastService {
                     .forecastDate(date.atTime(12, 0))
                     .temperatureMax(tMax)
                     .temperatureMin(tMin)
+                    .sunrise(getDailyTime(daily, "sunrise", i))
+                    .sunset(getDailyTime(daily, "sunset", i))
                     .weatherCode(wmoCode)
                     .weatherDescription(getWmoDescription(wmoCode))
                     .windSpeed(windSpeed)
@@ -146,6 +150,20 @@ public class OpenMeteoForecastService {
             return arr.get(idx).asInt(0);
         }
         return 0;
+    }
+
+    private LocalTime getDailyTime(JsonNode daily, String field, int idx) {
+        JsonNode arr = daily.path(field);
+        if (!arr.isArray() || idx >= arr.size() || arr.get(idx).isNull()) {
+            return null;
+        }
+        String value = arr.get(idx).asText();
+        try {
+            return LocalDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME).toLocalTime();
+        } catch (DateTimeParseException e) {
+            // Open-Meteo returns ISO-8601 local timestamps; accept a time-only value too.
+            return LocalTime.parse(value, DateTimeFormatter.ISO_TIME);
+        }
     }
 
     private Double getCurrentDouble(JsonNode current, String field) {
