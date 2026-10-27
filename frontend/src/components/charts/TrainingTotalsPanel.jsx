@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Activity, Clock3, Mountain, Route, Zap, Flame, Dumbbell, Gauge, Loader2 } from 'lucide-react';
+import { Activity, Clock3, Mountain, Route, Zap, Flame, Dumbbell, Gauge, Loader2, HelpCircle } from 'lucide-react';
 import { buildTrainingTotals } from '../../utils/trainingTotalsUtils';
 
 const ZONE_COLORS = ['#36b6a1', '#31ad45', '#f5cf31', '#ff8b2b', '#ec4899', '#df3f78', '#7751a8'];
@@ -188,15 +188,35 @@ const TrainingTotalsPanel = ({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-sm font-semibold text-gray-800">Training Intensity Distribution</h4>
             </div>
-            <div className="flex flex-wrap items-end gap-2 py-3">
-              {DISTRIBUTION_PROFILES.map((profile) => (
-                <DistributionProfile
-                  key={profile.label}
-                  profile={profile}
-                  distribution={distribution}
-                  selected={distribution.label === profile.label}
-                />
-              ))}
+            <div className="flex items-start gap-3 py-3">
+              <div className="flex flex-1 flex-wrap items-end gap-2">
+                {DISTRIBUTION_PROFILES.map((profile) => (
+                  <DistributionProfile
+                    key={profile.label}
+                    profile={profile}
+                    distribution={distribution}
+                    selected={distribution.label === profile.label}
+                  />
+                ))}
+              </div>
+              <details className="relative ml-auto shrink-0">
+                <summary className="flex cursor-pointer list-none items-center gap-1 rounded px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 [&::-webkit-details-marker]:hidden">
+                  <HelpCircle className="h-4 w-4" />
+                  Help
+                </summary>
+                <div className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white p-4 text-xs text-gray-700 shadow-xl">
+                  <h5 className="mb-1 font-semibold text-gray-900">How the classifications work</h5>
+                  <p className="mb-3 leading-relaxed">Time in your combined zones is grouped into S1 (Z1–Z2), S2 (Z3–Z4), and S3 (Z5–Z7). The rules below are checked in order; the first match is your classification.</p>
+                  <div className="space-y-2.5">
+                    <p><strong>HIIT:</strong> S3 is greater than S2, and greater than 49.9% of the time in S1 and S2 combined.</p>
+                    <p><strong>Polarized:</strong> S1 and S3 are both greater than S2.</p>
+                    <p><strong>Base:</strong> S1 is more than 3.99 times S2, and more than 3 times S2 and S3 combined.</p>
+                    <p><strong>Pyramidal:</strong> S1 is more than 1.4 times S2; S2 is more than 1.4 times S3; and S3 is at least 5% of total zone time.</p>
+                    <p><strong>Threshold:</strong> S1 is less than 4 times S2, and S2 is greater than half of S3.</p>
+                    <p><strong>Unique:</strong> None of the rules above match.</p>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
 
