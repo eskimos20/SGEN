@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Activity, Clock3, Mountain, Route, Zap, Flame, Dumbbell, Gauge, Loader2, HelpCircle } from 'lucide-react';
+import { Activity, Clock3, Mountain, Route, Zap, Flame, Dumbbell, Gauge, Loader2, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildTrainingTotals } from '../../utils/trainingTotalsUtils';
+import { usePersistentPreference } from '../../hooks/usePersistentPreference';
 
 const ZONE_COLORS = ['#36b6a1', '#31ad45', '#f5cf31', '#ff8b2b', '#ec4899', '#df3f78', '#7751a8'];
 const DISTRIBUTION_PROFILES = [
@@ -125,16 +126,26 @@ const TrainingTotalsPanel = ({
 }) => {
   const totals = useMemo(() => buildTrainingTotals(activities, periodDays), [activities, periodDays]);
   const { distribution, zones } = totals;
+  const [savedExpanded, setSavedExpanded] = usePersistentPreference('statistics-trainingTotalsExpanded', 'true');
+  const isExpanded = savedExpanded === 'true';
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-3 sm:p-5">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded text-left hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          aria-expanded={isExpanded}
+          aria-controls="training-totals-content"
+          onClick={() => setSavedExpanded(isExpanded ? 'false' : 'true')}
+        >
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Training Totals</h3>
-        </div>
+          {isExpanded ? <ChevronUp className="h-5 w-5 shrink-0 text-gray-600" /> : <ChevronDown className="h-5 w-5 shrink-0 text-gray-600" />}
+        </button>
         {loading && <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0 mt-1" aria-label="Loading training totals" />}
       </div>
 
+      {isExpanded && <div id="training-totals-content" className="mt-4">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3 mb-4">
         <label className="block text-xs font-medium text-gray-600">
           From
@@ -235,6 +246,7 @@ const TrainingTotalsPanel = ({
           <p className="text-[11px] text-gray-400 mt-3">Combined Zones uses each activity’s first available zone source according to Intervals.icu’s tiz_order. Activities without cardiovascular zone data are not included in the classification.</p>
         </>
       )}
+      </div>}
     </section>
   );
 };
