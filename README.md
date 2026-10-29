@@ -119,7 +119,7 @@ workout-library/
 | `./rebuild-and-start.sh` | **Development**: Builds frontend, copies to backend, builds Android APK (if SDK available), starts Spring Boot server |
 | `./deploy-to-server.sh` | **Deployment**: Deploys to production server with systemd service management. Automatically calls `sync-version.sh` |
 | `./sync-version.sh` | **Version Sync**: Syncs version from `pom.xml` to Android `build.gradle` and frontend `package.json` (called automatically by deploy) |
-| `./install-ubuntu.sh` | **Setup**: Installs Java 21, Maven, and Node.js 20 on Ubuntu/Debian |
+| `./install-ubuntu.sh` | **Setup**: Installs MySQL Server, Java 21, Maven, and Node.js 20 on Ubuntu/Debian; enables and starts MySQL |
 
 ### Script Details
 

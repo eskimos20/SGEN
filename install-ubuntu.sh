@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 echo "========================================"
 echo "Installing dependencies for SGEN"
@@ -7,13 +8,18 @@ echo "========================================"
 echo ""
 
 # Update package list
-echo "[1/7] Updating package list..."
+echo "[1/8] Updating package list..."
 sudo apt update
 
-# Install required system tools
+# Install required system tools and MySQL Server
 echo ""
-echo "[2/7] Installing system tools (git, curl, unzip)..."
+echo "[2/8] Installing system tools (git, curl, unzip)..."
 sudo apt install -y git curl unzip
+
+echo ""
+echo "[3/8] Installing MySQL Server..."
+sudo apt install -y mysql-server
+sudo systemctl enable --now mysql
 
 # Verify installations
 echo ""
@@ -26,7 +32,7 @@ unzip -v | head -1
 
 # Install Java 21
 echo ""
-echo "[3/7] Installing Java 21 JDK..."
+echo "[4/8] Installing Java 21 JDK..."
 sudo apt install -y openjdk-21-jdk
 
 # Verify Java installation
@@ -36,7 +42,7 @@ java -version
 
 # Install Maven
 echo ""
-echo "[4/7] Installing Maven..."
+echo "[5/8] Installing Maven..."
 sudo apt install -y maven
 
 # Verify Maven installation
@@ -46,7 +52,7 @@ mvn -version
 
 # Install Node.js 20
 echo ""
-echo "[5/7] Installing Node.js 20..."
+echo "[6/8] Installing Node.js 20..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
@@ -59,12 +65,12 @@ npm -v
 
 # Install additional build essentials
 echo ""
-echo "[6/7] Installing build essentials..."
+echo "[7/8] Installing build essentials..."
 sudo apt install -y build-essential
 
 # Verify sudo access for systemd (needed for deploy-to-server.sh)
 echo ""
-echo "[7/7] Verifying sudo access..."
+echo "[8/8] Verifying sudo access..."
 if sudo -n true 2>/dev/null; then
     echo "✅ Sudo access verified"
 else
