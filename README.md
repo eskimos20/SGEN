@@ -343,7 +343,7 @@ setup mode described below.
 
 ### MySQL configuration
 
-SGEN connects only to MySQL; it has no H2 fallback. If no MySQL settings are
+SGEN connects only to MySQL. If no MySQL settings are
 present at startup, the application starts in a restricted setup mode without
 opening a database connection. Sign in with the temporary hardcoded credentials
 `admin` / `password`; only the database settings screen is available. Enter the
