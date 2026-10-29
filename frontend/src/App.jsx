@@ -36,6 +36,10 @@ const ProtectedRoute = ({ children, adminOnly = false, userOnly = false, allowCh
     return <Navigate to="/login" replace />;
   }
 
+  if (user.bootstrapMode && location.pathname !== '/admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
   // Allow access to change-password page even if mustChangePassword is true
   if (user.mustChangePassword && !allowChangePassword && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;

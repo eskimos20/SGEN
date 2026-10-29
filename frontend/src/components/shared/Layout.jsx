@@ -94,6 +94,7 @@ const Layout = () => {
 
   // Fetch app version and server start time on mount
   useEffect(() => {
+    if (user?.bootstrapMode) return;
     const fetchVersion = async () => {
       try {
         const response = await api.get('/version');
@@ -104,7 +105,7 @@ const Layout = () => {
       }
     };
     fetchVersion();
-  }, []);
+  }, [user?.bootstrapMode]);
 
   const handleLogout = () => {
     logout();
@@ -119,10 +120,12 @@ const Layout = () => {
   
   // Admin sees Admin panel and Monitoring, regular users see Dashboard, Statistics, Gear (if configured), Profile
   const navItems = isAdmin
-    ? [
-        { to: '/admin', icon: Shield, label: 'Admin' },
-        { to: '/monitoring', icon: Activity, label: 'Monitoring' }
-      ]
+    ? user?.bootstrapMode
+      ? [{ to: '/admin', icon: Shield, label: 'Admin' }]
+      : [
+          { to: '/admin', icon: Shield, label: 'Admin' },
+          { to: '/monitoring', icon: Activity, label: 'Monitoring' }
+        ]
     : [
         { to: '/dashboard', icon: Home, label: 'Dashboard' },
         ...(hasIntervalsConfig ? [{ to: '/statistics', icon: BarChart3, label: 'Statistics' }] : []),
@@ -148,7 +151,7 @@ const Layout = () => {
               <BarChart3 className="h-8 w-8 text-primary-600" />
               <span className="text-xl font-bold text-gray-900">SGEN</span>
               <span className="text-sm text-gray-500 hidden sm:block">Statistics Generator</span>
-              {appVersion && (
+              {appVersion && !user?.bootstrapMode && (
               <button
                 onClick={() => setShowVersionNotifier(true)}
                 className="text-xs text-purple-600 hover:text-purple-700 font-medium cursor-pointer transition-colors"
@@ -169,14 +172,14 @@ const Layout = () => {
               <span className="hidden sm:block text-xs text-gray-400">-</span>
               
               {/* Change Password button */}
-              <button
+              {!user?.bootstrapMode && <button
                 onClick={handleChangePassword}
                 className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors p-2 rounded-lg hover:bg-gray-100"
                 title="Change Password"
               >
                 <Key className="h-4 w-4" />
                 <span className="hidden sm:block text-sm">Change Passwd</span>
-              </button>
+              </button>}
               
               <span className="hidden sm:block text-xs text-gray-400">-</span>
               
@@ -262,13 +265,13 @@ const Layout = () => {
               ))}
               
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <button
+                {!user?.bootstrapMode && <button
                   onClick={handleChangePassword}
                   className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
                 >
                   <Key className="h-5 w-5" />
                   <span>Change Password</span>
-                </button>
+                </button>}
                 
                 <button
                   onClick={handleLogout}
@@ -283,7 +286,7 @@ const Layout = () => {
         </div>
       )}
 
-      <WorkoutShareNotifier />
+      {!user?.bootstrapMode && <WorkoutShareNotifier />}
 
       <div className="flex">
         {/* Desktop Sidebar - visible on all pages including change-password */}

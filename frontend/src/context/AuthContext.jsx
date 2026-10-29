@@ -68,6 +68,22 @@ export const AuthProvider = ({ children }) => {
       
       // Check if token exists and is valid
       if (token && !isTokenExpired(token)) {
+        const claims = parseJwt(token);
+        if (claims?.bootstrap === true) {
+          try {
+            const { data } = await api.get('/auth/bootstrap-status');
+            if (data.bootstrapMode) {
+              setUser({ username: 'admin', role: 'ADMIN', mustChangePassword: false, bootstrapMode: true });
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            // An invalidated bootstrap token is cleared below.
+          }
+          await clearAuth();
+          setLoading(false);
+          return;
+        }
         // Fetch user data from API - no localStorage caching
         const fetchUserData = async () => {
           try {
@@ -135,7 +151,8 @@ export const AuthProvider = ({ children }) => {
       setUser({
         username: loginData.username,
         role: loginData.role,
-        mustChangePassword: loginData.mustChangePassword
+        mustChangePassword: loginData.mustChangePassword,
+        bootstrapMode: loginData.bootstrapMode || false
       });
       setHasIntervalsConfig(false);
     }

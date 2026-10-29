@@ -1,6 +1,8 @@
 package com.sgen.config;
 
 import com.sgen.security.JwtAuthenticationFilter;
+import com.sgen.service.DatabaseSettingsService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +37,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final DatabaseSettingsService databaseSettingsService;
     
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
     private String[] allowedOrigins;
@@ -48,11 +51,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/assets/**", "/static/**", "/**/*.js", "/**/*.css", "/**/*.ico", "/**/*.svg", "/**/*.png", "/**/*.jpg", "/**/*.jpeg", "/**/*.gif", "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.eot").permitAll()
                         .requestMatchers("/login", "/dashboard", "/profile", "/statistics", "/calendar", "/workout-creator", "/search-workouts", "/achievements", "/nutrition", "/gear", "/connections", "/bikefit", "/admin", "/monitoring", "/change-password").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/bootstrap-status").permitAll()
+                        .requestMatchers(request -> databaseSettingsService.isBootstrapMode()
+                                && !isAllowedDuringBootstrap(request)).denyAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/strava/callback").permitAll()
                         .requestMatchers("/strava-callback.html").permitAll()
                         .requestMatchers("/downloads/**").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -64,6 +69,14 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    private boolean isAllowedDuringBootstrap(HttpServletRequest request) {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+        String path = request.getRequestURI();
+        return ("GET".equalsIgnoreCase(request.getMethod()) && "/api/admin/database".equals(path))
+                || ("POST".equalsIgnoreCase(request.getMethod())
+                && ("/api/admin/database".equals(path) || "/api/admin/database/test".equals(path)));
     }
 
     @Bean
