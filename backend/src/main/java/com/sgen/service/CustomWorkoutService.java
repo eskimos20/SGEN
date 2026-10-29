@@ -31,6 +31,7 @@ public class CustomWorkoutService {
     private final ObjectMapper objectMapper;
     private final ZwoParser zwoParser;
     private final WorkoutShareRepository workoutShareRepository;
+    private final DatabaseSettingsService databaseSettingsService;
 
     @Value("${workout.library.path:./workout-library}")
     private String workoutLibraryPath;
@@ -45,6 +46,9 @@ public class CustomWorkoutService {
 
     @PostConstruct
     public void init() {
+        if (databaseSettingsService.isBootstrapMode()) {
+            return;
+        }
         loadAllCustomWorkoutsAtBoot();
     }
 

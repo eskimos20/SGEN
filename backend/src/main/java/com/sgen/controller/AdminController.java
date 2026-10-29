@@ -1,8 +1,10 @@
 package com.sgen.controller;
 
 import com.sgen.dto.CreateUserRequest;
+import com.sgen.dto.DatabaseSettingsRequest;
 import com.sgen.dto.UserResponse;
 import com.sgen.service.AppSettingsService;
+import com.sgen.service.DatabaseSettingsService;
 import com.sgen.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,39 @@ public class AdminController {
 
     private final UserService userService;
     private final AppSettingsService appSettingsService;
+    private final DatabaseSettingsService databaseSettingsService;
+
+    @GetMapping("/database")
+    public ResponseEntity<Map<String, Object>> getDatabaseSettings() {
+        return ResponseEntity.ok(Map.of(
+                "settings", databaseSettingsService.getSettings(),
+                "defaultDatabaseName", DatabaseSettingsService.DEFAULT_DATABASE_NAME,
+                "bootstrapMode", databaseSettingsService.isBootstrapMode()
+        ));
+    }
+
+    @PostMapping("/database/test")
+    public ResponseEntity<DatabaseSettingsService.ConnectionTestResult> testDatabaseConnection(
+            @Valid @RequestBody DatabaseSettingsRequest request) {
+        return ResponseEntity.ok(databaseSettingsService.testAndDescribe(
+                request.host(), request.port(), request.databaseName(), request.username(), request.password()));
+    }
+
+    @PostMapping("/database")
+    public ResponseEntity<Map<String, Object>> saveDatabaseSettings(
+            @Valid @RequestBody DatabaseSettingsRequest request) {
+        DatabaseSettingsService.ConnectionTestResult test = databaseSettingsService.testAndDescribe(
+                request.host(), request.port(), request.databaseName(), request.username(), request.password());
+        if (!test.serverOnline() || !test.canConnectToDatabase()) {
+            return ResponseEntity.badRequest().body(Map.of("message", test.message()));
+        }
+        return ResponseEntity.ok(Map.of(
+                "settings", databaseSettingsService.save(request.host(), request.port(), request.databaseName(), request.username(), request.password()),
+                "databaseName", request.databaseName(),
+                "requiresRestart", true,
+                "message", "Databasinställningarna sparades. Starta om SGEN-tjänsten för att använda MySQL."
+        ));
+    }
 
     // User Management
     @GetMapping("/users")

@@ -73,7 +73,7 @@ workout-library/
 ### Backend
 - **Java**: 17 (LTS)
 - **Spring Boot**: 3.5.13
-- **Database**: H2 (file-based, `./data/sgen`)
+- **Database**: MySQL (`eskimos_sgen_db`)
 - **ORM**: Hibernate / Spring Data JPA
 - **Security**: Spring Security with JWT (jjwt 0.12.6)
 - **Build Tool**: Maven
@@ -124,14 +124,11 @@ workout-library/
 ### Script Details
 
 **`deploy-to-server.sh`** - Main deployment script:
-1. Stops the systemd service
-2. Backs up old JAR
-3. Clones repository from GitHub
-4. **Calls `sync-version.sh` to sync versions**
-5. Builds frontend with Android APK
-6. Builds backend JAR
-7. Copies to server directory
-8. Starts systemd service
+1. Configures the persistent MySQL settings path for `sgen.service`
+2. Clones repository from GitHub and syncs versions
+3. Builds frontend, Android APK (if available), and backend JAR
+4. Stops the service and backs up the previous JAR
+5. Copies the new JAR and starts the service
 
 **`rebuild-and-start.sh`** - Local development:
 1. Builds frontend with Vite
@@ -143,11 +140,13 @@ Both scripts automatically install Android SDK if not present.
 
 ### Environment Variables
 
-All scripts read from `.env` file or shell environment:
+The local start and server deployment scripts source a root-level `.env` file,
+or use exported shell variables:
 - `JWT_SECRET` - Required for production (min 32 chars)
 - `CORS_ALLOWED_ORIGINS` - Comma-separated allowed domains
 - `VITE_API_URL` - API URL for Android app builds
 - `ANDROID_SDK_ROOT` - Android SDK path (auto-installed if missing)
+- `SGEN_DB_HOST`, `SGEN_DB_PORT`, `SGEN_DB_NAME`, `SGEN_DB_USERNAME`, `SGEN_DB_PASSWORD` - Optional direct MySQL connection settings (for local startup; systemd requires these in its own environment)
 
 ## Project Structure
 
@@ -283,12 +282,21 @@ All scripts read from `.env` file or shell environment:
 
 ### Environment Variables
 
-Create a `.env` file in project root (see `.env.example`):
+The shell scripts load a root-level `.env` file when present. You can also export
+these values in the shell before running a script:
 
 ```bash
 # Required for production
 JWT_SECRET=your-256-bit-secret-key-minimum-32-characters
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,https://your-domain.com
+
+# Optional direct MySQL settings for local development. Omit them to use
+# restricted setup mode and configure MySQL in Admin → Databas.
+SGEN_DB_HOST=127.0.0.1
+SGEN_DB_PORT=3306
+SGEN_DB_NAME=eskimos_sgen_db
+SGEN_DB_USERNAME=eskimos
+SGEN_DB_PASSWORD=your-mysql-password
 
 # Optional for Android app builds
 VITE_API_URL=http://your-server:8081/api
@@ -311,7 +319,7 @@ This automatically:
 1. Builds frontend with Vite
 2. Copies build to backend static resources
 3. Builds Android APK (if Android SDK available)
-4. Creates the H2 database file on first startup (at `./data/sgen` by default)
+4. Uses MySQL and creates missing tables when MySQL settings are configured; otherwise starts restricted setup mode without connecting to a database
 5. Starts Spring Boot server on `http://localhost:8081`
 
 ### Manual Setup
@@ -329,14 +337,39 @@ npm install
 npm run dev
 ```
 
-The frontend dev server starts on `http://localhost:5173`
+The frontend dev server starts on `http://localhost:5173`. Backend-only startup
+uses the same MySQL environment variables; without them it starts in the restricted
+setup mode described below.
+
+### MySQL configuration
+
+SGEN connects only to MySQL; it has no H2 fallback. If no MySQL settings are
+present at startup, the application starts in a restricted setup mode without
+opening a database connection. Sign in with the temporary hardcoded credentials
+`admin` / `password`; only the database settings screen is available. Enter the
+MySQL settings there, test the connection, and save them. Restart SGEN; the
+bootstrap token is invalidated and the next login authenticates against MySQL.
+The database name defaults to `eskimos_sgen_db` and can be changed in
+**Admin → Databas**. The database itself must already exist; SGEN creates missing
+tables after connecting, but does not create databases.
+
+For unattended startup, provide `SGEN_DB_HOST`, `SGEN_DB_PORT`, `SGEN_DB_NAME`,
+`SGEN_DB_USERNAME`, and `SGEN_DB_PASSWORD`, or a protected properties file at
+`./config/database.properties` (configurable with `SGEN_DB_CONFIG_FILE`). Saved
+credentials have owner-only file permissions. Hibernate creates missing tables
+on startup and does not drop existing tables or rows. If no users exist, startup
+creates `admin` / `password` and requires the password to be changed if the admin
+user is missing; an existing admin user is left unchanged.
+
+Do not commit the local database properties file or place database credentials in
+source control.
 
 ## Default Login
 
-- **Username**: `admin`
-- **Password**: `password`
+- **First-start setup mode**: `admin` / `password` (only database settings are accessible)
+- **MySQL mode**: Sign in with a user already stored in the selected MySQL database. If `admin` is absent, SGEN creates it with the initial password `password` and requires a password change.
 
-> **Note**: You must change the password on first login.
+An existing MySQL admin account and password are preserved.
 
 ## Build & Deploy
 
@@ -363,14 +396,21 @@ This builds and starts the application locally on `http://localhost:8081`.
 - `SERVER_DIR` - Server directory path
 - `GITHUB_REPO` - Your GitHub repository URL
 
+The script writes a systemd drop-in that sets
+`SGEN_DB_CONFIG_FILE` to `$SERVER_DIR/config/database.properties`. This file
+survives deployments because the script only replaces the JAR in `SERVER_DIR`.
+On the first deployment, with no MySQL settings file, the service starts in
+restricted setup mode. Sign in with `admin` / `password`, configure and test
+MySQL under **Admin → Databas**, save, and restart `sgen.service`. Later deploys
+reuse the saved connection.
+
 **What it does:**
-1. Stops the systemd service
-2. Backs up the old JAR
-3. Re-clones repository from GitHub
-4. **Calls `sync-version.sh` to sync version to Android and frontend**
-5. Builds with Android APK
-6. Copies new JAR to server directory
-7. Restarts the systemd service
+1. Writes the persistent database-configuration path into a systemd drop-in
+2. Re-clones repository and syncs Android/frontend versions
+3. Builds the frontend, optional Android APK, and backend JAR while the current service keeps running
+4. Stops the service and backs up the old JAR after the build succeeds
+5. Copies the new JAR to the server directory
+6. Starts the systemd service; if no DB file exists, restricted setup mode is available
 
 ### Systemd Service
 
@@ -386,6 +426,7 @@ sudo tee /etc/systemd/system/sgen.service.d/override.conf > /dev/null <<EOF
 [Service]
 Environment="JWT_SECRET=your-secret-key"
 Environment="CORS_ALLOWED_ORIGINS=https://your-domain.com"
+Environment="SGEN_DB_CONFIG_FILE=/root/SERVER/SGEN/config/database.properties"
 EOF
 
 # Enable and start service

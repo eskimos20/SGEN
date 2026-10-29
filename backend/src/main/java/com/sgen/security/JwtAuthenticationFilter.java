@@ -1,6 +1,7 @@
 package com.sgen.security;
 
 import com.sgen.repository.UserRepository;
+import com.sgen.service.DatabaseSettingsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final UserRepository userRepository;
+    private final DatabaseSettingsService databaseSettingsService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -47,8 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.endsWith(".ttf") ||
                path.endsWith(".eot") ||
                path.startsWith("/login") ||
-               path.startsWith("/api/auth/login") ||
-               path.startsWith("/h2-console/");
+               path.startsWith("/api/auth/login");
     }
 
     @Override
@@ -67,7 +68,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        
+
+        if (databaseSettingsService.isBootstrapMode()) {
+            try {
+                if (jwtService.isBootstrapToken(jwt) && "admin".equals(jwtService.extractUsername(jwt))) {
+                    UserDetails bootstrapAdmin = org.springframework.security.core.userdetails.User
+                            .withUsername("admin").password("").roles("ADMIN").build();
+                    if (jwtService.isTokenValid(jwt, bootstrapAdmin)) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                bootstrapAdmin, null, bootstrapAdmin.getAuthorities());
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Invalid bootstrap tokens remain unauthenticated.
+            }
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // After MySQL configuration, bootstrap users must sign in against the MySQL user table.
+        try {
+            if (jwtService.isBootstrapToken(jwt)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+        } catch (Exception ignored) {
+            // Continue with normal token validation, which rejects malformed tokens.
+        }
+
         try {
             username = jwtService.extractUsername(jwt);
 

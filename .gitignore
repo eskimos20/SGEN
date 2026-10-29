@@ -10,6 +10,7 @@ data/
 *.db
 *.mv.db
 *.trace.db
+**/config/database.properties
 
 # Build output
 target/

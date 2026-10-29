@@ -12,10 +12,20 @@
 #   ANDROID_SDK_ROOT  - Path to Android SDK (auto-installed if not set)
 #   JWT_SECRET        - Secret key for JWT tokens
 #   CORS_ALLOWED_ORIGINS - Comma-separated list of allowed CORS origins
+#   SGEN_DB_HOST, SGEN_DB_PORT, SGEN_DB_NAME, SGEN_DB_USERNAME, SGEN_DB_PASSWORD
+#                     - Optional MySQL settings; if omitted, starts restricted setup mode
 #
 # Example:
 #   VITE_API_URL=http://192.168.1.50:8081/api ./rebuild-and-start.sh
 # =============================================================================
+
+# Load local development settings when present. Export them to Maven/Spring Boot.
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
 
 # Cleanup function
 cleanup() {

@@ -27,6 +27,10 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public boolean isBootstrapToken(String token) {
+        return Boolean.TRUE.equals(extractClaim(token, claims -> claims.get("bootstrap", Boolean.class)));
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);

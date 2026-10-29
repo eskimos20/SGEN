@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Users, Bug, Activity } from 'lucide-react';
+import { Users, Bug, Activity, Database } from 'lucide-react';
 import UsersTab from '../components/admin/UsersTab';
 import DebugTab from '../components/admin/DebugTab';
+import DatabaseTab from '../components/admin/DatabaseTab';
+import { useAuth } from '../context/AuthContext';
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState('users');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState(user?.bootstrapMode ? 'database' : 'users');
   const [lastUpdate, setLastUpdate] = useState(null);
 
   return (
@@ -25,7 +28,7 @@ const AdminPanel = () => {
       </div>
 
       <div className="flex gap-2 border-b border-gray-200">
-        <button
+        {!user?.bootstrapMode && <button
           onClick={() => setActiveTab('users')}
           className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
             activeTab === 'users'
@@ -35,8 +38,8 @@ const AdminPanel = () => {
         >
           <Users className="h-5 w-5" />
           Users
-        </button>
-        <button
+        </button>}
+        {!user?.bootstrapMode && <button
           onClick={() => setActiveTab('debug')}
           className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
             activeTab === 'debug'
@@ -46,11 +49,23 @@ const AdminPanel = () => {
         >
           <Bug className="h-5 w-5" />
           Debug
+        </button>}
+        <button
+          onClick={() => setActiveTab('database')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
+            activeTab === 'database'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Database className="h-5 w-5" />
+          Databas
         </button>
       </div>
 
-      {activeTab === 'users' && <UsersTab onLastUpdate={setLastUpdate} />}
-      {activeTab === 'debug' && <DebugTab />}
+      {!user?.bootstrapMode && activeTab === 'users' && <UsersTab onLastUpdate={setLastUpdate} />}
+      {!user?.bootstrapMode && activeTab === 'debug' && <DebugTab />}
+      {activeTab === 'database' && <DatabaseTab />}
     </div>
   );
 };

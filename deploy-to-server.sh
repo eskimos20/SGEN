@@ -4,8 +4,19 @@
 # SGEN - Deploy to Server with Android App Build
 # =============================================================================
 #
+# Optional local .env values are loaded for the build. Database credentials for
+# the systemd service are stored by the admin setup screen in SERVER_DIR/config.
+# With no database settings on first launch, SGEN starts in restricted setup mode.
+#
 # CONFIGURATION - EDIT THESE VALUES BEFORE RUNNING
 # =============================================================================
+
+if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
 
 # Required: Your domain or IP (e.g., your-domain.ddns.net or 192.168.1.100)
 SGEN_DDNS_OR_IP=""
@@ -27,6 +38,8 @@ SGEN_EXTERNAL_PORT="8081"
 # Server directories
 SERVER_DIR="/root/SERVER/SGEN"
 REPO_DIR="/root/SGEN"
+DATABASE_CONFIG_FILE="$SERVER_DIR/config/database.properties"
+SYSTEMD_DROPIN="/etc/systemd/system/sgen.service.d/10-sgen-database.conf"
 
 # GitHub repository URL
 GITHUB_REPO="https://github.com/eskimos20/SGEN.git"
@@ -80,6 +93,20 @@ echo ""
 
 DATE=$(date +%Y-%m-%d_%H-%M-%S)
 
+# Keep the database credentials outside the re-cloned source checkout. The admin
+# setup page writes the file to this persistent server path with mode 0600.
+echo "Configuring persistent MySQL settings path for sgen.service..."
+sudo mkdir -p "$(dirname "$SYSTEMD_DROPIN")" "$SERVER_DIR"
+printf '[Service]\nEnvironment="SGEN_DB_CONFIG_FILE=%s"\n' "$DATABASE_CONFIG_FILE" \
+    | sudo tee "$SYSTEMD_DROPIN" >/dev/null
+sudo chmod 0644 "$SYSTEMD_DROPIN"
+sudo systemctl daemon-reload
+if [ -f "$DATABASE_CONFIG_FILE" ]; then
+    echo "✅ Existing MySQL settings will be reused from $DATABASE_CONFIG_FILE"
+else
+    echo "ℹ️ No MySQL settings file exists yet; first start will use restricted setup mode (admin / password)."
+fi
+
 # Android SDK installation (same as rebuild-and-start.sh)
 ANDROID_SDK_INSTALL_DIR="$HOME/android-sdk"
 
@@ -132,21 +159,8 @@ elif [ -n "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
     export PATH="$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools"
 fi
 
-# 1. Stoppa servicen
-echo "[1/7] Stopping sgen.service..."
-sudo systemctl stop sgen.service 2>/dev/null
-echo "✅ Service stopped"
-sleep 2
-
-# 2. Backa gamla JAR
-echo "[2/7] Backing up old JAR..."
-if [ -f "$SERVER_DIR/SGEN.jar" ]; then
-    mv "$SERVER_DIR/SGEN.jar" "$SERVER_DIR/SGEN-$DATE.jar"
-    echo "✅ Old JAR renamed to SGEN-$DATE.jar"
-fi
-
-# 3. Klona repo
-echo "[3/7] Re-cloning repository..."
+# 1. Klona repo
+echo "[1/5] Re-cloning repository..."
 if [ -d "$REPO_DIR" ]; then
     rm -rf "$REPO_DIR"
     echo "✅ Old repo deleted"
@@ -164,7 +178,7 @@ echo "Syncing version..."
 "$REPO_DIR/sync-version.sh" "$REPO_DIR"
 
 # 4. Bygg med Android APK
-echo "[4/7] Building project with Android APK..."
+echo "[2/5] Building project with Android APK..."
 cd "$REPO_DIR" || exit 1
 
 # Uppdatera network_security_config.xml med rätt domän
@@ -291,24 +305,38 @@ fi
 echo "Building backend..."
 cd backend
 export JAVA_HOME=$(readlink -f $(which java) | sed 's/bin\/java//')
-mvn clean package -DskipTests
+if ! mvn clean package -DskipTests; then
+    echo "❌ Backend build failed; service was not restarted."
+    exit 1
+fi
 cd ..
 
 # Kopiera JAR
 cp backend/target/sgen-backend-*.jar SGEN.jar 2>/dev/null || cp backend/target/*.jar SGEN.jar
 echo "✅ Build complete"
 
-# 5. Kopiera till server
-echo "[5/6] Copying to server..."
+# Build succeeded. Stop service and back up the previous JAR only now.
+echo "[3/5] Stopping service and backing up old JAR..."
+sudo systemctl stop sgen.service 2>/dev/null || true
+if [ -f "$SERVER_DIR/SGEN.jar" ]; then
+    mv "$SERVER_DIR/SGEN.jar" "$SERVER_DIR/SGEN-$DATE.jar"
+    echo "✅ Old JAR renamed to SGEN-$DATE.jar"
+fi
+
+# 4. Kopiera till server
+echo "[4/5] Copying to server..."
 cp "$REPO_DIR/SGEN.jar" "$SERVER_DIR/SGEN.jar"
 echo "✅ Files copied"
 
-# 6. Starta service
-echo "[6/6] Starting service..."
+# 5. Starta service
+echo "[5/5] Starting service..."
 sudo systemctl start sgen.service
 sleep 3
 if systemctl is-active --quiet sgen.service; then
     echo "✅ Service started successfully"
+    if [ ! -f "$DATABASE_CONFIG_FILE" ]; then
+        echo "➡️ First-start setup: sign in as admin / password, configure and test MySQL, then restart sgen.service."
+    fi
 else
     echo "❌ Service failed to start"
     exit 1

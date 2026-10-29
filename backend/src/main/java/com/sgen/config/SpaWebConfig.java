@@ -40,7 +40,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
             }
             
             // For API requests, don't return index.html
-            if (resourcePath.startsWith("api/") || resourcePath.startsWith("h2-console")) {
+            if (resourcePath.startsWith("api/")) {
                 return null;
             }
             
