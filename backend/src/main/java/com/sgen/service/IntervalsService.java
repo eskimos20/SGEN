@@ -49,6 +49,7 @@ public class IntervalsService {
     private final IntervalsActivityAnalysisService analysisService;
     private final GarminMergeService garminMergeService;
     private final FitnessModelService fitnessModelService;
+    private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -73,8 +74,18 @@ public class IntervalsService {
         Map<String, Object> allData = new ConcurrentHashMap<>();
         final Map<String, JsonNode> streamsMap = new ConcurrentHashMap<>();
 
+        // Garmin-connected: serve everything from local DB — no Intervals
+        // activity/stream/wellness calls at all (pure local pipeline).
+        boolean garminConnected = garminClientFactory.isConnected(ctx.user.getId());
+        if (garminConnected) {
+            log.info("User {} has active Garmin connection — serving data locally, skipping Intervals fetch", ctx.user.getId());
+        }
+
         // Activities (with per-activity intervals fetched concurrently)
         CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
+            if (garminConnected) {
+                return objectMapper.createArrayNode(); // local-only pipeline
+            }
             try {
                 rateLimiter.acquire();
                 String activitiesJson = client.get()
