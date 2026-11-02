@@ -53,7 +53,7 @@ public class AdminController {
                 "settings", databaseSettingsService.save(request.host(), request.port(), request.databaseName(), request.username(), request.password()),
                 "databaseName", request.databaseName(),
                 "requiresRestart", true,
-                "message", "Databasinställningarna sparades. Starta om SGEN-tjänsten för att använda MySQL."
+                "message", "Database settings saved. Restart the SGEN service to use MySQL."
         ));
     }
 

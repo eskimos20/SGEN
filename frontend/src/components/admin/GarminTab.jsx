@@ -20,7 +20,7 @@ export default function GarminTab() {
       setHasSecret(res.data.hasSecret || false);
       setRedirectUri(res.data.redirectUri || '');
       if (res.data.hasSecret) setClientSecret('••••••••••••••••');
-    }).catch(() => setMsg({ type: 'error', text: 'Kunde inte hämta Garmin-inställningar' }));
+    }).catch(() => setMsg({ type: 'error', text: 'Could not fetch Garmin settings' }));
   }, []);
 
   const save = async () => {
@@ -32,11 +32,11 @@ export default function GarminTab() {
         clientSecret: clientSecret.includes('•') ? undefined : clientSecret,
         redirectUri,
       });
-      setMsg({ type: 'success', text: 'Garmin-inställningar sparade' });
+      setMsg({ type: 'success', text: 'Garmin settings saved' });
       setHasSecret(true);
       setClientSecret('••••••••••••••••');
     } catch (e) {
-      setMsg({ type: 'error', text: 'Kunde inte spara' });
+      setMsg({ type: 'error', text: 'Could not save' });
     } finally {
       setSaving(false);
     }
@@ -46,8 +46,8 @@ export default function GarminTab() {
     <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6 space-y-4">
       <h2 className="text-lg font-semibold text-gray-900">Garmin OAuth</h2>
       <p className="text-sm text-gray-600">
-        Client ID och Client Secret från Garmin Developer-portalen.
-        Lagras i databasen och gäller direkt (env-variabler används som fallback).
+        Client ID and Client Secret from the Garmin Developer portal.
+        Stored in the database and effective immediately (env vars are used as fallback).
       </p>
 
       {msg.text && (
@@ -74,7 +74,7 @@ export default function GarminTab() {
             value={clientSecret}
             onChange={e => setClientSecret(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-            placeholder={hasSecret ? 'Sparad — ange ny för att byta' : 'Garmin app client secret'}
+            placeholder={hasSecret ? 'Saved — enter a new one to change' : 'Garmin app client secret'}
           />
         </div>
         <div>
@@ -86,7 +86,7 @@ export default function GarminTab() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             placeholder="https://eskimoshome.freeddns.org/api/garmin/callback"
           />
-          <p className="text-xs text-gray-500 mt-1">Samma som du registrerade i Garmin-portalen. Tomt = härleds från requesten.</p>
+          <p className="text-xs text-gray-500 mt-1">Same as you registered in the Garmin portal. Empty = derived from the request.</p>
         </div>
         <button
           onClick={save}
@@ -94,7 +94,7 @@ export default function GarminTab() {
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Spara
+          Save
         </button>
       </div>
     </div>

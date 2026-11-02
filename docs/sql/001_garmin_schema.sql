@@ -1,15 +1,15 @@
 -- =============================================================
--- SGEN Garmin-integration — schema-utbyggnad
+-- SGEN Garmin integration — schema expansion
 -- MySQL 8 / InnoDB / utf8mb4
--- Kör:  mysql -u <user> -p eskimos_sgen_db < docs/sql/001_garmin_schema.sql
--- Säker att köra flera gånger (IF NOT EXISTS överallt).
--- Rör inga befintliga tabeller.
+-- Run:  mysql -u <user> -p eskimos_sgen_db < docs/sql/001_garmin_schema.sql
+-- Safe to run multiple times (IF NOT EXISTS everywhere).
+-- Does not touch any existing tables.
 -- =============================================================
 
 -- -------------------------------------------------------------
--- 1. Garmin OAuth-connection per användare
---    Tokens lagras krypterade (AES i applikationslagret, kolumnen
---    är TEXT). garmin_user_id är Garmins pseudonyma id — ingen PII.
+-- 1. Garmin OAuth connection per user
+--    Tokens are stored encrypted (AES in the application layer, the
+--    column is TEXT). garmin_user_id is Garmin's pseudonymous id — no PII.
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_connections (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS garmin_connections (
     refresh_expires_at  DATETIME     NULL,
     scopes              VARCHAR(512) NULL,
     status              VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',   -- ACTIVE | NEEDS_REAUTH | REVOKED
-    consent_ai_processing TINYINT(1) NOT NULL DEFAULT 0,          -- krävs av Garmins avtal för AI-analys
-    consent_at          DATETIME     NULL,                        -- policy-godkännande (anonymiserad datalagring)
+    consent_ai_processing TINYINT(1) NOT NULL DEFAULT 0,          -- required by Garmin's agreement for AI analysis
+    consent_at          DATETIME     NULL,                        -- policy consent (anonymized data storage)
     created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uq_garmin_conn_user UNIQUE (user_id),
@@ -31,13 +31,13 @@ CREATE TABLE IF NOT EXISTS garmin_connections (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 2. Inkorg för push-notifikationer (dedup + async-bearbetning)
---    En rad per ITEM i push-bodyn, inte per POST.
+-- 2. Inbox for push notifications (dedup + async processing)
+--    One row per ITEM in the push body, not per POST.
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_push_inbox (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     summary_type    VARCHAR(64)  NOT NULL,          -- activities, sleeps, dailies, hrv, ...
-    summary_id      VARCHAR(128) NULL,              -- Garmins summaryId (dedup-nyckel)
+    summary_id      VARCHAR(128) NULL,              -- Garmin's summaryId (dedup key)
     payload_json    MEDIUMTEXT   NOT NULL,
     status          VARCHAR(16)  NOT NULL DEFAULT 'PENDING',  -- PENDING | PROCESSING | PROCESSED | FAILED | IGNORED | DUPLICATE
     attempts        INT          NOT NULL DEFAULT 0,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS garmin_push_inbox (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 3. Färdiga aktiviteter (summary-nivå från activities-push)
+-- 3. Completed activities (summary level from activities push)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_activities (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -57,10 +57,10 @@ CREATE TABLE IF NOT EXISTS garmin_activities (
     garmin_activity_id  BIGINT       NOT NULL,
     summary_id          VARCHAR(128) NULL,
     name                VARCHAR(255) NULL,
-    activity_type       VARCHAR(64)  NULL,      -- rå Garmin-typ: RUNNING, CYCLING, LAP_SWIMMING ...
-    sport_type          VARCHAR(32)  NULL,      -- normaliserad: ride | run | swim | other
-    start_time          BIGINT       NOT NULL,  -- epoch sekunder (UTC)
-    start_time_offset   INT          NULL,      -- offset till lokal tid, sekunder
+    activity_type       VARCHAR(64)  NULL,      -- raw Garmin type: RUNNING, CYCLING, LAP_SWIMMING ...
+    sport_type          VARCHAR(32)  NULL,      -- normalized: ride | run | swim | other
+    start_time          BIGINT       NOT NULL,  -- epoch seconds (UTC)
+    start_time_offset   INT          NULL,      -- offset to local time, seconds
     start_date_local    DATETIME     NULL,
     duration_s          INT          NULL,
     moving_time_s       INT          NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS garmin_activities (
     avg_cadence         DOUBLE       NULL,
     elevation_gain      DOUBLE       NULL,
     elevation_loss      DOUBLE       NULL,
-    training_load       DOUBLE       NULL,      -- egenberäknad TSS (TrainingLoadCalculator)
+    training_load       DOUBLE       NULL,      -- self-computed TSS (TrainingLoadCalculator)
     manual              TINYINT(1)   NOT NULL DEFAULT 0,
     device_name         VARCHAR(128) NULL,
     source              VARCHAR(16)  NOT NULL DEFAULT 'GARMIN',
@@ -90,8 +90,8 @@ CREATE TABLE IF NOT EXISTS garmin_activities (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 4. Tidsserier per aktivitet (från activityDetails, ~1Hz)
---    Normaliserat till samma format som Intervals streams-objekt:
+-- 4. Time series per activity (from activityDetails, ~1Hz)
+--    Normalized to the same format as the Intervals streams object:
 --    {time:[], watts:[], heartrate:[], velocity_smooth:[],
 --     distance:[], latlng:[[lat,lng]], altitude:[], cadence:[]}
 -- -------------------------------------------------------------
@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS garmin_activity_streams (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 5. Beräknade/detekterade intervall per aktivitet
+-- 5. Calculated/detected intervals per activity
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_activity_intervals (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -127,8 +127,8 @@ CREATE TABLE IF NOT EXISTS garmin_activity_intervals (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 6. Wellness-data (sleeps, dailies, hrv, bodyComps, userMetrics ...)
---    Råpayload + normaliserade fält för Intervals-kompatibel vy.
+-- 6. Wellness data (sleeps, dailies, hrv, bodyComps, userMetrics ...)
+--    Raw payload + normalized fields for an Intervals-compatible view.
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_wellness (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS garmin_wellness (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 7. Kö för activityFiles / FIT-hämtning (callbackURL, kortlivad)
+-- 7. Queue for activityFiles / FIT fetching (callbackURL, short-lived)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_file_queue (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -166,12 +166,12 @@ CREATE TABLE IF NOT EXISTS garmin_file_queue (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 8. Spårning av planerade pass pushade till Garmin (Training API)
+-- 8. Tracking of planned workouts pushed to Garmin (Training API)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS garmin_workout_pushes (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id             BIGINT       NOT NULL,
-    calendar_event_id   BIGINT       NULL,          -- koppling till calendar_events.id
+    calendar_event_id   BIGINT       NULL,          -- link to calendar_events.id
     intervals_event_id  INT          NULL,
     garmin_workout_id   VARCHAR(64)  NULL,
     garmin_schedule_id  VARCHAR(64)  NULL,
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS garmin_workout_pushes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 9. Daglig träningsbelastning per källa (egen CTL-modell)
+-- 9. Daily training load per source (own CTL model)
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS user_daily_load (
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -203,8 +203,8 @@ CREATE TABLE IF NOT EXISTS user_daily_load (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 10. Materialiserad fitness-serie (CTL/ATL/TSB + rampRate)
---     Beräknas av FitnessModelService över kombinerad daily load.
+-- 10. Materialized fitness series (CTL/ATL/TSB + rampRate)
+--     Computed by FitnessModelService over the combined daily load.
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS user_fitness (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -222,27 +222,27 @@ CREATE TABLE IF NOT EXISTS user_fitness (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -------------------------------------------------------------
--- 11. Lokala sport-inställningar (FTP/LTHR/zoner) för beräkningar
---     när användaren saknar Intervals-koppling.
+-- 11. Local sport settings (FTP/LTHR/zones) for calculations
+--     when the user has no Intervals connection.
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS local_sport_settings (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id      BIGINT      NOT NULL,
     sport_key    VARCHAR(32) NOT NULL,        -- ride | run | swim | ...
     display_name VARCHAR(64) NULL,
-    types_json   MEDIUMTEXT  NULL,            -- mappade aktivitetstyper
+    types_json   MEDIUMTEXT  NULL,            -- mapped activity types
     ftp          INT         NULL,
     indoor_ftp   INT         NULL,
     lthr         INT         NULL,
-    threshold_pace DOUBLE    NULL,            -- sek/km
-    zones_json   MEDIUMTEXT  NULL,            -- power-/hr-zongränser
+    threshold_pace DOUBLE    NULL,            -- s/km
+    zones_json   MEDIUMTEXT  NULL,            -- power/HR zone boundaries
     updated_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uq_local_sport UNIQUE (user_id, sport_key),
     CONSTRAINT fk_local_sport_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Garmin OAuth credentials managed via admin panel (alternative to env vars)
--- NOTE: plain ADD COLUMN — MySQL stödjer ej "IF NOT EXISTS" på ALTER
+-- NOTE: plain ADD COLUMN — MySQL does not support "IF NOT EXISTS" on ALTER
 ALTER TABLE app_settings ADD COLUMN garmin_client_id VARCHAR(128) NULL;
 ALTER TABLE app_settings ADD COLUMN garmin_client_secret VARCHAR(256) NULL;
 ALTER TABLE app_settings ADD COLUMN garmin_redirect_uri VARCHAR(512) NULL;

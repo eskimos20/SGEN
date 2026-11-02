@@ -8,6 +8,8 @@
   will never reach the running service.
 - Commit style: short imperative message, **no** "Generated with …" trailer and
   **no** `Co-Authored-By` lines.
+- **All code, comments, docs and UI strings must be in English** — no Swedish
+  anywhere in the repo.
 - Active branch: `feature/garmin-integration` (remote: github.com/eskimos20/SGEN).
 
 ## Build / run

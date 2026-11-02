@@ -71,7 +71,7 @@ const AdminPanel = () => {
           }`}
         >
           <Database className="h-5 w-5" />
-          Databas
+          Database
         </button>
       </div>
 

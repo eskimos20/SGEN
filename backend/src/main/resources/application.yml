@@ -171,7 +171,7 @@ garmin:
   api-base-url: https://apis.garmin.com
   authorize-url: https://connect.garmin.com/oauth2Confirm
   token-url: https://diauth.garmin.com/di-oauth2-service/oauth/token
-  # AES-nyckel för token-lagring (32+ tecken rekommenderat); faller tillbaka på JWT_SECRET om tom
+  # AES key for token storage (32+ characters recommended); falls back to JWT_SECRET if empty
   token-key: ${GARMIN_TOKEN_KEY:}
   push:
     worker-threads: 4
