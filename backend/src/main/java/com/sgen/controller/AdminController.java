@@ -82,6 +82,26 @@ public class AdminController {
         ));
     }
 
+    @GetMapping("/settings/garmin")
+    public ResponseEntity<?> getGarminSettings() {
+        String clientId = appSettingsService.getGarminClientId();
+        return ResponseEntity.ok(java.util.Map.of(
+                "configured", clientId != null && appSettingsService.getGarminClientSecret() != null,
+                "clientId", clientId != null ? clientId : "",
+                "hasSecret", appSettingsService.getGarminClientSecret() != null
+        ));
+    }
+
+    public record GarminSettingsRequest(String clientId, String clientSecret) {}
+
+    @PostMapping("/settings/garmin")
+    public ResponseEntity<?> saveGarminSettings(@RequestBody GarminSettingsRequest request) {
+        appSettingsService.setGarminCredentials(
+                request.clientId() != null && !request.clientId().isBlank() ? request.clientId().trim() : null,
+                request.clientSecret() != null && !request.clientSecret().isBlank() ? request.clientSecret().trim() : null);
+        return ResponseEntity.ok(java.util.Map.of("message", "Garmin settings saved"));
+    }
+
     @PostMapping("/settings/debug/dump-streams")
     public ResponseEntity<Map<String, String>> setDumpActivityStreams(@RequestBody Map<String, Boolean> request) {
         boolean enabled = request.getOrDefault("enabled", false);

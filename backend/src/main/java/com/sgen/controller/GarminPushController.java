@@ -29,6 +29,7 @@ public class GarminPushController {
     private final GarminPushItemRepository inboxRepository;
     private final GarminPushProcessor pushProcessor;
     private final ObjectMapper objectMapper;
+    private final com.sgen.service.AppSettingsService appSettingsService;
 
     @Value("${garmin.client-id:}")
     private String clientId;
@@ -36,7 +37,9 @@ public class GarminPushController {
     @PostMapping("/push")
     public ResponseEntity<Void> receive(@RequestBody String body,
                                         @RequestHeader(value = "garmin-client-id", required = false) String headerClientId) {
-        if (clientId == null || clientId.isBlank() || !clientId.equals(headerClientId)) {
+        String expectedId = appSettingsService.getGarminClientId() != null
+                ? appSettingsService.getGarminClientId() : clientId;
+        if (expectedId == null || expectedId.isBlank() || !expectedId.equals(headerClientId)) {
             log.warn("Rejected Garmin push with bad client-id header");
             // Still 200 so Garmin does not retry-forever on config errors
             return ResponseEntity.ok().build();

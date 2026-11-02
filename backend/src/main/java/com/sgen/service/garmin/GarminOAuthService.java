@@ -38,6 +38,7 @@ public class GarminOAuthService {
     private final GarminConnectionRepository connectionRepository;
     private final GarminCryptoService cryptoService;
     private final ObjectMapper objectMapper;
+    private final com.sgen.service.AppSettingsService appSettingsService;
 
     @Value("${garmin.client-id:}")
     private String clientId;
@@ -58,9 +59,19 @@ public class GarminOAuthService {
 
     private record PkceRequest(Long userId, String verifier, long expiresAt) {}
 
+    private String effectiveClientId() {
+        String db = appSettingsService.getGarminClientId();
+        return (db != null && !db.isBlank()) ? db : clientId;
+    }
+
+    private String effectiveClientSecret() {
+        String db = appSettingsService.getGarminClientSecret();
+        return (db != null && !db.isBlank()) ? db : clientSecret;
+    }
+
     public boolean isConfigured() {
-        return clientId != null && !clientId.isBlank()
-                && clientSecret != null && !clientSecret.isBlank();
+        String id = effectiveClientId(), sec = effectiveClientSecret();
+        return id != null && !id.isBlank() && sec != null && !sec.isBlank();
     }
 
     public String buildAuthorizeUrl(Long userId) {
@@ -80,7 +91,7 @@ public class GarminOAuthService {
 
         return UriComponentsBuilder.fromUriString(authorizeUrl)
                 .queryParam("response_type", "code")
-                .queryParam("client_id", clientId)
+                .queryParam("client_id", effectiveClientId())
                 .queryParam("code_challenge", challenge)
                 .queryParam("code_challenge_method", "S256")
                 .queryParam("redirect_uri", redirectUri)
@@ -96,7 +107,7 @@ public class GarminOAuthService {
         }
         try {
             String basic = Base64.getEncoder().encodeToString(
-                    (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+                    (effectiveClientId() + ":" + effectiveClientSecret()).getBytes(StandardCharsets.UTF_8));
             String json = WebClient.builder().build().post()
                     .uri(tokenUrl)
                     .header(HttpHeaders.AUTHORIZATION, "Basic " + basic)
@@ -170,7 +181,7 @@ public class GarminOAuthService {
             String refreshToken = cryptoService.decrypt(conn.getRefreshToken());
             if (refreshToken == null) throw new IllegalStateException("No refresh token");
             String basic = Base64.getEncoder().encodeToString(
-                    (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+                    (effectiveClientId() + ":" + effectiveClientSecret()).getBytes(StandardCharsets.UTF_8));
             String json = WebClient.builder().build().post()
                     .uri(tokenUrl)
                     .header(HttpHeaders.AUTHORIZATION, "Basic " + basic)

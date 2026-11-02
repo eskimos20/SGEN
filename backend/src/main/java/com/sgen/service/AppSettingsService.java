@@ -30,4 +30,24 @@ public class AppSettingsService {
         
         log.info("Activity stream dump {}", enabled ? "enabled" : "disabled");
     }
+
+    public String getGarminClientId() {
+        return appSettingsRepository.findById(1L)
+                .map(AppSettings::getGarminClientId).orElse(null);
+    }
+
+    public String getGarminClientSecret() {
+        return appSettingsRepository.findById(1L)
+                .map(AppSettings::getGarminClientSecret).orElse(null);
+    }
+
+    @Transactional
+    public void setGarminCredentials(String clientId, String clientSecret) {
+        AppSettings settings = appSettingsRepository.findById(1L)
+                .orElseGet(() -> AppSettings.builder().build());
+        if (clientId != null) settings.setGarminClientId(clientId);
+        if (clientSecret != null) settings.setGarminClientSecret(clientSecret);
+        appSettingsRepository.save(settings);
+        log.info("Garmin OAuth credentials updated via admin panel");
+    }
 }

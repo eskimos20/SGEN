@@ -242,3 +242,7 @@ CREATE TABLE IF NOT EXISTS local_sport_settings (
 
 -- Consent timestamp for the anonymized-data policy gate
 ALTER TABLE garmin_connections ADD COLUMN IF NOT EXISTS consent_at DATETIME NULL;
+
+-- Garmin OAuth credentials managed via admin panel (alternative to env vars)
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS garmin_client_id VARCHAR(128) NULL;
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS garmin_client_secret VARCHAR(256) NULL;
