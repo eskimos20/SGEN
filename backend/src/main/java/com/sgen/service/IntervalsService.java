@@ -374,7 +374,7 @@ public class IntervalsService {
                 if (tempWeight <= 0) tempWeight = athleteNode.path("weight").asDouble(0);
                 final double weightKg = tempWeight;
 
-                log.info("Fetching streams data for {} activities", activitiesNode.size());
+                log.info("Analyzing streams for {} activities (FTP/VO2)", activitiesNode.size());
                 List<CompletableFuture<ActivityProcessingResult>> futures = new ArrayList<>();
                 Map<String, Boolean> indoorByActivityId = new HashMap<>();
                 for (JsonNode activity : activitiesNode) {
@@ -389,7 +389,7 @@ public class IntervalsService {
                             () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals, cachedStreams), executorService));
                 }
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                log.info("Completed fetching streams data for all activities");
+                log.info("Completed stream analysis for all activities");
 
                 for (CompletableFuture<ActivityProcessingResult> future : futures) {
                     try {
