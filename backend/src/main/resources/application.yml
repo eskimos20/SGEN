@@ -170,3 +170,16 @@ bikefit:
       url: ${BIKEFIT_PYTHON_URL:http://localhost:5000}
   upload:
     dir: ${BIKEFIT_UPLOAD_DIR:uploads/bikefit}
+
+# Garmin Connect Developer Program (Starter)
+garmin:
+  client-id: ${GARMIN_CLIENT_ID:}
+  client-secret: ${GARMIN_CLIENT_SECRET:}
+  redirect-uri: ${GARMIN_REDIRECT_URI:http://localhost:8081/api/garmin/callback}
+  api-base-url: https://apis.garmin.com
+  authorize-url: https://connect.garmin.com/oauth2Confirm
+  token-url: https://diauth.garmin.com/di-oauth2-service/oauth/token
+  # AES-nyckel för token-lagring (32+ tecken rekommenderat); faller tillbaka på JWT_SECRET om tom
+  token-key: ${GARMIN_TOKEN_KEY:}
+  push:
+    worker-threads: 4
