@@ -104,7 +104,7 @@ public class IntervalsService {
         // activity/stream/wellness calls at all (pure local pipeline).
         boolean garminConnected = garminClientFactory.isConnected(ctx.user.getId());
         if (garminConnected) {
-            log.info("User {} has active Garmin connection — serving data locally, skipping Intervals fetch", ctx.user.getId());
+            log.info("User {} has active Garmin connection — local Garmin activities will take precedence in merge", ctx.user.getId());
         }
 
         // Activities (with per-activity intervals fetched concurrently)

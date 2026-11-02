@@ -53,6 +53,9 @@ public class IntervalsAthleteService {
                     .retrieve().bodyToMono(String.class).block();
             JsonNode settings = objectMapper.readTree(settingsJson);
             profile.put("settings", settings);
+            var keys = new java.util.ArrayList<String>();
+            settings.fieldNames().forEachRemaining(k -> { if (k.contains("garmin") || k.contains("zwift") || k.contains("polar")) keys.add(k + "=" + settings.get(k)); });
+            log.info("Intervals settings sync fields present: {}", keys);
             // Sync toggles live under settings, not the athlete record —
             // merge them into athlete so Connections.jsx reads authoritative values
             if (profile.get("athlete") instanceof JsonNode a && a.isObject()) {
