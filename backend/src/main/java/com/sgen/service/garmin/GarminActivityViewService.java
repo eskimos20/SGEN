@@ -26,6 +26,7 @@ public class GarminActivityViewService {
     private final GarminActivityStreamsRepository streamsRepository;
     private final GarminActivityIntervalRepository intervalRepository;
     private final GarminMergeService mergeService;
+    private final ZoneTimeCalculator zoneTimeCalculator;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
@@ -64,38 +65,20 @@ public class GarminActivityViewService {
         }
 
         if (streams != null) {
-            details.put("powerCurve", powerCurve(streams));
+            details.put("powerCurve", CurveCalculator.curve(streams.get("watts")));
+            details.put("hrCurve", CurveCalculator.curve(streams.get("heartrate")));
             details.put("mapData", mapData(streams));
+            ObjectNode zones = zoneTimeCalculator.compute(streams, userId, act.getSportType());
+            if (zones.has("icu_zone_times")) {
+                ((ObjectNode) details.get("activity")).set("icu_zone_times", zones.get("icu_zone_times"));
+            }
+            if (zones.has("hr_zone_times")) {
+                ((ObjectNode) details.get("activity")).set("hr_zone_times", zones.get("hr_zone_times"));
+            }
         }
         return details;
     }
 
-    /** Best-average watts per standard duration (matches Intervals power-curve shape loosely). */
-    private ObjectNode powerCurve(JsonNode streams) {
-        ObjectNode curve = objectMapper.createObjectNode();
-        ArrayNode watts = streams.has("watts") ? (ArrayNode) streams.get("watts") : null;
-        if (watts == null || watts.size() == 0) return curve;
-        int[] durations = {5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600};
-        ArrayNode secs = curve.putArray("secs");
-        ArrayNode vals = curve.putArray("values");
-        for (int d : durations) {
-            double best = bestAvg(watts, d);
-            if (best > 0) { secs.add(d); vals.add(Math.round(best)); }
-        }
-        return curve;
-    }
-
-    private double bestAvg(ArrayNode arr, int window) {
-        if (arr.size() < window) return 0;
-        double sum = 0;
-        for (int i = 0; i < window; i++) sum += arr.get(i).asDouble(0);
-        double best = sum / window;
-        for (int i = window; i < arr.size(); i++) {
-            sum += arr.get(i).asDouble(0) - arr.get(i - window).asDouble(0);
-            if (sum / window > best) best = sum / window;
-        }
-        return best;
-    }
 
     private ObjectNode mapData(JsonNode streams) {
         ObjectNode map = objectMapper.createObjectNode();

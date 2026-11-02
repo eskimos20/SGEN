@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.*;
+import java.util.List;
 import com.sgen.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class GarminActivityMapper {
     private final GarminActivityStreamsRepository streamsRepository;
     private final GarminActivityIntervalRepository intervalRepository;
     private final TrainingLoadCalculator trainingLoadCalculator;
+    private final IntervalDetectionService intervalDetectionService;
     private final ObjectMapper objectMapper;
 
     /** Push item shape: flat summary object (no "summary" wrapper). */
@@ -190,9 +192,17 @@ public class GarminActivityMapper {
         }
     }
 
-    /** laps[] -> interval rows (LAP type). Real WORK/REST detection in phase 2. */
+    /** laps[] -> interval rows (LAP type); no laps -> WORK/REST detection. */
     private void detectIntervals(GarminActivity act, JsonNode laps, ObjectNode streams) {
-        if (laps == null || !laps.isArray() || laps.size() < 2) return;
+        if (laps == null || !laps.isArray() || laps.size() < 2) {
+            List<GarminActivityInterval> detected = intervalDetectionService.detect(
+                    act.getId(), act.getUserId(), act.getSportType(), streams);
+            if (!detected.isEmpty()) {
+                intervalRepository.deleteByActivityId(act.getId());
+                detected.forEach(intervalRepository::save);
+            }
+            return;
+        }
         intervalRepository.deleteByActivityId(act.getId());
         ArrayNode time = (ArrayNode) streams.get("time");
         ArrayNode watts = (ArrayNode) streams.get("watts");

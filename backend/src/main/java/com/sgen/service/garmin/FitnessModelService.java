@@ -79,6 +79,41 @@ public class FitnessModelService {
         recompute(userId);
     }
 
+    /**
+     * Seed the EMA from Intervals' last known ctl/atl so the local series
+     * continues seamlessly instead of starting at zero. Only writes a seed
+     * row when nothing exists before that date.
+     */
+    @Transactional
+    public void seedFromIntervalsWellness(Long userId, JsonNode wellness) {
+        if (wellness == null || !wellness.isArray()) return;
+        JsonNode latest = null;
+        for (JsonNode w : wellness) {
+            if (w.path("ctl").asDouble(0) > 0 && latest == null) latest = w;
+            if (w.path("ctl").asDouble(0) > 0) {
+                if (latest == null || w.path("id").asText("").compareTo(latest.path("id").asText("")) > 0) {
+                    latest = w;
+                }
+            }
+        }
+        if (latest == null) return;
+        LocalDate seedDate;
+        try { seedDate = LocalDate.parse(latest.path("id").asText().substring(0, 10)); }
+        catch (Exception e) { return; }
+        boolean exists = fitnessRepository
+                .findTopByUserIdAndFitnessDateBeforeOrderByFitnessDateDesc(userId, seedDate.plusDays(1))
+                .isPresent();
+        if (exists) return; // series already seeded/continues — don't clobber
+        UserFitness row = UserFitness.builder()
+                .userId(userId).fitnessDate(seedDate)
+                .dailyLoad(0.0)
+                .ctl(latest.path("ctl").asDouble(0))
+                .atl(latest.path("atl").asDouble(0))
+                .tsb(latest.path("ctl").asDouble(0) - latest.path("atl").asDouble(0))
+                .build();
+        fitnessRepository.save(row);
+    }
+
     /** Recompute the EMA series from combined daily loads (last 400 days). */
     @Transactional
     public void recompute(Long userId) {
@@ -91,8 +126,16 @@ public class FitnessModelService {
         }
         // EMA must start from zero-load days too: walk each calendar day
         LocalDate first = total.keySet().iterator().next();
-        // seed from previous fitness row if exists (continuity across lookback)
+        // seed from previous fitness row if exists (continuity across lookback),
+        // or from the seeded Intervals CTL/ATL baseline row
         double ctl = 0, atl = 0;
+        UserFitness seed = fitnessRepository
+                .findTopByUserIdAndFitnessDateBeforeOrderByFitnessDateDesc(userId, first)
+                .orElse(null);
+        if (seed != null) {
+            ctl = seed.getCtl();
+            atl = seed.getAtl();
+        }
         for (LocalDate d = first; !d.isAfter(LocalDate.now()); d = d.plusDays(1)) {
             double load = total.getOrDefault(d, 0.0);
             ctl += (load - ctl) / 42.0;

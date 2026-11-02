@@ -250,6 +250,7 @@ public class IntervalsService {
             Long uid = ctx.user.getId();
             JsonNode acts = (JsonNode) allData.get("activities");
             fitnessModelService.recordIntervalsLoads(uid, acts);
+            fitnessModelService.seedFromIntervalsWellness(uid, (JsonNode) allData.get("wellness"));
             garminMergeService.mergeActivities(uid, acts);
             fitnessModelService.rebuildGarminLoads(uid);
         } catch (Exception e) {
