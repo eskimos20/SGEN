@@ -245,3 +245,4 @@ CREATE TABLE IF NOT EXISTS local_sport_settings (
 -- NOTE: plain ADD COLUMN — MySQL stödjer ej "IF NOT EXISTS" på ALTER
 ALTER TABLE app_settings ADD COLUMN garmin_client_id VARCHAR(128) NULL;
 ALTER TABLE app_settings ADD COLUMN garmin_client_secret VARCHAR(256) NULL;
+ALTER TABLE app_settings ADD COLUMN garmin_redirect_uri VARCHAR(512) NULL;

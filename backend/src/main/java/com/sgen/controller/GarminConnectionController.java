@@ -64,7 +64,8 @@ public class GarminConnectionController {
     @PostMapping("/connect-url")
     @ResponseBody
     public ResponseEntity<Map<String, String>> connectUrl(Authentication auth,
-                                                          @RequestBody(required = false) Map<String, Object> body) {
+                                                          @RequestBody(required = false) Map<String, Object> body,
+                                                          jakarta.servlet.http.HttpServletRequest request) {
         if (!oauthService.isConfigured()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Garmin OAuth not configured"));
         }
@@ -77,7 +78,8 @@ public class GarminConnectionController {
                 .orElseGet(() -> GarminConnection.builder().userId(user.getId()).status("CONSENTED").build());
         conn.setConsentAt(java.time.LocalDateTime.now());
         connectionRepository.save(conn);
-        return ResponseEntity.ok(Map.of("url", oauthService.buildAuthorizeUrl(user.getId())));
+        return ResponseEntity.ok(Map.of("url",
+                oauthService.buildAuthorizeUrl(user.getId(), derivedRedirectUri(request))));
     }
 
     @PostMapping("/ai-consent")
@@ -89,6 +91,18 @@ public class GarminConnectionController {
             connectionRepository.save(conn);
         });
         return ResponseEntity.ok().build();
+    }
+
+    /** Fallback redirect derived from the request (DB setting / env take precedence). */
+    private String derivedRedirectUri(jakarta.servlet.http.HttpServletRequest request) {
+        String scheme = request.getHeader("X-Forwarded-Proto") != null
+                ? request.getHeader("X-Forwarded-Proto") : request.getScheme();
+        String host = request.getHeader("X-Forwarded-Host") != null
+                ? request.getHeader("X-Forwarded-Host") : request.getServerName();
+        int port = request.getServerPort();
+        String portStr = ("https".equals(scheme) && port == 443) || ("http".equals(scheme) && port == 80)
+                ? "" : ":" + port;
+        return scheme + "://" + host + portStr + "/api/garmin/callback";
     }
 
     /** OAuth2 redirect target — permitAll, redirects to callback html page. */

@@ -9,6 +9,7 @@ import { Loader2, Save, CheckCircle } from 'lucide-react';
 export default function GarminTab() {
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
+  const [redirectUri, setRedirectUri] = useState('');
   const [hasSecret, setHasSecret] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -17,6 +18,7 @@ export default function GarminTab() {
     api.get('/admin/settings/garmin').then(res => {
       setClientId(res.data.clientId || '');
       setHasSecret(res.data.hasSecret || false);
+      setRedirectUri(res.data.redirectUri || '');
       if (res.data.hasSecret) setClientSecret('••••••••••••••••');
     }).catch(() => setMsg({ type: 'error', text: 'Kunde inte hämta Garmin-inställningar' }));
   }, []);
@@ -28,6 +30,7 @@ export default function GarminTab() {
       await api.post('/admin/settings/garmin', {
         clientId,
         clientSecret: clientSecret.includes('•') ? undefined : clientSecret,
+        redirectUri,
       });
       setMsg({ type: 'success', text: 'Garmin-inställningar sparade' });
       setHasSecret(true);
@@ -73,6 +76,17 @@ export default function GarminTab() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             placeholder={hasSecret ? 'Sparad — ange ny för att byta' : 'Garmin app client secret'}
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+          <input
+            type="text"
+            value={redirectUri}
+            onChange={e => setRedirectUri(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            placeholder="https://eskimoshome.freeddns.org/api/garmin/callback"
+          />
+          <p className="text-xs text-gray-500 mt-1">Samma som du registrerade i Garmin-portalen. Tomt = härleds från requesten.</p>
         </div>
         <button
           onClick={save}

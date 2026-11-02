@@ -88,17 +88,20 @@ public class AdminController {
         return ResponseEntity.ok(java.util.Map.of(
                 "configured", clientId != null && appSettingsService.getGarminClientSecret() != null,
                 "clientId", clientId != null ? clientId : "",
-                "hasSecret", appSettingsService.getGarminClientSecret() != null
+                "hasSecret", appSettingsService.getGarminClientSecret() != null,
+                "redirectUri", appSettingsService.getGarminRedirectUri() != null
+                        ? appSettingsService.getGarminRedirectUri() : ""
         ));
     }
 
-    public record GarminSettingsRequest(String clientId, String clientSecret) {}
+    public record GarminSettingsRequest(String clientId, String clientSecret, String redirectUri) {}
 
     @PostMapping("/settings/garmin")
     public ResponseEntity<?> saveGarminSettings(@RequestBody GarminSettingsRequest request) {
         appSettingsService.setGarminCredentials(
                 request.clientId() != null && !request.clientId().isBlank() ? request.clientId().trim() : null,
-                request.clientSecret() != null && !request.clientSecret().isBlank() ? request.clientSecret().trim() : null);
+                request.clientSecret() != null && !request.clientSecret().isBlank() ? request.clientSecret().trim() : null,
+                request.redirectUri() != null && !request.redirectUri().isBlank() ? request.redirectUri().trim() : null);
         return ResponseEntity.ok(java.util.Map.of("message", "Garmin settings saved"));
     }
 

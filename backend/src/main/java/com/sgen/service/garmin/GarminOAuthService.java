@@ -57,11 +57,18 @@ public class GarminOAuthService {
     private final Map<String, PkceRequest> pending = new ConcurrentHashMap<>();
     private static final long PKCE_TTL_MS = 10 * 60 * 1000;
 
-    private record PkceRequest(Long userId, String verifier, long expiresAt) {}
+    private record PkceRequest(Long userId, String verifier, String redirectUri, long expiresAt) {}
 
     private String effectiveClientId() {
         String db = appSettingsService.getGarminClientId();
         return (db != null && !db.isBlank()) ? db : clientId;
+    }
+
+    private String effectiveRedirectUri(String requestDerived) {
+        String db = appSettingsService.getGarminRedirectUri();
+        if (db != null && !db.isBlank()) return db;
+        if (redirectUri != null && !redirectUri.isBlank()) return redirectUri;
+        return requestDerived;
     }
 
     private String effectiveClientSecret() {
@@ -74,7 +81,7 @@ public class GarminOAuthService {
         return id != null && !id.isBlank() && sec != null && !sec.isBlank();
     }
 
-    public String buildAuthorizeUrl(Long userId) {
+    public String buildAuthorizeUrl(Long userId, String requestDerivedRedirectUri) {
         byte[] v = new byte[48];
         new SecureRandom().nextBytes(v);
         String verifier = Base64.getUrlEncoder().withoutPadding().encodeToString(v);
@@ -87,14 +94,15 @@ public class GarminOAuthService {
         }
         String state = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(String.valueOf(new SecureRandom().nextLong()).getBytes(StandardCharsets.UTF_8));
-        pending.put(state, new PkceRequest(userId, verifier, System.currentTimeMillis() + PKCE_TTL_MS));
+        String effectiveRedirect = effectiveRedirectUri(requestDerivedRedirectUri);
+        pending.put(state, new PkceRequest(userId, verifier, effectiveRedirect, System.currentTimeMillis() + PKCE_TTL_MS));
 
         return UriComponentsBuilder.fromUriString(authorizeUrl)
                 .queryParam("response_type", "code")
                 .queryParam("client_id", effectiveClientId())
                 .queryParam("code_challenge", challenge)
                 .queryParam("code_challenge_method", "S256")
-                .queryParam("redirect_uri", redirectUri)
+                .queryParam("redirect_uri", effectiveRedirect)
                 .queryParam("state", state)
                 .build().toUriString();
     }
@@ -115,7 +123,7 @@ public class GarminOAuthService {
                     .body(BodyInserters.fromFormData("grant_type", "authorization_code")
                             .with("code", code)
                             .with("code_verifier", req.verifier())
-                            .with("redirect_uri", redirectUri))
+                            .with("redirect_uri", req.redirectUri()))
                     .retrieve().bodyToMono(String.class).block();
             JsonNode tokens = objectMapper.readTree(json);
             saveTokens(req.userId(), tokens);

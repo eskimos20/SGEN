@@ -29,6 +29,9 @@ public class AppSettings {
     @Column(name = "garmin_client_secret", length = 256)
     private String garminClientSecret;
 
+    @Column(name = "garmin_redirect_uri", length = 512)
+    private String garminRedirectUri;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

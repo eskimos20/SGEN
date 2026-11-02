@@ -41,12 +41,18 @@ public class AppSettingsService {
                 .map(AppSettings::getGarminClientSecret).orElse(null);
     }
 
+    public String getGarminRedirectUri() {
+        return appSettingsRepository.findById(1L)
+                .map(AppSettings::getGarminRedirectUri).orElse(null);
+    }
+
     @Transactional
-    public void setGarminCredentials(String clientId, String clientSecret) {
+    public void setGarminCredentials(String clientId, String clientSecret, String redirectUri) {
         AppSettings settings = appSettingsRepository.findById(1L)
                 .orElseGet(() -> AppSettings.builder().build());
         if (clientId != null) settings.setGarminClientId(clientId);
         if (clientSecret != null) settings.setGarminClientSecret(clientSecret);
+        if (redirectUri != null) settings.setGarminRedirectUri(redirectUri);
         appSettingsRepository.save(settings);
         log.info("Garmin OAuth credentials updated via admin panel");
     }
