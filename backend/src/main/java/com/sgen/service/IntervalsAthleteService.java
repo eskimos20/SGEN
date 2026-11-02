@@ -109,7 +109,11 @@ public class IntervalsAthleteService {
                         .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                         .bodyValue(filtered)
                         .retrieve().bodyToMono(String.class).block();
-                result = objectMapper.readTree(responseJson);
+                JsonNode echo = objectMapper.readTree(responseJson);
+                for (String k : filtered.keySet()) {
+                    log.info("PUT {}={} -> Intervals echo {}", k, filtered.get(k), echo.path(k));
+                }
+                result = echo;
             }
             if (filtered.containsKey("weight") || filtered.containsKey("height")) {
                 zwiftService.syncProfile(username, null);
