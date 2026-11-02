@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import GarminConnectCard from '../components/connections/GarminConnectCard';
 import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink, Share2, Bike } from 'lucide-react';
 
 const Profile = () => {
@@ -369,6 +370,9 @@ const Profile = () => {
           )}
         </form>
         </div>
+
+        {/* Garmin Direct Connection */}
+        <GarminConnectCard />
 
         {/* OpenAI Configuration */}
         <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
