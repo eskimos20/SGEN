@@ -2,6 +2,8 @@ package com.sgen.repository;
 
 import com.sgen.entity.UserDailyLoad;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
@@ -12,4 +14,6 @@ public interface UserDailyLoadRepository extends JpaRepository<UserDailyLoad, Lo
     Optional<UserDailyLoad> findByUserIdAndLoadDateAndSource(Long userId, LocalDate loadDate, String source);
     List<UserDailyLoad> findByUserIdAndLoadDateBetween(Long userId, LocalDate from, LocalDate to);
     List<UserDailyLoad> findByUserIdAndLoadDateGreaterThanEqual(Long userId, LocalDate from);
+    @Query("SELECT COALESCE(SUM(l.activityCount),0) FROM UserDailyLoad l WHERE l.userId = :uid AND l.source = :src")
+    Long sumActivityCount(@Param("uid") Long userId, @Param("src") String source);
 }

@@ -24,7 +24,7 @@ export default function GarminConnectCard() {
   }, []);
 
   useEffect(() => {
-    loadStatus();
+    loadStatus().then(() => pollBackfill());
     const onMsg = (e) => {
       if (e.origin === window.location.origin && e.data?.type === 'GARMIN_AUTH_SUCCESS') {
         loadStatus();
@@ -134,10 +134,10 @@ export default function GarminConnectCard() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Importing… {backfill.totalActivities} activities ({backfill.yearsDone} years)
               </p>
-            ) : backfill?.state === 'DONE' ? (
+            ) : (backfill?.state === 'DONE' || (backfill?.importedActivities || 0) > 0) ? (
               <p className="text-sm text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Done — {backfill.totalActivities} activities imported
+                Synced — {Math.max(backfill?.totalActivities || 0, backfill?.importedActivities || 0)} activities imported
               </p>
             ) : (
               <button

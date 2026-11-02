@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.service.IntervalsClientFactory;
 import com.sgen.service.IntervalsClientFactory.ApiContext;
+import com.sgen.repository.GarminActivityRepository;
+import com.sgen.repository.UserDailyLoadRepository;
 import com.sgen.service.UserService;
 import com.sgen.util.IntervalsApiRateLimiter;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class IntervalsBackfillService {
     private final UserService userService;
     private final IntervalsApiRateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
+    private final UserDailyLoadRepository dailyLoadRepository;
+    private final GarminActivityRepository garminActivityRepository;
 
     private static final int MAX_YEARS_BACK = 15;
     private static final long CHUNK_PAUSE_MS = 1_500;
@@ -44,14 +48,26 @@ public class IntervalsBackfillService {
 
     public record BackfillStatus(String state, int yearsDone, int totalActivities, String error) {}
 
+    /**
+     * Progress for the running job + persisted import stats, so the UI can
+     * always show the synced badge — even after restarts and new sessions.
+     */
     public Map<String, Object> getStatus(String username) {
         BackfillStatus s = status.get(username);
-        if (s == null) return Map.of("state", "IDLE");
-        return Map.of("state", s.state(),
-                "yearsDone", s.yearsDone(),
-                "totalActivities", s.totalActivities(),
-                "error", s.error() != null ? s.error() : "");
+        Long userId = userService.getUserEntityByUsername(username).getId();
+        long imported = safeSum(dailyLoadRepository.sumActivityCount(userId, "INTERVALS"));
+        long garminCount = garminActivityRepository.countByUserId(userId);
+        var out = new java.util.HashMap<String, Object>();
+        out.put("state", s != null ? s.state() : "IDLE");
+        out.put("yearsDone", s != null ? s.yearsDone() : 0);
+        out.put("totalActivities", s != null ? s.totalActivities() : 0);
+        out.put("error", s != null && s.error() != null ? s.error() : "");
+        out.put("importedActivities", imported);
+        out.put("garminActivities", garminCount);
+        return out;
     }
+
+    private long safeSum(Long v) { return v != null ? v : 0; }
 
     /** Kick off async backfill; returns immediately. */
     public void startAsync(String username) {

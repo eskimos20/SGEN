@@ -15,4 +15,5 @@ public interface GarminActivityRepository extends JpaRepository<GarminActivity, 
     List<GarminActivity> findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(Long userId, LocalDateTime from, LocalDateTime to);
     List<GarminActivity> findByUserIdAndStartTimeBetween(Long userId, Long start, Long end);
     void deleteByUserId(Long userId);
+    long countByUserId(Long userId);
 }
