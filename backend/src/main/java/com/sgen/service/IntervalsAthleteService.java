@@ -47,23 +47,10 @@ public class IntervalsAthleteService {
             profile.put("athleteError", e.getMessage());
         }
 
-        try {
-            String settingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/settings", athleteId)
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode settings = objectMapper.readTree(settingsJson);
-            profile.put("settings", settings);
-            var keys = new java.util.ArrayList<String>();
-            settings.fieldNames().forEachRemaining(k -> { if (k.contains("garmin") || k.contains("zwift") || k.contains("polar")) keys.add(k + "=" + settings.get(k)); });
-            log.info("Intervals settings sync fields present: {}", keys);
-            // Sync toggles live under settings, not the athlete record —
-            // merge them into athlete so Connections.jsx reads authoritative values
-            if (profile.get("athlete") instanceof JsonNode a && a.isObject()) {
-                ((com.fasterxml.jackson.databind.node.ObjectNode) a).setAll((com.fasterxml.jackson.databind.node.ObjectNode) settings);
-            }
-        } catch (Exception e) {
-            profile.put("settingsError", e.getMessage());
-        }
+        // NOTE: GET /athlete/{id}/settings returns UI device settings that
+        // collide with the athlete's icu_* provider fields. Do NOT merge it
+        // over the athlete record — the Athlete schema itself carries the
+        // authoritative sync toggles (per OpenAPI spec).
 
         try {
             String sportSettingsJson = ctx.client.get()
@@ -93,19 +80,8 @@ public class IntervalsAthleteService {
             "huawei_sync_activities", "huawei_download_wellness", "huawei_upload_workouts"
     );
 
-    /** Fields that live under PUT /api/v1/athlete/{id}/settings, not the athlete record. */
-    private static final Set<String> SETTINGS_FIELDS = Set.of(
-            "icu_garmin_sync_activities", "icu_garmin_download_wellness", "icu_garmin_health",
-            "icu_garmin_training", "icu_garmin_upload_workouts",
-            "zwift_sync_activities", "zwift_upload_workouts",
-            "polar_sync_activities", "polar_download_wellness",
-            "suunto_sync_activities", "suunto_download_wellness", "suunto_upload_workouts",
-            "coros_sync_activities", "coros_download_wellness", "coros_upload_workouts",
-            "wahoo_sync_activities", "wahoo_upload_workouts",
-            "concept2_sync_activities",
-            "zepp_sync_activities", "zepp_download_wellness", "zepp_upload_workouts",
-            "huawei_sync_activities", "huawei_download_wellness", "huawei_upload_workouts"
-    );
+    /** NOTE: all sync-toggle fields above are writable via PUT /athlete/{id}
+     *  (AthleteUpdateDTO in the OpenAPI spec). There is no /settings PUT. */
 
     public JsonNode updateAthleteProfile(String username, Map<String, Object> updates) {
         Map<String, Object> filtered = new HashMap<>();
@@ -126,23 +102,12 @@ public class IntervalsAthleteService {
 
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            // Connection sync toggles (icu_garmin_* etc.) are read-only via the
-            // public API — strip them so they never reach the PUT body.
-            Map<String, Object> athleteUpdates = new HashMap<>();
-            filtered.forEach((k, v) -> {
-                if (SETTINGS_FIELDS.contains(k)) {
-                    log.info("Ignoring read-only sync toggle field: {}", k);
-                } else {
-                    athleteUpdates.put(k, v);
-                }
-            });
-
             JsonNode result = objectMapper.createObjectNode();
-            if (!athleteUpdates.isEmpty()) {
+            if (!filtered.isEmpty()) {
                 log.info("Updating athlete profile for \"{}\", fields: {}", username, athleteUpdates.keySet());
                 String responseJson = ctx.client.put()
                         .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
-                        .bodyValue(athleteUpdates)
+                        .bodyValue(filtered)
                         .retrieve().bodyToMono(String.class).block();
                 result = objectMapper.readTree(responseJson);
             }
