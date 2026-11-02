@@ -104,7 +104,7 @@ public class IntervalsAthleteService {
         try {
             JsonNode result = objectMapper.createObjectNode();
             if (!filtered.isEmpty()) {
-                log.info("Updating athlete profile for \"{}\", fields: {}", username, athleteUpdates.keySet());
+                log.info("Updating athlete profile for \"{}\", fields: {}", username, filtered.keySet());
                 String responseJson = ctx.client.put()
                         .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                         .bodyValue(filtered)
