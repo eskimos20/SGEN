@@ -50,15 +50,19 @@ public class StatisticsController {
     private final AchievementNotificationService achievementNotificationService;
     private final PaceCurveService paceCurveService;
 
-    /** One-time Intervals history backfill -> user_daily_load (local CTL/ATL). */
+    /**
+     * One-time Intervals history backfill -> user_daily_load (local CTL/ATL).
+     * Async: returns 202 immediately, poll /backfill-loads/status for progress.
+     */
     @PostMapping("/backfill-loads")
     public ResponseEntity<?> backfillLoads(Authentication authentication) {
-        try {
-            return ResponseEntity.ok(backfillService.backfill(authentication.getName()));
-        } catch (Exception e) {
-            log.error("Backfill failed: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        backfillService.startAsync(authentication.getName());
+        return ResponseEntity.accepted().body(Map.of("state", "RUNNING"));
+    }
+
+    @GetMapping("/backfill-loads/status")
+    public ResponseEntity<?> backfillStatus(Authentication authentication) {
+        return ResponseEntity.ok(backfillService.getStatus(authentication.getName()));
     }
 
     @GetMapping("/fetch")
