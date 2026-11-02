@@ -898,10 +898,21 @@ public class IntervalsService {
 
     public byte[] getActivityMapImage(String username, String activityId) {
         ApiContext ctx = getValidatedContext(username);
+        Long uid = ctx.user.getId();
+        boolean garminConnected = garminClientFactory.isConnected(uid);
+        if (garminConnected) {
+            byte[] cached = intervalsMirrorService.findImage(uid, activityId, "map");
+            if (cached != null && cached.length > 0) {
+                log.info("SOURCE=DB user {} map.png served from local mirror: {}", username, activityId);
+                return cached;
+            }
+        }
         try {
-            return ctx.client.get()
+            byte[] png = ctx.client.get()
                     .uri("/api/v1/activity/{id}/map.png", activityId)
                     .retrieve().bodyToMono(byte[].class).block();
+            if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, "map", png);
+            return png;
         } catch (Exception e) {
             return null;
         }
@@ -909,10 +920,21 @@ public class IntervalsService {
 
     public byte[] getActivityChartImage(String username, String activityId) {
         ApiContext ctx = getValidatedContext(username);
+        Long uid = ctx.user.getId();
+        boolean garminConnected = garminClientFactory.isConnected(uid);
+        if (garminConnected) {
+            byte[] cached = intervalsMirrorService.findImage(uid, activityId, "chart");
+            if (cached != null && cached.length > 0) {
+                log.info("SOURCE=DB user {} power.png served from local mirror: {}", username, activityId);
+                return cached;
+            }
+        }
         try {
-            return ctx.client.get()
+            byte[] png = ctx.client.get()
                     .uri("/api/v1/activity/{id}/power.png", activityId)
                     .retrieve().bodyToMono(byte[].class).block();
+            if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, "chart", png);
+            return png;
         } catch (Exception e) {
             return null;
         }
@@ -1040,6 +1062,10 @@ public class IntervalsService {
 
     public JsonNode getPowerCurveHistory(String username, String oldest, String newest, String type) {
         ApiContext ctx = getValidatedContext(username);
+        Long uid = ctx.user.getId();
+        if (garminClientFactory.isConnected(uid) && intervalsActivityRepository.countByUserId(uid) > 0) {
+            return localCurveHistory(uid, username, oldest, newest, type, "watts");
+        }
         String athleteId = ctx.user.getIntervalsAthleteId();
         WebClient client = ctx.client;
 
@@ -1183,6 +1209,59 @@ public class IntervalsService {
             log.warn("Failed to fetch sport settings for athlete {}: {}", athleteId, e.getMessage());
         }
         return sportsWithFtp;
+    }
+
+    /**
+     * Local curve history for Garmin users: best-average-per-duration computed
+     * from mirrored streams (watts or heartrate), max-merged per activity type.
+     * Returns the same array-of-curves shape the combined API path produces.
+     */
+    JsonNode localCurveHistory(Long uid, String username, String oldest, String newest,
+                                       String type, String streamKey) {
+        var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
+        var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
+        var rows = intervalsActivityRepository
+                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
+        var byType = new LinkedHashMap<String, java.util.List<String>>();
+        for (var r : rows) {
+            String t;
+            try {
+                t = objectMapper.readTree(r.getPayloadJson()).path("type").asText("");
+            } catch (Exception e) { continue; }
+            if (t.isEmpty()) continue;
+            if (type != null && !type.isBlank() && !"all".equalsIgnoreCase(type) && !type.equalsIgnoreCase(t)) continue;
+            byType.computeIfAbsent(t, k -> new ArrayList<>()).add(r.getActivityId());
+        }
+        var out = objectMapper.createArrayNode();
+        for (var e : byType.entrySet()) {
+            Map<Integer, Double> best = new java.util.TreeMap<>();
+            for (String id : e.getValue()) {
+                var srow = intervalsStreamsRepository.findByUserIdAndActivityId(uid, id).orElse(null);
+                if (srow == null || srow.getStreamsJson() == null) continue;
+                try {
+                    ObjectNode normalized = normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
+                    if (normalized == null || !normalized.has(streamKey)) continue;
+                    ObjectNode c = com.sgen.service.garmin.CurveCalculator.curve(normalized.get(streamKey));
+                    var secs = c.path("secs"); var vals = c.path("values");
+                    for (int i = 0; i < secs.size(); i++) {
+                        int s = secs.get(i).asInt();
+                        double v = vals.get(i).asDouble();
+                        if (v > best.getOrDefault(s, 0.0)) best.put(s, v);
+                    }
+                } catch (Exception ex) { log.debug("local curve {} failed: {}", id, ex.getMessage()); }
+            }
+            if (best.isEmpty()) continue;
+            ObjectNode curve = objectMapper.createObjectNode();
+            var secs = curve.putArray("secs");
+            var vals = curve.putArray("values");
+            best.forEach((s, v) -> { secs.add(s); vals.add(v); });
+            curve.put("type", e.getKey());
+            curve.put("sportType", e.getKey());
+            out.add(curve);
+        }
+        log.info("SOURCE=DB user {} {} curve history computed from local mirror: {} types",
+                username, streamKey, out.size());
+        return out;
     }
 
     private JsonNode fetchPowerCurveForType(WebClient client, String athleteId, String oldest, String newest, String type) {

@@ -31,6 +31,8 @@ public class IntervalsActivityAnalysisService {
     private final ActivityStreamDumper activityStreamDumper;
     private final IntervalsClientFactory clientFactory;
     private final UserService userService;
+    private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
 
     // -------------------------------------------------------------------------
     // Public API
@@ -38,11 +40,25 @@ public class IntervalsActivityAnalysisService {
 
     public JsonNode fetchActivityBestEfforts(String username, String activityId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        Long uid = ctx.user.getId();
+        boolean garminConnected = garminClientFactory.isConnected(uid);
+        if (garminConnected) {
+            String cached = intervalsMirrorService.findBestEffortsJson(uid, activityId);
+            if (cached != null) {
+                try {
+                    log.info("SOURCE=DB user {} best-efforts served from local mirror: {}", username, activityId);
+                    return objectMapper.readTree(cached);
+                } catch (Exception ignored) {}
+            }
+        }
         try {
             rateLimiter.acquire();
             String json = ctx.client.get()
                     .uri("/api/v1/activity/{id}/best-efforts", activityId)
                     .retrieve().bodyToMono(String.class).block();
+            if (garminConnected && json != null) {
+                intervalsMirrorService.saveBestEfforts(uid, activityId, json);
+            }
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch best efforts for activity {}: {}", activityId, e.getMessage());
@@ -222,11 +238,25 @@ public class IntervalsActivityAnalysisService {
             log.info("Computing intervals from streams for activity {} - stream: {}, duration: {}s, count: {}, skipSeconds: {}",
                     activityId, streamType, duration, count, skipSeconds);
 
-            // Fetch streams data
-            String streamsJson = ctx.client.get()
-                    .uri("/api/v1/activity/{id}/streams", activityId)
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode streams = objectMapper.readTree(streamsJson);
+            // Fetch streams data — local mirror first for Garmin users
+            Long uid = ctx.user.getId();
+            boolean garminConnected = garminClientFactory.isConnected(uid);
+            JsonNode streams = null;
+            if (garminConnected) {
+                String cached = intervalsMirrorService.findStreamsJson(uid, activityId);
+                if (cached != null) {
+                    try { streams = objectMapper.readTree(cached); } catch (Exception ignored) {}
+                }
+            }
+            if (streams == null) {
+                String streamsJson = ctx.client.get()
+                        .uri("/api/v1/activity/{id}/streams", activityId)
+                        .retrieve().bodyToMono(String.class).block();
+                streams = objectMapper.readTree(streamsJson);
+                if (garminConnected) {
+                    intervalsMirrorService.saveStreams(uid, activityId, streams, null);
+                }
+            }
 
             // Extract time and value streams
             List<Double> timeData = new ArrayList<>();

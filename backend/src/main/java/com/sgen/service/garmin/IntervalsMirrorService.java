@@ -2,6 +2,7 @@ package com.sgen.service.garmin;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.IntervalsActivity;
 import com.sgen.entity.IntervalsActivityStreams;
 import com.sgen.entity.IntervalsEvent;
@@ -121,6 +122,76 @@ public class IntervalsMirrorService {
             }
         }
         return out;
+    }
+
+    /** Persist a wellness-bulk update into the mirror payload (field-level merge). */
+    public void mergeWellnessUpdate(Long userId, java.util.Map<String, Object> update) {
+        try {
+            Object idObj = update.get("id");
+            if (idObj == null) return;
+            String id = String.valueOf(idObj);
+            if (id.length() < 10) return;
+            java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
+            var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
+                    .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
+            ObjectNode merged;
+            if (row.getPayloadJson() != null) {
+                merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
+            } else {
+                merged = objectMapper.createObjectNode();
+            }
+            ObjectNode upd = objectMapper.valueToTree(update);
+            merged.setAll(upd);
+            row.setPayloadJson(objectMapper.writeValueAsString(merged));
+            wellnessRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror wellness update merge failed: {}", e.getMessage());
+        }
+    }
+
+    /** Raw stored streams payload for an activity, or null. */
+    public String findStreamsJson(Long userId, String activityId) {
+        return streamsRepository.findByUserIdAndActivityId(userId, activityId)
+                .map(com.sgen.entity.IntervalsActivityStreams::getStreamsJson)
+                .filter(s -> s != null && !s.isBlank()).orElse(null);
+    }
+
+    /** Stored best-efforts response for an activity, or null. */
+    public String findBestEffortsJson(Long userId, String activityId) {
+        return streamsRepository.findByUserIdAndActivityId(userId, activityId)
+                .map(com.sgen.entity.IntervalsActivityStreams::getBestEffortsJson).orElse(null);
+    }
+
+    public void saveBestEfforts(Long userId, String activityId, String json) {
+        if (activityId == null || activityId.isBlank() || json == null) return;
+        try {
+            var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
+                    .orElseGet(() -> IntervalsActivityStreams.builder()
+                            .userId(userId).activityId(activityId).streamsJson("").build());
+            row.setBestEffortsJson(json);
+            streamsRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror persist best-efforts for {} failed: {}", activityId, e.getMessage());
+        }
+    }
+
+    /** Stored rendered PNG for an activity, or null. kind: "map" | "chart". */
+    public byte[] findImage(Long userId, String activityId, String kind) {
+        return streamsRepository.findByUserIdAndActivityId(userId, activityId)
+                .map(s -> "chart".equals(kind) ? s.getChartPng() : s.getMapPng()).orElse(null);
+    }
+
+    public void saveImage(Long userId, String activityId, String kind, byte[] png) {
+        if (activityId == null || activityId.isBlank() || png == null || png.length == 0) return;
+        try {
+            var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
+                    .orElseGet(() -> IntervalsActivityStreams.builder()
+                            .userId(userId).activityId(activityId).streamsJson("").build());
+            if ("chart".equals(kind)) row.setChartPng(png); else row.setMapPng(png);
+            streamsRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror persist {} image for {} failed: {}", kind, activityId, e.getMessage());
+        }
     }
 
     /** Persist every event in an Intervals events array. */

@@ -27,6 +27,15 @@ public class IntervalsActivityStreams {
     @Column(name = "intervals_json", columnDefinition = "MEDIUMTEXT")
     private String intervalsJson;
 
+    @Column(name = "best_efforts_json", columnDefinition = "MEDIUMTEXT")
+    private String bestEffortsJson;
+
+    @Column(name = "map_png", columnDefinition = "MEDIUMBLOB")
+    private byte[] mapPng;
+
+    @Column(name = "chart_png", columnDefinition = "MEDIUMBLOB")
+    private byte[] chartPng;
+
     @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
