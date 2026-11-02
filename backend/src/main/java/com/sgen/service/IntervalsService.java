@@ -613,6 +613,19 @@ public class IntervalsService {
                             objectMapper.createObjectNode().set("latlngs", normalized.get("latlng")));
                 }
             }
+            // No latlng in stored streams: fetch the /map payload once from Intervals.
+            if (!details.containsKey("mapData")) {
+                try {
+                    String mapJson = client.get()
+                            .uri("/api/v1/activity/{id}/map", activityId)
+                            .retrieve().bodyToMono(String.class).block();
+                    if (mapJson != null && !mapJson.isEmpty()) {
+                        details.put("mapData", objectMapper.readTree(mapJson));
+                    }
+                } catch (Exception e) {
+                    log.debug("Map fetch for {} failed: {}", activityId, e.getMessage());
+                }
+            }
             if (intervals != null) {
                 enrichIntervalsFromStreams(intervals, normalized);
                 activity.set("icu_intervals", intervals);
