@@ -98,7 +98,7 @@ public class WeatherService {
         }
 
         boolean openMeteo = isOpenMeteoEnabled(userId);
-        log.info("Fetching weather forecast for user \{\} using {}", userId, openMeteo ? "OpenMeteo" : "SMHI");
+        log.info("Fetching weather forecast for user {} using {}", nameOf(userId), openMeteo ? "OpenMeteo" : "SMHI");
 
         // Check if we have fresh cached data (less than 1 hour old) based on when it was fetched
         LocalDateTime futureCutoff = LocalDateTime.now().minusDays(1); // include today's forecasts
@@ -292,5 +292,9 @@ public class WeatherService {
             .thunderstormProbability(forecast.getThunderstormProbability())
             .symbolCode(forecast.getSymbolCode())
             .build();
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }
