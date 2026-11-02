@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sgen.entity.User;
 import com.sgen.service.IntervalsActivityAnalysisService.ActivityProcessingResult;
 import com.sgen.service.IntervalsClientFactory.ApiContext;
+import com.sgen.service.garmin.FitnessModelService;
+import com.sgen.service.garmin.GarminMergeService;
 import com.sgen.util.IntervalsApiRateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,8 @@ public class IntervalsService {
     private final IntervalsApiRateLimiter rateLimiter;
     private final IntervalsClientFactory clientFactory;
     private final IntervalsActivityAnalysisService analysisService;
+    private final GarminMergeService garminMergeService;
+    private final FitnessModelService fitnessModelService;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -239,6 +243,17 @@ public class IntervalsService {
             }
         } catch (Exception e) {
             log.error("Failed to calculate FTP/VO2Max: {}", e.getMessage(), e);
+        }
+
+        // Merge locally stored Garmin activities + feed the local fitness model
+        try {
+            Long uid = ctx.user.getId();
+            JsonNode acts = (JsonNode) allData.get("activities");
+            fitnessModelService.recordIntervalsLoads(uid, acts);
+            garminMergeService.mergeActivities(uid, acts);
+            fitnessModelService.rebuildGarminLoads(uid);
+        } catch (Exception e) {
+            log.warn("Garmin merge skipped: {}", e.getMessage());
         }
 
         allData.put("fetchedAt", java.time.LocalDateTime.now().toString());

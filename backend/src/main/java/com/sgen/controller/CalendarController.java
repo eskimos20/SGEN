@@ -15,6 +15,7 @@ import com.sgen.entity.User;
 import com.sgen.repository.CalendarEventRepository;
 import com.sgen.service.UserService;
 import com.sgen.service.garmin.GarminWorkoutService;
+import com.sgen.service.garmin.GarminMergeService;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ public class CalendarController {
     private final GarminWorkoutService garminWorkoutService;
     private final CalendarEventRepository calendarEventRepository;
     private final UserService userService;
+    private final GarminMergeService garminMergeService;
     private final IntervalsWellnessService wellnessService;
     private final CalendarEventService calendarEventService;
 
@@ -183,7 +185,9 @@ public class CalendarController {
             @RequestParam String oldest,
             @RequestParam String newest) {
         if (oldest.compareTo(newest) > 0) { String tmp = oldest; oldest = newest; newest = tmp; }
-        return ResponseEntity.ok(wellnessService.fetchWellnessData(authentication.getName(), oldest, newest));
+        var base = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
+        var user = userService.getUserEntityByUsername(authentication.getName());
+        return ResponseEntity.ok(garminMergeService.mergeWellness(user.getId(), base));
     }
 
     @PutMapping("/wellness/bulk")

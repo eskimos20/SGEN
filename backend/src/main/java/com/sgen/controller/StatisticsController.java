@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.sgen.service.UserService;
+import com.sgen.service.garmin.GarminActivityViewService;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -40,10 +42,11 @@ public class StatisticsController {
     private final AIUsageService aiUsageService;
     private final ObjectMapper objectMapper;
     private final PerformanceService performanceService;
+    private final GarminActivityViewService garminActivityViewService;
+    private final UserService userService;
     private final CalendarEventService calendarEventService;
     private final UserVersionService userVersionService;
     private final AchievementNotificationService achievementNotificationService;
-    private final UserService userService;
     private final PaceCurveService paceCurveService;
 
     @GetMapping("/fetch")
@@ -81,6 +84,11 @@ public class StatisticsController {
     public ResponseEntity<Map<String, Object>> getActivityDetails(
             Authentication authentication,
             @PathVariable String activityId) {
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            Long uid = userService.getUserEntityByUsername(authentication.getName()).getId();
+            Long gid = Long.parseLong(activityId.substring(7));
+            return ResponseEntity.ok(garminActivityViewService.getDetails(uid, gid));
+        }
         return ResponseEntity.ok(intervalsService.getActivityDetails(authentication.getName(), activityId));
     }
 
