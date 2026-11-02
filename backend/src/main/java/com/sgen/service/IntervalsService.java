@@ -610,10 +610,6 @@ public class IntervalsService {
                 details.put("streams", normalized);
                 details.put("powerCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("watts")));
                 details.put("hrCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("heartrate")));
-                if (normalized.has("latlng")) {
-                    details.put("mapData",
-                            objectMapper.createObjectNode().set("latlngs", normalized.get("latlng")));
-                }
                 log.info("activity {} mapData: latlng={} keys={}", activityId,
                         normalized.has("latlng"), normalized.fieldNames());
             }
