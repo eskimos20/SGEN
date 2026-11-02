@@ -210,12 +210,13 @@ const Connections = () => {
                           return (
                             <label
                               key={opt.field}
-                              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none"
+                              className="flex items-center gap-2 text-sm text-gray-700 select-none"
+                              title="Managed on intervals.icu — read-only in SGEN"
                             >
                               <div
-                                onClick={() => !saving && handleToggle(opt.field, opt.invert, !checked)}
-                                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                                  checked ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+                                title="Managed on intervals.icu — read-only in SGEN"
+                                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 cursor-default transition-colors ${
+                                  checked ? 'bg-blue-400 border-blue-400' : 'bg-gray-100 border-gray-300'
                                 } ${saving ? 'opacity-50' : ''}`}
                               >
                                 {checked && (

@@ -126,18 +126,18 @@ public class IntervalsAthleteService {
 
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            // Connection sync toggles live under /athlete/{id}/settings — PUTs
-            // to /athlete/{id} are silently ignored by Intervals.icu, which is
-            // why toggles reverted. Route each field to its own endpoint.
-            Map<String, Object> settingsUpdates = new HashMap<>();
+            // Connection sync toggles (icu_garmin_* etc.) are read-only via the
+            // public API — strip them so they never reach the PUT body.
             Map<String, Object> athleteUpdates = new HashMap<>();
-            filtered.forEach((k, v) ->
-                    (SETTINGS_FIELDS.contains(k) ? settingsUpdates : athleteUpdates).put(k, v));
+            filtered.forEach((k, v) -> {
+                if (SETTINGS_FIELDS.contains(k)) {
+                    log.info("Ignoring read-only sync toggle field: {}", k);
+                } else {
+                    athleteUpdates.put(k, v);
+                }
+            });
 
             JsonNode result = objectMapper.createObjectNode();
-            if (!settingsUpdates.isEmpty()) {
-                result = updateAthleteSettings(username, settingsUpdates);
-            }
             if (!athleteUpdates.isEmpty()) {
                 log.info("Updating athlete profile for \"{}\", fields: {}", username, athleteUpdates.keySet());
                 String responseJson = ctx.client.put()
