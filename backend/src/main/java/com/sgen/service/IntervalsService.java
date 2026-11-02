@@ -50,6 +50,8 @@ public class IntervalsService {
     private final GarminMergeService garminMergeService;
     private final FitnessModelService fitnessModelService;
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
+    private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
+    private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -109,6 +111,20 @@ public class IntervalsService {
 
         // Activities (with per-activity intervals fetched concurrently)
         CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
+            if (garminConnected) {
+                // Local mirror: verbatim Intervals payloads stored by backfill
+                var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
+                var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
+                var rows = intervalsActivityRepository
+                        .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(ctx.user.getId(), from, to);
+                var arr = objectMapper.createArrayNode();
+                for (var r : rows) {
+                    try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
+                    catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
+                }
+                log.info("User {} activities served from local mirror: {}", ctx.user.getId(), arr.size());
+                return arr;
+            }
             try {
                 rateLimiter.acquire();
                 String activitiesJson = client.get()
@@ -207,6 +223,18 @@ public class IntervalsService {
 
         // Events
         CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
+            if (garminConnected) {
+                var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
+                var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
+                var rows = intervalsEventRepository
+                        .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
+                var arr = objectMapper.createArrayNode();
+                for (var r : rows) {
+                    try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
+                    catch (Exception e) { log.debug("mirror event parse {}", e.getMessage()); }
+                }
+                return arr;
+            }
             try {
                 rateLimiter.acquire();
                 String eventsJson = client.get()
