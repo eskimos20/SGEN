@@ -242,13 +242,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
         </div>
       )}
 
-      {stravaData?.rateLimit && (
-        <StravaRateLimitBanner
-          retryAfterSeconds={stravaData?.rateLimitSeconds || stravaData?.photos?.error?.retryAfterSeconds || stravaData?.segments?.error?.retryAfterSeconds || 0}
-        />
-      )}
 
-      {!stravaData?.rateLimit && <StravaMedia activity={activityData} preFetchedData={stravaData?.photos} />}
 
       {/* Activity Overview: Chart + Zone Breakdown + Stats */}
       <ActivityChart streams={streams} decoupling={hrDrift} />
@@ -524,7 +518,6 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
         </div>
       )}
 
-      {!stravaData?.rateLimit && <StravaSegments activity={activityData} preFetchedData={stravaData?.segments ? { ...stravaData.segments, segmentPRs: stravaData.segmentPRs } : null} />}
 
       {/* Achievements / Records */}
       {achievements && achievements.length > 0 && (
