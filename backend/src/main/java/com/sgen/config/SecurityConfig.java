@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/garmin/callback").permitAll()
                         .requestMatchers("/api/garmin/push").permitAll()
                         .requestMatchers("/garmin-callback.html").permitAll()
+                        .requestMatchers("/privacy.html").permitAll()
                         .requestMatchers("/downloads/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
