@@ -190,6 +190,8 @@ public class CalendarController {
         var user = userService.getUserEntityByUsername(authentication.getName());
         java.util.List<Map<String, Object>> base = java.util.List.of();
         if (user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()) {
+            org.slf4j.LoggerFactory.getLogger(CalendarController.class)
+                    .info("SOURCE=INTERVALS user {} fetching wellness {}-{}", user.getId(), oldest, newest);
             base = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
         }
         return ResponseEntity.ok(garminMergeService.mergeWellness(user.getId(), base));

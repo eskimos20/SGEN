@@ -122,7 +122,7 @@ public class IntervalsService {
                     try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
                     catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
                 }
-                log.info("User {} activities served from local mirror: {}", ctx.user.getId(), arr.size());
+                log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getId(), arr.size());
                 return arr;
             }
             try {
@@ -135,6 +135,7 @@ public class IntervalsService {
                 JsonNode activitiesNode = objectMapper.readTree(activitiesJson);
 
                 if (activitiesNode.isArray()) {
+                    log.info("SOURCE=INTERVALS user {} fetched {} activities from Intervals API", username, activitiesNode.size());
                     log.info("Fetching interval data for {} activities", activitiesNode.size());
                     List<CompletableFuture<Void>> intervalFutures = new ArrayList<>();
                     for (JsonNode activity : activitiesNode) {
@@ -197,6 +198,7 @@ public class IntervalsService {
 
         // Athlete profile
         CompletableFuture<JsonNode> athleteFuture = CompletableFuture.supplyAsync(() -> {
+            log.info("SOURCE=INTERVALS user {} fetching athlete profile", username);
             try {
                 rateLimiter.acquire();
                 String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
@@ -210,6 +212,7 @@ public class IntervalsService {
 
         // Sport settings
         CompletableFuture<JsonNode> sportSettingsFuture = CompletableFuture.supplyAsync(() -> {
+            log.info("SOURCE=INTERVALS user {} fetching sport settings", username);
             try {
                 rateLimiter.acquire();
                 String sportSettingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
@@ -224,6 +227,7 @@ public class IntervalsService {
         // Events
         CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
             if (garminConnected) {
+                log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getId());
                 var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
                 var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
                 var rows = intervalsEventRepository
