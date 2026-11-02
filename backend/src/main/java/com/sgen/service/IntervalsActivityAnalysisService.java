@@ -105,7 +105,9 @@ public class IntervalsActivityAnalysisService {
                 isStrokeBased ? "stroke-based" : "time-based");
 
         if (isStrokeBased) {
-            return updateIntervalsWithIntervalStats(ctx.client, activityId, intervals, streamsNode, searchDuration);
+            JsonNode res = updateIntervalsWithIntervalStats(ctx.client, activityId, intervals, streamsNode, searchDuration);
+            persistIntervalsToMirror(ctx.user.getId(), activityId, res);
+            return res;
         }
         String json = ctx.client.put()
                 .uri(uriBuilder -> uriBuilder
@@ -114,7 +116,22 @@ public class IntervalsActivityAnalysisService {
                         .build(activityId))
                 .bodyValue(intervals)
                 .retrieve().bodyToMono(String.class).block();
-        return objectMapper.readTree(json);
+        JsonNode res = objectMapper.readTree(json);
+        persistIntervalsToMirror(ctx.user.getId(), activityId, res);
+        return res;
+    }
+
+    /** Garmin-connected: keep the mirror's intervals_json in sync after edits. */
+    private void persistIntervalsToMirror(Long uid, String activityId, JsonNode response) {
+        if (!garminClientFactory.isConnected(uid) || response == null) return;
+        try {
+            JsonNode ints = response.isArray() ? response : response.path("icu_intervals");
+            if (ints != null && ints.isArray()) {
+                intervalsMirrorService.saveStreams(uid, activityId, null, ints);
+            }
+        } catch (Exception e) {
+            log.debug("Mirror persist intervals for {} failed: {}", activityId, e.getMessage());
+        }
     }
 
     /**

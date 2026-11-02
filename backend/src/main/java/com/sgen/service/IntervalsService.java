@@ -182,6 +182,31 @@ public class IntervalsService {
                     }
                     if (str != null) streamsMap.put(id, str);
                 }
+                // Incremental sync: pull the last 14 days so activities synced
+                // to Intervals later (non-Garmin devices, edits) enter the mirror.
+                try {
+                    java.time.LocalDate syncNewest = java.time.LocalDate.now();
+                    java.time.LocalDate syncOldest = syncNewest.minusDays(14);
+                    rateLimiter.acquire();
+                    String recentJson = client.get()
+                            .uri(b -> b.path("/api/v1/athlete/{id}/activities")
+                                    .queryParam("oldest", syncOldest).queryParam("newest", syncNewest)
+                                    .build(athleteId))
+                            .retrieve().bodyToMono(String.class).block();
+                    JsonNode recent = objectMapper.readTree(recentJson);
+                    if (recent != null && recent.isArray()) {
+                        var known = new java.util.HashSet<String>();
+                        rows.forEach(r -> known.add(r.getActivityId()));
+                        var merged = objectMapper.createArrayNode();
+                        for (JsonNode a : recent) {
+                            intervalsMirrorService.saveActivity(uid, a);
+                            if (known.add(a.path("id").asText())) merged.add(a);
+                        }
+                        if (!merged.isEmpty()) { merged.addAll(arr); arr = merged; }
+                    }
+                } catch (Exception e) {
+                    log.debug("Incremental mirror sync failed: {}", e.getMessage());
+                }
                 return arr;
             }
             try {
@@ -1012,6 +1037,13 @@ public class IntervalsService {
                     .retrieve().bodyToMono(String.class).block();
             @SuppressWarnings("unchecked")
             Map<String, Object> result = objectMapper.readValue(responseJson, Map.class);
+            if (garminClientFactory.isConnected(ctx.user.getId())) {
+                try {
+                    intervalsMirrorService.saveActivity(ctx.user.getId(), objectMapper.readTree(responseJson));
+                } catch (Exception e) {
+                    log.debug("Mirror persist updated activity {} failed: {}", activityId, e.getMessage());
+                }
+            }
             return result;
         } catch (Exception e) {
             log.error("Failed to update activity {}: {}", activityId, e.getMessage());
@@ -1025,6 +1057,14 @@ public class IntervalsService {
             ctx.client.delete()
                     .uri("/api/v1/activity/{activityId}", activityId)
                     .retrieve().bodyToMono(Void.class).block();
+            // Keep the mirror consistent so the activity doesn't reappear.
+            Long uid = ctx.user.getId();
+            if (garminClientFactory.isConnected(uid)) {
+                intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId)
+                        .ifPresent(intervalsActivityRepository::delete);
+                intervalsStreamsRepository.findByUserIdAndActivityId(uid, activityId)
+                        .ifPresent(intervalsStreamsRepository::delete);
+            }
         } catch (Exception e) {
             log.error("Failed to delete activity {}: {}", activityId, e.getMessage());
             throw new RuntimeException("Failed to delete activity: " + e.getMessage());
