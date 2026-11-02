@@ -36,7 +36,6 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   
   const activityId = activity?.id;
   const hasMap = mapData.latlngs && mapData.latlngs.length > 0;
-  console.log('[ActivityDetails] id:', activityId, '| mapData:', JSON.stringify(mapData).slice(0, 300), '| hasMap:', hasMap);
 
   const sportSettings = athleteProfile?.athlete?.sportSettings?.[0] || {};
   // Indoor activities compare FTP achievements against indoor FTP (falls back to regular FTP)

@@ -604,28 +604,22 @@ public class IntervalsService {
                 }
             }
             ObjectNode normalized = normalizeStreams(streams);
-            log.info("activity {} mirror normalized streams={}", activityId,
-                    normalized == null ? "null" : normalized.fieldNames());
             if (normalized != null) {
                 details.put("streams", normalized);
                 details.put("powerCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("watts")));
                 details.put("hrCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("heartrate")));
-                log.info("activity {} mapData: latlng={} keys={}", activityId,
-                        normalized.has("latlng"), normalized.fieldNames());
             }
-            // No latlng in stored streams: fetch the /map payload once from Intervals.
+            // Mirror streams lack a usable latlng payload — fetch the /map payload instead.
             if (!details.containsKey("mapData")) {
-                log.info("activity {} has no mapData in mirror — trying /map endpoint", activityId);
                 try {
                     String mapJson = client.get()
                             .uri("/api/v1/activity/{id}/map", activityId)
                             .retrieve().bodyToMono(String.class).block();
                     if (mapJson != null && !mapJson.isEmpty()) {
                         details.put("mapData", objectMapper.readTree(mapJson));
-                        log.info("activity {} mapData fetched from /map endpoint", activityId);
                     }
                 } catch (Exception e) {
-                    log.info("Map fetch for {} failed: {}", activityId, e.getMessage());
+                    log.debug("Map fetch for {} failed: {}", activityId, e.getMessage());
                 }
             }
             if (intervals != null) {
