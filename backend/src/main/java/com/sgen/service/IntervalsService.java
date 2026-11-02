@@ -447,7 +447,7 @@ public class IntervalsService {
             var mirrorRow = intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId);
             if (mirrorRow.isPresent()) {
                 log.info("SOURCE=DB user {} activity {} details served from local mirror", username, activityId);
-                return mirrorActivityDetails(uid, activityId, mirrorRow.get());
+                return mirrorActivityDetails(uid, activityId, mirrorRow.get(), client);
             }
         }
 
@@ -564,7 +564,8 @@ public class IntervalsService {
 
     /** Same details shape as the API path, built entirely from mirror rows. */
     private Map<String, Object> mirrorActivityDetails(Long uid, String activityId,
-                                                      com.sgen.entity.IntervalsActivity row) {
+                                                      com.sgen.entity.IntervalsActivity row,
+                                                      WebClient client) {
         Map<String, Object> details = new HashMap<>();
         try {
             ObjectNode activity = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
@@ -572,10 +573,35 @@ public class IntervalsService {
             var srow = intervalsStreamsRepository.findByUserIdAndActivityId(uid, activityId).orElse(null);
             JsonNode streams = null, intervals = null;
             if (srow != null) {
-                try { if (srow.getStreamsJson() != null) streams = objectMapper.readTree(srow.getStreamsJson()); }
+                try { if (srow.getStreamsJson() != null && !srow.getStreamsJson().isBlank())
+                        streams = objectMapper.readTree(srow.getStreamsJson()); }
                 catch (Exception e) { log.debug("mirror streams parse {}", e.getMessage()); }
-                try { if (srow.getIntervalsJson() != null) intervals = objectMapper.readTree(srow.getIntervalsJson()); }
+                try { if (srow.getIntervalsJson() != null && !srow.getIntervalsJson().isBlank())
+                        intervals = objectMapper.readTree(srow.getIntervalsJson()); }
                 catch (Exception e) { log.debug("mirror intervals parse {}", e.getMessage()); }
+            }
+            // Missing pieces: fetch once from Intervals and persist into the mirror.
+            if (streams == null || intervals == null) {
+                try {
+                    if (streams == null) {
+                        rateLimiter.acquire();
+                        streams = objectMapper.readTree(client.get()
+                                .uri("/api/v1/activity/{id}/streams", activityId)
+                                .retrieve().bodyToMono(String.class).block());
+                    }
+                    if (intervals == null) {
+                        rateLimiter.acquire();
+                        JsonNode det = objectMapper.readTree(client.get()
+                                .uri(b -> b.path("/api/v1/activity/{id}")
+                                        .queryParam("intervals", "true").build(activityId))
+                                .retrieve().bodyToMono(String.class).block());
+                        if (det.has("icu_intervals")) intervals = det.get("icu_intervals");
+                    }
+                    intervalsMirrorService.saveStreams(uid, activityId, streams, intervals);
+                    log.info("Mirror for {} was missing streams/intervals — fetched and persisted", activityId);
+                } catch (Exception e) {
+                    log.debug("Mirror streams heal for {} failed: {}", activityId, e.getMessage());
+                }
             }
             ObjectNode normalized = normalizeStreams(streams);
             if (normalized != null) {
