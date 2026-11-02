@@ -36,7 +36,7 @@ export default function GarminConnectCard() {
 
   const connect = async () => {
     if (!consent) {
-      setError('Du måste godkänna datapolicyn först.');
+      setError('You must accept the data policy first.');
       return;
     }
     setBusy(true);
@@ -46,8 +46,8 @@ export default function GarminConnectCard() {
       window.open(res.data.url, 'garminAuth', 'width=800,height=700');
     } catch (e) {
       setError(e.response?.data?.error === 'consent_required'
-        ? 'Du måste godkänna datapolicyn först.'
-        : 'Kunde inte starta Garmin-anslutningen.');
+        ? 'You must accept the data policy first.'
+        : 'Could not start the Garmin connection.');
     } finally {
       setBusy(false);
     }
@@ -69,19 +69,20 @@ export default function GarminConnectCard() {
       await api.post('/statistics/backfill-loads');
       pollBackfill();
     } catch (e) {
-      setBackfill({ state: 'ERROR', error: 'Kunde inte starta hämtningen' });
+      setBackfill({ state: 'ERROR', error: 'Could not start the import' });
     }
   };
 
   const disconnect = async () => {
-    if (!window.confirm('Koppla bort Garmin? Din lokala Garmin-data raderas.')) return;
+    if (!window.confirm('Disconnect Garmin? Your local Garmin data will be deleted.')) return;
     setBusy(true);
     try {
       await api.delete('/garmin/disconnect');
       setConsent(false);
+      setBackfill(null);
       await loadStatus();
     } catch (e) {
-      setError('Kunde inte koppla bort.');
+      setError('Could not disconnect.');
     } finally {
       setBusy(false);
     }
@@ -90,18 +91,18 @@ export default function GarminConnectCard() {
   if (!status) return null;
   if (status.oauthConfigured === false) {
     return (
-      <div className="card-mobile p-3 sm:p-4 border border-gray-200">
-        <h2 className="text-base font-semibold text-gray-900">Garmin (direktanslutning)</h2>
-        <p className="text-sm text-gray-500 mt-1">Garmin OAuth är inte konfigurerat på servern.</p>
+      <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Garmin (direct connection)</h2>
+        <p className="text-sm text-gray-500">Garmin OAuth is not configured on the server.</p>
       </div>
     );
   }
 
   return (
-    <div className="card-mobile p-3 sm:p-4 border border-gray-200">
+    <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-gray-900">Garmin (direktanslutning)</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Garmin (direct connection)</h2>
           {status.connected && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
               <CheckCircle className="h-3 w-3" />
@@ -110,7 +111,7 @@ export default function GarminConnectCard() {
           )}
           {status.status === 'NEEDS_REAUTH' && (
             <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-              Behöver kopplas om
+              Reconnect required
             </span>
           )}
         </div>
@@ -119,31 +120,31 @@ export default function GarminConnectCard() {
       {status.connected ? (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Ditt Garmin-konto är anslutet. Data flödar in automatiskt via Garmin Push.
+            Your Garmin account is connected. Data arrives automatically via Garmin Push.
           </p>
 
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <p className="text-sm font-medium text-gray-800 mb-1">Historisk data</p>
+            <p className="text-sm font-medium text-gray-800 mb-1">Historical data</p>
             <p className="text-xs text-gray-500 mb-2">
-              Hämtar äldre aktivitetsdata från Intervals.icu så din historik (CTL/ATL)
-              finns lagrad lokalt — körs i bakgrunden utan att belasta Intervals.
+              Imports your existing activity history from Intervals.icu so your training
+              load (CTL/ATL) is stored locally — runs in the background.
             </p>
             {backfill?.state === 'RUNNING' ? (
               <p className="text-sm text-blue-700 flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Hämtar… {backfill.totalActivities} aktiviteter ({backfill.yearsDone} år)
+                Importing… {backfill.totalActivities} activities ({backfill.yearsDone} years)
               </p>
             ) : backfill?.state === 'DONE' ? (
               <p className="text-sm text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Klar — {backfill.totalActivities} aktiviteter importerade
+                Done — {backfill.totalActivities} activities imported
               </p>
             ) : (
               <button
                 onClick={startBackfill}
                 className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-white hover:bg-gray-800"
               >
-                <Download className="h-4 w-4" /> Hämta historisk data
+                <Download className="h-4 w-4" /> Import historical data
               </button>
             )}
             {backfill?.state === 'ERROR' && (
@@ -156,14 +157,14 @@ export default function GarminConnectCard() {
             disabled={busy}
             className="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
           >
-            <Unlink className="h-4 w-4" /> Koppla bort Garmin
+            <Unlink className="h-4 w-4" /> Disconnect Garmin
           </button>
         </div>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Anslut ditt Garmin Connect-konto för att ta emot aktiviteter, wellness-data
-            och skicka planerade pass — direkt, utan Intervals.icu.
+            Connect your Garmin Connect account to receive activities and wellness
+            data — directly, without Intervals.icu.
           </p>
 
           <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer select-none bg-gray-50 border border-gray-200 rounded-lg p-3">
@@ -174,10 +175,10 @@ export default function GarminConnectCard() {
               className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
             />
             <span>
-              Jag godkänner att SGEN lagrar min tränings- och hälsodata för att visa
-              statistik och beräkningar i appen. Datan lagras <strong>anonymiserat</strong> —
-              inga personuppgifter (namn, e-post m.m.) sparas. Jag kan koppla bort
-              när som helst, varvid min Garmin-data raderas.
+              I agree that SGEN stores my training and health data to display
+              statistics and calculations in the app. Data is stored <strong>anonymized</strong> —
+              no personal details (name, email, etc.) are saved. I can disconnect
+              at any time, which deletes my Garmin data.
             </span>
           </label>
 
@@ -189,7 +190,7 @@ export default function GarminConnectCard() {
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-            Anslut Garmin
+            Connect Garmin
           </button>
         </div>
       )}

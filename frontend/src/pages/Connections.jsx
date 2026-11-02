@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import GarminConnectCard from '../components/connections/GarminConnectCard';
 import api from '../api/axios';
 import { Loader2, CheckCircle, XCircle, ExternalLink, AlertTriangle } from 'lucide-react';
 
@@ -163,8 +162,6 @@ const Connections = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Connections</h1>
           <p className="text-gray-600 mt-1">Manage your Intervals.icu provider connections and sync settings</p>
         </div>
-
-        <GarminConnectCard />
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-3 rounded-lg">
