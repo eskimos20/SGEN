@@ -151,7 +151,7 @@ public class IntervalsService {
                         try { if (srow.getIntervalsJson() != null) ints = objectMapper.readTree(srow.getIntervalsJson()); }
                         catch (Exception e) { log.debug("mirror intervals parse {}", e.getMessage()); }
                     }
-                    if (str == null || ints == null) {
+                    if (str == null || ints == null || (ints.isArray() && ints.isEmpty())) {
                         try {
                             if (str == null) {
                                 rateLimiter.acquire();
@@ -606,7 +606,9 @@ public class IntervalsService {
                 catch (Exception e) { log.debug("mirror intervals parse {}", e.getMessage()); }
             }
             // Missing pieces: fetch once from Intervals and persist into the mirror.
-            if (streams == null || intervals == null) {
+            boolean intsMissing = intervals == null || (intervals.isArray() && intervals.isEmpty());
+            if (streams == null || intsMissing) {
+                if (intsMissing) intervals = null;
                 try {
                     if (streams == null) {
                         rateLimiter.acquire();
