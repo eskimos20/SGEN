@@ -16,9 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class GarminDataCleanupService {
 
+    private final com.sgen.repository.UserRepository userRepository;
     private final GarminActivityRepository activityRepository;
     private final GarminWellnessRepository wellnessRepository;
     private final UserDailyLoadRepository dailyLoadRepository;
+    private final com.sgen.repository.UserFitnessRepository fitnessRepository;
+    private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
+    private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
+    private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
 
     @Transactional
     public void deleteAllGarminData(Long userId) {
@@ -27,6 +32,10 @@ public class GarminDataCleanupService {
         dailyLoadRepository.findByUserIdAndLoadDateGreaterThanEqual(userId, java.time.LocalDate.of(2000, 1, 1))
                 .stream().filter(l -> "GARMIN".equals(l.getSource()))
                 .forEach(dailyLoadRepository::delete);
-        log.info("Deleted all Garmin data for user {}", userId);
+        log.info("Deleted all Garmin data for user {}", nameOf(userId));
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

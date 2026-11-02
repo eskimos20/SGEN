@@ -76,6 +76,11 @@ public class IntervalsBackfillService {
         return out;
     }
 
+    /** Forget the in-memory progress for a user (called on Garmin disconnect). */
+    public void clearStatus(String username) {
+        status.remove(username);
+    }
+
     private long safeSum(Long v) { return v != null ? v : 0; }
 
     /** Persist the verbatim Intervals activity JSON so lists/details can replay it locally. */

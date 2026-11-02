@@ -106,7 +106,7 @@ public class IntervalsService {
         // activity/stream/wellness calls at all (pure local pipeline).
         boolean garminConnected = garminClientFactory.isConnected(ctx.user.getId());
         if (garminConnected) {
-            log.info("User {} has active Garmin connection — local Garmin activities will take precedence in merge", ctx.user.getId());
+            log.info("User {} has active Garmin connection — local Garmin activities will take precedence in merge", ctx.user.getUsername());
         }
 
         // Activities (with per-activity intervals fetched concurrently)
@@ -122,7 +122,7 @@ public class IntervalsService {
                     try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
                     catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
                 }
-                log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getId(), arr.size());
+                log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getUsername(), arr.size());
                 return arr;
             }
             try {
@@ -227,7 +227,7 @@ public class IntervalsService {
         // Events
         CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
             if (garminConnected) {
-                log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getId());
+                log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
                 var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
                 var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
                 var rows = intervalsEventRepository

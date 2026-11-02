@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 @Slf4j
 public class GarminFileService {
 
+    private final com.sgen.repository.UserRepository userRepository;
     private final GarminFileQueueItemRepository fileQueueRepository;
     private final GarminConnectionRepository connectionRepository;
 
@@ -60,5 +61,9 @@ public class GarminFileService {
             log.warn("Garmin file fetch failed for {}: {}", q.getSummaryId(), e.getMessage());
         }
         fileQueueRepository.save(q);
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

@@ -34,7 +34,7 @@ public class GarminActivityViewService {
         GarminActivity act = activityRepository.findById(id)
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new IllegalArgumentException("Activity not found"));
-        log.info("SOURCE=DB serving activity {} for user {} from local Garmin DB (no Intervals call)", id, userId);
+        log.info("SOURCE=DB serving activity {} for user {} from local Garmin DB (no Intervals call)", id, nameOf(userId));
         Map<String, Object> details = new HashMap<>();
         details.put("activity", mergeService.toIntervalsActivityJson(act));
 
@@ -85,5 +85,9 @@ public class GarminActivityViewService {
         ObjectNode map = objectMapper.createObjectNode();
         if (streams.has("latlng")) map.set("latlng", streams.get("latlng"));
         return map;
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

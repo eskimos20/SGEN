@@ -26,6 +26,7 @@ import java.util.Map;
 @Slf4j
 public class GarminWorkoutService {
 
+    private final com.sgen.repository.UserRepository userRepository;
     private final GarminClientFactory clientFactory;
     private final GarminWorkoutMapper workoutMapper;
     private final GarminWorkoutPushRepository pushRepository;
@@ -149,5 +150,9 @@ public class GarminWorkoutService {
         push.setLastError(msg != null ? msg.substring(0, Math.min(1000, msg.length())) : "unknown");
         pushRepository.save(push);
         log.warn("Garmin workout push failed for user {}: {}", push.getUserId(), msg);
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

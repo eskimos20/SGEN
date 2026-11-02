@@ -29,6 +29,7 @@ import java.util.Map;
 public class GarminConnectionController {
 
     private final GarminOAuthService oauthService;
+    private final com.sgen.service.garmin.IntervalsBackfillService backfillService;
     private final GarminConnectionRepository connectionRepository;
     private final GarminDataCleanupService cleanupService;
     private final UserService userService;
@@ -151,6 +152,7 @@ public class GarminConnectionController {
         User user = userService.getUserEntityByUsername(auth.getName());
         oauthService.disconnect(user.getId());
         cleanupService.deleteAllGarminData(user.getId());
+        backfillService.clearStatus(auth.getName());
         return ResponseEntity.ok().build();
     }
 }

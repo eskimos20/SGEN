@@ -178,4 +178,8 @@ public class FitnessModelService {
             fitnessRepository.save(row);
         }
     }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
+    }
 }

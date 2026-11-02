@@ -27,6 +27,7 @@ import java.util.Optional;
 @Slf4j
 public class GarminWellnessMapper {
 
+    private final com.sgen.repository.UserRepository userRepository;
     private final GarminWellnessRepository wellnessRepository;
     private final GarminConnectionRepository connectionRepository;
     private final ObjectMapper objectMapper;
@@ -65,5 +66,9 @@ public class GarminWellnessMapper {
             return LocalDate.ofInstant(Instant.ofEpochSecond(ts + offset), ZoneOffset.UTC);
         }
         return null;
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

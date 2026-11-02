@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 @Slf4j
 public class GarminPushProcessor {
 
+    private final com.sgen.repository.UserRepository userRepository;
     private final GarminPushItemRepository inboxRepository;
     private final GarminConnectionRepository connectionRepository;
     private final GarminActivityMapper activityMapper;
@@ -126,5 +127,9 @@ public class GarminPushProcessor {
             }
             connectionRepository.save(conn);
         });
+    }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
     }
 }

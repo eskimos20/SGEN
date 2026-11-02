@@ -193,4 +193,8 @@ public class GarminMergeService {
     }
 
     private double round1(double v) { return Math.round(v * 10.0) / 10.0; }
+
+    private String nameOf(Long userId) {
+        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
+    }
 }
