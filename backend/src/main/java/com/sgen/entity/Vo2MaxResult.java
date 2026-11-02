@@ -53,7 +53,7 @@ public class Vo2MaxResult {
     @Column
     private String rating;
 
-    @Column(nullable = false)
+    @Column(name = "`rank`", nullable = false)
     private Integer rank;
 
     private Boolean indoor;

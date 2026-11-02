@@ -24,7 +24,7 @@ const DatabaseTab = () => {
           username: data.settings.username || '',
         }));
       })
-      .catch(() => setMessage({ type: 'error', text: 'Kunde inte läsa databasinställningarna.' }))
+      .catch(() => setMessage({ type: 'error', text: 'Could not read the database settings.' }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -48,7 +48,7 @@ const DatabaseTab = () => {
         setForm((current) => ({ ...current, password: '' }));
       }
     } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data?.message || 'Databasåtgärden misslyckades.' });
+      setMessage({ type: 'error', text: error.response?.data?.message || 'The database operation failed.' });
     } finally {
       setBusy('');
     }
@@ -62,17 +62,17 @@ const DatabaseTab = () => {
     <div className="card-mobile max-w-3xl space-y-5">
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Database className="h-5 w-5" /> MySQL-databas
+          <Database className="h-5 w-5" /> MySQL database
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Ange anslutningen till SGENs MySQL-server. Databasnamnet kan ändras; standardnamnet är <code>eskimos_sgen_db</code>.
-          Lösenordet lagras lokalt på servern och visas aldrig här.
+          Enter the connection to SGEN's MySQL server. The database name can be changed; the default is <code>eskimos_sgen_db</code>.
+          The password is stored locally on the server and is never shown here.
         </p>
       </div>
 
       {bootstrapMode && (
         <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          Första uppstarten: logga in med <code>admin</code> / <code>password</code>. Endast databasinställningar är tillgängliga tills MySQL har sparats och SGEN startats om.
+          First startup: log in with <code>admin</code> / <code>password</code>. Only database settings are available until MySQL has been saved and SGEN restarted.
         </div>
       )}
 
@@ -86,11 +86,11 @@ const DatabaseTab = () => {
         <div className="space-y-2 rounded-lg bg-gray-50 p-4 text-sm">
           <div className="flex items-center gap-2">
             {result.canConnectToDatabase ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
-            <span>MySQL svarar och databasen kan nås.</span>
+            <span>MySQL responds and the database is reachable.</span>
           </div>
-          <div>Hittade tabeller: {result.tableCount} av 15.</div>
+          <div>Tables found: {result.tableCount} of 15.</div>
           {result.missingTables?.length > 0 && (
-            <p>Saknade tabeller skapas automatiskt när SGEN startas om: {result.missingTables.join(', ')}.</p>
+            <p>Missing tables are created automatically when SGEN restarts: {result.missingTables.join(', ')}.</p>
           )}
         </div>
       )}
@@ -98,7 +98,7 @@ const DatabaseTab = () => {
       <form onSubmit={(event) => submit('test', event)} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-medium text-gray-700">
-            IP-adress eller värdnamn
+            IP address or hostname
             <input className="input-field mt-1 w-full" value={form.host} onChange={(event) => update('host', event.target.value)} placeholder="127.0.0.1" required />
           </label>
           <label className="block text-sm font-medium text-gray-700">
@@ -106,15 +106,15 @@ const DatabaseTab = () => {
             <input className="input-field mt-1 w-full" type="number" min="1" max="65535" value={form.port} onChange={(event) => update('port', event.target.value)} required />
           </label>
           <label className="block text-sm font-medium text-gray-700">
-            Databasnamn
+            Database name
             <input className="input-field mt-1 w-full" value={form.databaseName} onChange={(event) => update('databaseName', event.target.value)} required />
           </label>
           <label className="block text-sm font-medium text-gray-700">
-            MySQL-användare
+            MySQL username
             <input className="input-field mt-1 w-full" value={form.username} onChange={(event) => update('username', event.target.value)} autoComplete="username" required />
           </label>
           <label className="block text-sm font-medium text-gray-700">
-            MySQL-lösenord
+            MySQL password
             <input className="input-field mt-1 w-full" type="password" value={form.password} onChange={(event) => update('password', event.target.value)} autoComplete="new-password" required />
           </label>
         </div>
@@ -122,18 +122,18 @@ const DatabaseTab = () => {
         <div className="flex flex-wrap gap-3">
           <button type="submit" disabled={Boolean(busy)} className="btn-secondary flex items-center gap-2">
             {busy === 'test' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
-            Testa anslutning
+            Test connection
           </button>
           <button type="button" onClick={(event) => submit('save', event)} disabled={Boolean(busy)} className="btn-primary flex items-center gap-2">
             {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Spara anslutning
+            Save connection
           </button>
         </div>
       </form>
 
       <p className="text-xs text-gray-500">
-        När du sparar kontrolleras anslutningen. SGEN behöver sedan startas om för att använda den nya anslutningen.
-        Om tabeller saknas skapas de vid uppstart. Befintliga tabeller och data uppdateras inte genom någon rensning.
+        The connection is verified when you save. SGEN must then be restarted to use the new connection.
+        Missing tables are created at startup. Existing tables and data are not modified by any cleanup.
       </p>
     </div>
   );

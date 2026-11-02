@@ -18,10 +18,6 @@ public class UserProfileRequest {
 
     private Boolean openaiConnectionTested;
 
-    // Strava OAuth configuration
-    private Boolean stravaEnabled;
-    private String stravaClientId;
-    private String stravaClientSecret;
 
     private Boolean shareWorkoutsEnabled;
 

@@ -181,7 +181,7 @@ echo "Syncing version..."
 echo "[2/5] Building project with Android APK..."
 cd "$REPO_DIR" || exit 1
 
-# Uppdatera network_security_config.xml med rätt domän
+# Update network_security_config.xml with the correct domain
 echo "Updating Android network security config..."
 NETWORK_CONFIG="frontend/android/app/src/main/res/xml/network_security_config.xml"
 cat > "$NETWORK_CONFIG" << EOF
@@ -200,21 +200,14 @@ cat > "$NETWORK_CONFIG" << EOF
 EOF
 echo "✅ Network config updated with: ${DDNS_OR_IP}"
 
-# Sätt miljövariabler för bygget
+# Set environment variables for the build
 export JWT_SECRET="$JWT_SECRET"
 export CORS_ALLOWED_ORIGINS="$CORS_ORIGINS"
 
-# Strava OAuth redirect URI (for Strava API integration)
-export STRAVA_REDIRECT_URI="${PROTOCOL}://${DDNS_OR_IP}:${EXTERNAL_PORT}/api/strava/callback"
-echo "🔗 Strava OAuth redirect: $STRAVA_REDIRECT_URI"
 
-# Force HTTPS for Strava callback if using HTTPS protocol
-if [[ "$PROTOCOL" == "https" ]]; then
-    export FORCE_HTTPS="true"
-    echo "🔒 FORCE_HTTPS enabled for Strava callback URL"
 fi
 
-# VIKTIGAST: API URL för Android app (use external port)
+# MOST IMPORTANT: API URL for the Android app (use external port)
 export VITE_API_URL="${PROTOCOL}://${DDNS_OR_IP}:${EXTERNAL_PORT}/api"
 echo "📱 Android app will connect to: $VITE_API_URL"
 
@@ -222,7 +215,7 @@ echo "📱 Android app will connect to: $VITE_API_URL"
 export VITE_LIBREWXR_API_URL="https://api.librewxr.net/public/weather-maps.json"
 echo "🌦️  LibreWXR radar API: $VITE_LIBREWXR_API_URL"
 
-# Bygg frontend (skapar dist/ med rätt API URL)
+# Build frontend (creates dist/ with the correct API URL)
 echo "Building frontend..."
 cd frontend
 npm install --legacy-peer-deps

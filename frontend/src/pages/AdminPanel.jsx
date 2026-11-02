@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Users, Bug, Activity, Database } from 'lucide-react';
+import { Users, Bug, Activity, Database, Link2 } from 'lucide-react';
 import UsersTab from '../components/admin/UsersTab';
 import DebugTab from '../components/admin/DebugTab';
 import DatabaseTab from '../components/admin/DatabaseTab';
+import GarminTab from '../components/admin/GarminTab';
 import { useAuth } from '../context/AuthContext';
 
 const AdminPanel = () => {
@@ -50,6 +51,17 @@ const AdminPanel = () => {
           <Bug className="h-5 w-5" />
           Debug
         </button>}
+        {!user?.bootstrapMode && <button
+          onClick={() => setActiveTab('garmin')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
+            activeTab === 'garmin'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Link2 className="h-5 w-5" />
+          Garmin
+        </button>}
         <button
           onClick={() => setActiveTab('database')}
           className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
@@ -59,12 +71,13 @@ const AdminPanel = () => {
           }`}
         >
           <Database className="h-5 w-5" />
-          Databas
+          Database
         </button>
       </div>
 
       {!user?.bootstrapMode && activeTab === 'users' && <UsersTab onLastUpdate={setLastUpdate} />}
       {!user?.bootstrapMode && activeTab === 'debug' && <DebugTab />}
+      {!user?.bootstrapMode && activeTab === 'garmin' && <GarminTab />}
       {activeTab === 'database' && <DatabaseTab />}
     </div>
   );

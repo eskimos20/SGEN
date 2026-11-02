@@ -19,6 +19,9 @@ public class IntervalsWellnessService {
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
+    private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
+    private final IntervalsService intervalsService;
 
     public List<Map<String, Object>> fetchWellnessData(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -53,7 +56,14 @@ public class IntervalsWellnessService {
                     .uri("/api/v1/athlete/{id}/wellness-bulk", ctx.user.getIntervalsAthleteId())
                     .bodyValue(updates)
                     .retrieve().bodyToMono(String.class).block();
-            return objectMapper.readTree(json);
+            JsonNode response = objectMapper.readTree(json);
+            // Garmin-connected: mirror the manual edits locally too.
+            if (garminClientFactory.isConnected(ctx.user.getId())) {
+                for (Map<String, Object> update : updates) {
+                    intervalsMirrorService.mergeWellnessUpdate(ctx.user.getId(), update);
+                }
+            }
+            return response;
         } catch (Exception e) {
             log.error("Failed to update wellness data: {}", e.getMessage());
             throw new RuntimeException("Failed to update wellness data: " + e.getMessage());
@@ -62,6 +72,15 @@ public class IntervalsWellnessService {
 
     public JsonNode fetchHrCurves(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        // Garmin-connected: compute from mirrored heartrate streams — no API call.
+        if (garminClientFactory.isConnected(ctx.user.getId())
+                && intervalsMirrorService.hasActivities(ctx.user.getId())) {
+            JsonNode local = intervalsService.localCurveHistory(
+                    ctx.user.getId(), username, oldest, newest, "all", "heartrate");
+            var wrapper = objectMapper.createObjectNode();
+            wrapper.set("hrCurves", local);
+            return wrapper;
+        }
         try {
             String json = ctx.client.get()
                     .uri(uriBuilder -> uriBuilder

@@ -61,7 +61,7 @@ public class UserController {
             host = serverName;
         }
         String portStr = (port == 80 || port == 443) ? "" : ":" + port;
-        return scheme + "://" + host + portStr + "/api/strava/callback";
+        return scheme + "://" + host + portStr + "/api/garmin/callback";
     }
 
     @PutMapping("/profile")
@@ -170,22 +170,6 @@ public class UserController {
         return ResponseEntity.ok(Map.of("message", "Model selected: " + model));
     }
 
-    // User-level Strava Configuration
-    @PostMapping("/strava/enable")
-    public ResponseEntity<Map<String, String>> enableUserStrava(Authentication authentication) {
-        UserProfileRequest request = new UserProfileRequest();
-        request.setStravaEnabled(true);
-        userService.updateUserProfile(authentication.getName(), request);
-        return ResponseEntity.ok(Map.of("message", "Strava enabled for user"));
-    }
-
-    @PostMapping("/strava/disable")
-    public ResponseEntity<Map<String, String>> disableUserStrava(Authentication authentication) {
-        UserProfileRequest request = new UserProfileRequest();
-        request.setStravaEnabled(false);
-        userService.updateUserProfile(authentication.getName(), request);
-        return ResponseEntity.ok(Map.of("message", "Strava disabled and OAuth tokens cleared"));
-    }
 
     // User-level Zwift Configuration
     @PostMapping("/zwift/enable")

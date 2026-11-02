@@ -94,7 +94,9 @@ const WeatherRadarMap = ({ latitude, longitude, cityName }) => {
         mapInstanceRef.current = map;
 
         const resizeObserver = new ResizeObserver(() => {
-            setTimeout(() => map.invalidateSize(), 100);
+            setTimeout(() => {
+                try { mapInstanceRef.current?.invalidateSize(); } catch { /* map removed */ }
+            }, 100);
         });
         resizeObserver.observe(mapRef.current);
 

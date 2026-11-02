@@ -51,7 +51,16 @@ public class IntervalsAthleteService {
             String settingsJson = ctx.client.get()
                     .uri("/api/v1/athlete/{id}/settings", athleteId)
                     .retrieve().bodyToMono(String.class).block();
-            profile.put("settings", objectMapper.readTree(settingsJson));
+            JsonNode settings = objectMapper.readTree(settingsJson);
+            profile.put("settings", settings);
+            var keys = new java.util.ArrayList<String>();
+            settings.fieldNames().forEachRemaining(k -> { if (k.contains("garmin") || k.contains("zwift") || k.contains("polar")) keys.add(k + "=" + settings.get(k)); });
+            log.info("Intervals settings sync fields present: {}", keys);
+            // Sync toggles live under settings, not the athlete record —
+            // merge them into athlete so Connections.jsx reads authoritative values
+            if (profile.get("athlete") instanceof JsonNode a && a.isObject()) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) a).setAll((com.fasterxml.jackson.databind.node.ObjectNode) settings);
+            }
         } catch (Exception e) {
             profile.put("settingsError", e.getMessage());
         }
@@ -72,8 +81,6 @@ public class IntervalsAthleteService {
             "name", "city", "country", "weight", "height", "sex", "locale",
             "icu_date_of_birth", "icu_weight_target", "icu_resting_hr",
             // Connection sync toggles
-            "strava_sync_activities", "strava_sync_other_activities", "update_strava_name",
-            "ignore_strava_gear", "add_weather_to_strava_descr",
             "icu_garmin_sync_activities", "icu_garmin_download_wellness", "icu_garmin_health",
             "icu_garmin_training", "icu_garmin_upload_workouts",
             "zwift_sync_activities", "zwift_upload_workouts",
@@ -110,6 +117,8 @@ public class IntervalsAthleteService {
                     .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                     .bodyValue(filtered)
                     .retrieve().bodyToMono(String.class).block();
+            log.info("Intervals athlete PUT sent {} -> response echo: {}", filtered,
+                    responseJson != null && responseJson.length() > 500 ? responseJson.substring(0, 500) + "..." : responseJson);
             JsonNode result = objectMapper.readTree(responseJson);
             if (filtered.containsKey("weight") || filtered.containsKey("height")) {
                 zwiftService.syncProfile(username, null);

@@ -106,7 +106,7 @@ public class DatabaseSettingsService {
             }
             if (!databaseExists) {
                 return new ConnectionTestResult(true, false, false, 0, REQUIRED_TABLES,
-                        "MySQL svarar och inloggningen fungerar, men databasen " + databaseName + " kunde inte hittas eller är inte synlig för användaren.");
+                        "MySQL is reachable and login works, but the database " + databaseName + " could not be found or is not visible to the user.");
             }
 
             Set<String> foundTables = new HashSet<>();
@@ -118,9 +118,9 @@ public class DatabaseSettingsService {
             }
             List<String> missingTables = REQUIRED_TABLES.stream().filter(table -> !foundTables.contains(table)).toList();
             String message = missingTables.isEmpty()
-                    ? "Anslutningen fungerar. Databasen finns och alla 15 SGEN-tabeller hittades."
-                    : "Anslutningen fungerar. Databasen finns; " + missingTables.size()
-                    + " tabeller saknas och skapas av Hibernate när tjänsten startas om.";
+                    ? "The connection works. The database exists and all 15 SGEN tables were found."
+                    : "The connection works. The database exists; " + missingTables.size()
+                    + " tables are missing and will be created by Hibernate when the service restarts.";
         return new ConnectionTestResult(true, true, true, foundTables.size(), missingTables, message);
         } catch (SQLException exception) {
             String message = safeConnectionError(exception);
@@ -161,7 +161,7 @@ public class DatabaseSettingsService {
             return new SettingsView(host.trim(), port, databaseName.trim(), username.trim(), true, "file");
         } catch (IOException exception) {
             log.error("Could not save MySQL configuration to {}", configPath, exception);
-            throw new IllegalStateException("Kunde inte spara databasinställningarna till den lokala konfigurationsfilen.");
+            throw new IllegalStateException("Could not save the database settings to the local configuration file.");
         }
     }
 
@@ -175,20 +175,20 @@ public class DatabaseSettingsService {
                     properties.getProperty("databaseName", DEFAULT_DATABASE_NAME),
                     properties.getProperty("username", ""), properties.getProperty("password", ""), false);
         } catch (IOException | NumberFormatException exception) {
-            throw new IllegalStateException("Kunde inte läsa MySQL-konfigurationen från " + configPath, exception);
+            throw new IllegalStateException("Could not read the MySQL configuration from " + configPath, exception);
         }
     }
 
     private static void validate(String host, int port, String databaseName, String username, String password) {
         if (host == null || host.isBlank() || host.contains("/") || host.contains("?") || host.contains("#")) {
-            throw new IllegalArgumentException("Ange en giltig IP-adress eller värd för MySQL.");
+            throw new IllegalArgumentException("Enter a valid IP address or host for MySQL.");
         }
-        if (port < 1 || port > 65535) throw new IllegalArgumentException("Porten måste vara mellan 1 och 65535.");
+        if (port < 1 || port > 65535) throw new IllegalArgumentException("The port must be between 1 and 65535.");
         if (databaseName == null || !databaseName.matches("[A-Za-z0-9_]{1,64}")) {
-            throw new IllegalArgumentException("Databasnamnet får bara innehålla bokstäver, siffror och understreck (max 64 tecken).");
+            throw new IllegalArgumentException("The database name may only contain letters, digits and underscores (max 64 characters).");
         }
-        if (username == null || username.isBlank()) throw new IllegalArgumentException("Ange ett MySQL-användarnamn.");
-        if (password == null || password.isEmpty()) throw new IllegalArgumentException("Ange MySQL-lösenordet.");
+        if (username == null || username.isBlank()) throw new IllegalArgumentException("Enter a MySQL username.");
+        if (password == null || password.isEmpty()) throw new IllegalArgumentException("Enter the MySQL password.");
     }
 
     private static String jdbcUrl(String host, int port) {
@@ -202,12 +202,12 @@ public class DatabaseSettingsService {
     private static String safeConnectionError(SQLException exception) {
         String message = exception.getMessage() == null ? "" : exception.getMessage().toLowerCase(Locale.ROOT);
         if (exception.getErrorCode() == 1045 || message.contains("access denied")) {
-            return "MySQL nås, men användarnamn eller lösenord godkändes inte.";
+            return "MySQL is reachable, but the username or password was not accepted.";
         }
         if (exception.getErrorCode() == 1049 || message.contains("unknown database")) {
-            return "MySQL nås och inloggningen fungerar, men den valda databasen finns inte.";
+            return "MySQL is reachable and login works, but the selected database does not exist.";
         }
-        return "Kunde inte ansluta till MySQL. Kontrollera IP-adress, port, serverstatus och nätverksregler.";
+        return "Could not connect to MySQL. Check the IP address, port, server status and firewall rules.";
     }
 
     public record ConnectionSettings(String host, int port, String databaseName, String username, String password, boolean bootstrapMode) {

@@ -10,17 +10,6 @@ import { Loader2, CheckCircle, XCircle, ExternalLink, AlertTriangle } from 'luci
  */
 const PROVIDERS = [
   {
-    key: 'strava', name: 'Strava',
-    isConnected: (a) => a.strava_authorized === true || !!a.strava_id,
-    options: [
-      { field: 'strava_sync_activities', label: 'Download activities' },
-      { field: 'strava_sync_other_activities', label: 'Download activities uploaded by other apps' },
-      { field: 'update_strava_name', label: 'Update activity name on Strava when renamed' },
-      { field: 'add_weather_to_strava_descr', label: 'Add weather to activity description on Strava' },
-      { field: 'ignore_strava_gear', label: 'Use gear from Strava', invert: true },
-    ],
-  },
-  {
     key: 'garmin', name: 'Garmin Connect',
     isConnected: (a) => !!(a.icu_garmin_last_upload || a.icu_garmin_sync_activities ||
         a.icu_garmin_health || a.icu_garmin_training ||

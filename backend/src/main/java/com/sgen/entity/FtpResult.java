@@ -47,7 +47,7 @@ public class FtpResult {
     @Column(nullable = false)
     private Double averageWatts;
 
-    @Column(nullable = false)
+    @Column(name = "`rank`", nullable = false)
     private Integer rank;
 
     private Boolean indoor;

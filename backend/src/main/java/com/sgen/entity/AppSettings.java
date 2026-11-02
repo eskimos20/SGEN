@@ -23,6 +23,15 @@ public class AppSettings {
     @Column(name = "dump_activity_streams")
     private boolean dumpActivityStreams;
 
+    @Column(name = "garmin_client_id", length = 128)
+    private String garminClientId;
+
+    @Column(name = "garmin_client_secret", length = 256)
+    private String garminClientSecret;
+
+    @Column(name = "garmin_redirect_uri", length = 512)
+    private String garminRedirectUri;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

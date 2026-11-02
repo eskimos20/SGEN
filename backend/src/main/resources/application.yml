@@ -143,14 +143,6 @@ openai:
       input: 0.50
       output: 1.50
 
-# Strava API Configuration
-strava:
-  api:
-    base-url: https://www.strava.com/api/v3
-  oauth:
-    authorize-url: https://www.strava.com/oauth/authorize
-    token-url: https://www.strava.com/oauth/token
-    redirect-uri: ${STRAVA_REDIRECT_URI:http://localhost:8081/api/strava/callback}
 
 # CORS Configuration
 cors:
@@ -170,3 +162,16 @@ bikefit:
       url: ${BIKEFIT_PYTHON_URL:http://localhost:5000}
   upload:
     dir: ${BIKEFIT_UPLOAD_DIR:uploads/bikefit}
+
+# Garmin Connect Developer Program (Starter)
+garmin:
+  client-id: ${GARMIN_CLIENT_ID:}
+  client-secret: ${GARMIN_CLIENT_SECRET:}
+  redirect-uri: ${GARMIN_REDIRECT_URI:http://localhost:8081/api/garmin/callback}
+  api-base-url: https://apis.garmin.com
+  authorize-url: https://connect.garmin.com/oauth2Confirm
+  token-url: https://diauth.garmin.com/di-oauth2-service/oauth/token
+  # AES key for token storage (32+ characters recommended); falls back to JWT_SECRET if empty
+  token-key: ${GARMIN_TOKEN_KEY:}
+  push:
+    worker-threads: 4

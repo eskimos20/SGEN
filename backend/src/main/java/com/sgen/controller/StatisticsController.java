@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.sgen.service.UserService;
+import com.sgen.service.garmin.GarminActivityViewService;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -40,11 +42,28 @@ public class StatisticsController {
     private final AIUsageService aiUsageService;
     private final ObjectMapper objectMapper;
     private final PerformanceService performanceService;
+    private final GarminActivityViewService garminActivityViewService;
+    private final com.sgen.service.garmin.IntervalsBackfillService backfillService;
+    private final UserService userService;
     private final CalendarEventService calendarEventService;
     private final UserVersionService userVersionService;
     private final AchievementNotificationService achievementNotificationService;
-    private final UserService userService;
     private final PaceCurveService paceCurveService;
+
+    /**
+     * One-time Intervals history backfill -> user_daily_load (local CTL/ATL).
+     * Async: returns 202 immediately, poll /backfill-loads/status for progress.
+     */
+    @PostMapping("/backfill-loads")
+    public ResponseEntity<?> backfillLoads(Authentication authentication) {
+        backfillService.startAsync(authentication.getName());
+        return ResponseEntity.accepted().body(Map.of("state", "RUNNING"));
+    }
+
+    @GetMapping("/backfill-loads/status")
+    public ResponseEntity<?> backfillStatus(Authentication authentication) {
+        return ResponseEntity.ok(backfillService.getStatus(authentication.getName()));
+    }
 
     @GetMapping("/fetch")
     public ResponseEntity<Map<String, Object>> fetchStatistics(
@@ -81,6 +100,11 @@ public class StatisticsController {
     public ResponseEntity<Map<String, Object>> getActivityDetails(
             Authentication authentication,
             @PathVariable String activityId) {
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            Long uid = userService.getUserEntityByUsername(authentication.getName()).getId();
+            Long gid = Long.parseLong(activityId.substring(7));
+            return ResponseEntity.ok(garminActivityViewService.getDetails(uid, gid));
+        }
         return ResponseEntity.ok(intervalsService.getActivityDetails(authentication.getName(), activityId));
     }
 
