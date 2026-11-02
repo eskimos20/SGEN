@@ -244,6 +244,33 @@ public class GarminOAuthService {
         return userId;
     }
 
+    /**
+     * Retry permissions fetch for connections that never got a reply.
+     * Garmin's partner registration is eventually consistent — a fresh
+     * connect can 403 on /permissions for a short window
+     * (partner_registration_not_found) even though user/id works.
+     */
+    public void refetchMissingPermissions() {
+        for (GarminConnection conn : connectionRepository.findAll()) {
+            if (conn.getScopes() != null && !conn.getScopes().isBlank()) continue;
+            if (conn.getGarminUserId() == null) continue;
+            if (!"ACTIVE".equals(conn.getStatus())) continue;
+            try {
+                String token = getValidAccessToken(conn.getUserId());
+                if (token == null) continue;
+                String permJson = WebClient.builder().baseUrl(apiBaseUrl).build().get()
+                        .uri("/partner-gateway/rest/user/permissions")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .retrieve().bodyToMono(String.class).block();
+                conn.setScopes(permJson);
+                connectionRepository.save(conn);
+                log.info("Fetched pending Garmin permissions for user {}", conn.getUserId());
+            } catch (Exception e) {
+                log.debug("Permissions retry for user {} still failing: {}", conn.getUserId(), e.getMessage());
+            }
+        }
+    }
+
     /** Periodic refresh of tokens expiring within 12h. */
     public void refreshExpiringTokens() {
         LocalDateTime threshold = LocalDateTime.now().plusHours(12);

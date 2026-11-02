@@ -64,6 +64,7 @@ public class GarminPushProcessor {
             }
         }
         oauthService.refreshExpiringTokens();
+        oauthService.refetchMissingPermissions();
     }
 
     private void processSafe(Long id) {
