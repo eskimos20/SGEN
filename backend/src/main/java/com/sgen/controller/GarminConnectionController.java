@@ -100,6 +100,12 @@ public class GarminConnectionController {
         String host = request.getHeader("X-Forwarded-Host") != null
                 ? request.getHeader("X-Forwarded-Host") : request.getServerName();
         int port = request.getServerPort();
+        // Behind a TLS-terminating proxy (stunnel) without X-Forwarded-Proto the
+        // scheme arrives as http — prefer https for any non-localhost host.
+        if ("http".equals(scheme) && host != null
+                && !host.equals("localhost") && !host.startsWith("127.")) {
+            scheme = "https";
+        }
         String portStr = ("https".equals(scheme) && port == 443) || ("http".equals(scheme) && port == 80)
                 ? "" : ":" + port;
         return scheme + "://" + host + portStr;
