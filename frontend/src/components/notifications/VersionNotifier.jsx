@@ -6,6 +6,37 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Garmin Connect Integration',
+    date: '2026-11-02',
+    features: [
+      {
+        icon: '⌚',
+        title: 'Connect Your Garmin Account',
+        description: 'Link Garmin Connect under Connections to sync activities, wellness, and fitness data directly. OAuth login with secure token storage.'
+      },
+      {
+        icon: '📥',
+        title: 'Historical Import via Intervals.icu',
+        description: 'Import your full activity history in one click — activities, streams, intervals, events, wellness, and athlete profile are stored in a local mirror for instant access.'
+      },
+      {
+        icon: '⚡',
+        title: 'Local Data Mirror',
+        description: 'Statistics, calendar, activity details, route maps, power and pace curves, and wellness now load from the local database instead of external APIs — faster loads and no rate limits.'
+      },
+      {
+        icon: '🔔',
+        title: 'Ready for Real-Time Push',
+        description: 'Push endpoints are in place so new Garmin activities arrive automatically once your app is approved by Garmin.'
+      },
+      {
+        icon: '🗑️',
+        title: 'Full Disconnect Cleanup',
+        description: 'Disconnecting Garmin removes all imported and mirrored data — activities, streams, wellness, fitness history, and mirror tables.'
+      }
+    ]
+  },
+  {
     title: 'Training Totals and Fitness & Form',
     date: '2026-10-27',
     features: [
