@@ -97,30 +97,32 @@ public class GarminConnectionController {
     private String deriveBaseUrl(jakarta.servlet.http.HttpServletRequest request) {
         String scheme = request.getHeader("X-Forwarded-Proto") != null
                 ? request.getHeader("X-Forwarded-Proto") : request.getScheme();
-        String host = request.getHeader("X-Forwarded-Host") != null
-                ? request.getHeader("X-Forwarded-Host") : request.getServerName();
-        int port = request.getServerPort();
+        String hostHeader = request.getHeader("X-Forwarded-Host") != null
+                ? request.getHeader("X-Forwarded-Host") : request.getHeader("Host");
+        String host = hostHeader != null && hostHeader.contains(":")
+                ? hostHeader.substring(0, hostHeader.indexOf(':'))
+                : (hostHeader != null ? hostHeader : request.getServerName());
+        // Port is only emitted when explicitly present in the Host header —
+        // behind stunnel the connector port (8081) must never leak into URLs,
+        // and a host without port means the default for the scheme.
+        String explicitPort = hostHeader != null && hostHeader.contains(":")
+                ? hostHeader.substring(hostHeader.indexOf(':') + 1) : null;
         // Behind a TLS-terminating proxy (stunnel) without X-Forwarded-Proto the
         // scheme arrives as http — prefer https for any non-localhost host.
         if ("http".equals(scheme) && host != null
                 && !host.equals("localhost") && !host.startsWith("127.")) {
             scheme = "https";
         }
-        String portStr = ("https".equals(scheme) && port == 443) || ("http".equals(scheme) && port == 80)
-                ? "" : ":" + port;
+        String portStr = explicitPort != null
+                && !(("https".equals(scheme) && "443".equals(explicitPort))
+                     || ("http".equals(scheme) && "80".equals(explicitPort)))
+                ? ":" + explicitPort : "";
         return scheme + "://" + host + portStr;
     }
 
     /** Fallback redirect derived from the request (DB setting / env take precedence). */
     private String derivedRedirectUri(jakarta.servlet.http.HttpServletRequest request) {
-        String scheme = request.getHeader("X-Forwarded-Proto") != null
-                ? request.getHeader("X-Forwarded-Proto") : request.getScheme();
-        String host = request.getHeader("X-Forwarded-Host") != null
-                ? request.getHeader("X-Forwarded-Host") : request.getServerName();
-        int port = request.getServerPort();
-        String portStr = ("https".equals(scheme) && port == 443) || ("http".equals(scheme) && port == 80)
-                ? "" : ":" + port;
-        return scheme + "://" + host + portStr + "/api/garmin/callback";
+        return deriveBaseUrl(request) + "/api/garmin/callback";
     }
 
     /** OAuth2 redirect target — permitAll, redirects to callback html page. */
