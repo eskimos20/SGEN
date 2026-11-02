@@ -34,8 +34,13 @@ const ActivitiesList = ({
             >
               <div className="flex items-center gap-4">
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-gray-900 flex items-center gap-2">
                     {activity.name || (restricted ? 'Strava Activity (restricted)' : 'Unknown Activity')}
+                    {activity.garmin_activity_id ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">Garmin</span>
+                    ) : activity.source === 'GARMIN' ? (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">via Intervals</span>
+                    ) : null}
                   </div>
                   <div className="text-sm text-gray-500">
                     {activity.start_date_local || activity.start_date 
