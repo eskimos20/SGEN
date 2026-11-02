@@ -31,4 +31,9 @@ public class GarminWellness {
 
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt = LocalDateTime.now();
+
+    @PrePersist
+    public void prePersist() {
+        if (receivedAt == null) receivedAt = LocalDateTime.now();
+    }
 }

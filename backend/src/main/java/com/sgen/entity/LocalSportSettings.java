@@ -45,4 +45,9 @@ public class LocalSportSettings {
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    @PrePersist
+    public void prePersist() {
+        updatedAt = LocalDateTime.now();
+    }
 }

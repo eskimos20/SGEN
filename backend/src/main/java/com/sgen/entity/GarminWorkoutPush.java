@@ -49,4 +49,11 @@ public class GarminWorkoutPush {
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    @PrePersist
+    public void prePersist() {
+        if (status == null) status = "PENDING";
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -34,4 +34,11 @@ public class UserDailyLoad {
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    @PrePersist
+    public void prePersist() {
+        if (trainingLoad == null) trainingLoad = 0.0;
+        if (activityCount == null) activityCount = 0;
+        updatedAt = LocalDateTime.now();
+    }
 }

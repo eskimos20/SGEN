@@ -123,4 +123,12 @@ public class GarminActivity {
         }
         return false;
     }
+
+    @PrePersist
+    public void prePersist() {
+        if (manual == null) manual = false;
+        if (source == null) source = "GARMIN";
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 }

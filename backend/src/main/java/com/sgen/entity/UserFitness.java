@@ -40,4 +40,13 @@ public class UserFitness {
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    @PrePersist
+    public void prePersist() {
+        if (dailyLoad == null) dailyLoad = 0.0;
+        if (ctl == null) ctl = 0.0;
+        if (atl == null) atl = 0.0;
+        if (tsb == null) tsb = 0.0;
+        updatedAt = LocalDateTime.now();
+    }
 }

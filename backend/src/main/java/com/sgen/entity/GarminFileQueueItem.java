@@ -49,4 +49,11 @@ public class GarminFileQueueItem {
 
     @Column(name = "fetched_at")
     private LocalDateTime fetchedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (status == null) status = "PENDING";
+        if (attempts == null) attempts = 0;
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
 }

@@ -36,4 +36,11 @@ public class GarminPushItem {
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (status == null) status = "PENDING";
+        if (attempts == null) attempts = 0;
+        if (receivedAt == null) receivedAt = LocalDateTime.now();
+    }
 }
