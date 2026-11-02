@@ -31,6 +31,7 @@ public class IntervalsMirrorService {
     private final IntervalsActivityStreamsRepository streamsRepository;
     private final IntervalsEventRepository eventRepository;
     private final IntervalsWellnessRepository wellnessRepository;
+    private final com.sgen.repository.IntervalsAthleteMirrorRepository athleteMirrorRepository;
     private final ObjectMapper objectMapper;
 
     public boolean hasActivities(Long userId) {
@@ -122,6 +123,33 @@ public class IntervalsMirrorService {
             }
         }
         return out;
+    }
+
+    /** Athlete profile row, or null. kind: "athlete" | "sport-settings". */
+    public String findAthleteJson(Long userId, String kind) {
+        return athleteMirrorRepository.findByUserId(userId)
+                .map(m -> "sport-settings".equals(kind) ? m.getSportSettingsJson() : m.getAthleteJson())
+                .filter(s -> s != null && !s.isBlank()).orElse(null);
+    }
+
+    /** True when the stored athlete row is fresher than the given age (hours). */
+    public boolean athleteMirrorFresh(Long userId, long maxAgeHours) {
+        return athleteMirrorRepository.findByUserId(userId)
+                .map(m -> m.getUpdatedAt() != null
+                        && m.getUpdatedAt().isAfter(java.time.LocalDateTime.now().minusHours(maxAgeHours)))
+                .orElse(false);
+    }
+
+    public synchronized void saveAthleteProfile(Long userId, String athleteJson, String sportSettingsJson) {
+        try {
+            var row = athleteMirrorRepository.findByUserId(userId)
+                    .orElseGet(() -> com.sgen.entity.IntervalsAthleteMirror.builder().userId(userId).build());
+            if (athleteJson != null) row.setAthleteJson(athleteJson);
+            if (sportSettingsJson != null) row.setSportSettingsJson(sportSettingsJson);
+            athleteMirrorRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror persist athlete failed: {}", e.getMessage());
+        }
     }
 
     /** Persist a wellness-bulk update into the mirror payload (field-level merge). */

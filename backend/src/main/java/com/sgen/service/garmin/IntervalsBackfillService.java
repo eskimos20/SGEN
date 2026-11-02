@@ -163,6 +163,18 @@ public class IntervalsBackfillService {
             String athleteId = ctx.user.getIntervalsAthleteId();
             WebClient client = ctx.client;
 
+            try {
+                rateLimiter.acquire();
+                String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
+                        .retrieve().bodyToMono(String.class).block();
+                rateLimiter.acquire();
+                String settingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
+                        .retrieve().bodyToMono(String.class).block();
+                mirrorService.saveAthleteProfile(ctx.user.getId(), athleteJson, settingsJson);
+            } catch (Exception e) {
+                log.debug("Backfill athlete profile failed: {}", e.getMessage());
+            }
+
             LocalDate newest = LocalDate.now();
             int years = 0;
             for (; years < MAX_YEARS_BACK && !cancelled(username, gen); years++) {
