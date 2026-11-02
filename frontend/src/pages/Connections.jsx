@@ -16,8 +16,10 @@ const PROVIDERS = [
         a.icu_garmin_download_wellness || a.icu_garmin_upload_workouts),
     options: [
       { field: 'icu_garmin_sync_activities', label: 'Download activities' },
-      { field: 'icu_garmin_health', label: 'Download health data' },
-      { field: 'icu_garmin_training', label: 'Download training' },
+      // icu_garmin_health / icu_garmin_training are capability flags derived
+      // from the Garmin OAuth scopes — NOT user toggles. They always read
+      // true on the athlete record and PUTs are re-derived, so they are not
+      // shown as editable options (intervals.icu doesn't show them either).
       { field: 'icu_garmin_download_wellness', label: 'Download wellness' },
       { field: 'icu_garmin_upload_workouts', label: 'Upload planned workouts' },
     ],
