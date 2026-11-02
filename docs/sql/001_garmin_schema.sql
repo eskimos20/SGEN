@@ -241,8 +241,7 @@ CREATE TABLE IF NOT EXISTS local_sport_settings (
     CONSTRAINT fk_local_sport_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Garmin OAuth credentials managed via admin panel (app_settings finns redan — behöver ALTER)
-
 -- Garmin OAuth credentials managed via admin panel (alternative to env vars)
-ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS garmin_client_id VARCHAR(128) NULL;
-ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS garmin_client_secret VARCHAR(256) NULL;
+-- NOTE: plain ADD COLUMN — MySQL stödjer ej "IF NOT EXISTS" på ALTER
+ALTER TABLE app_settings ADD COLUMN garmin_client_id VARCHAR(128) NULL;
+ALTER TABLE app_settings ADD COLUMN garmin_client_secret VARCHAR(256) NULL;
