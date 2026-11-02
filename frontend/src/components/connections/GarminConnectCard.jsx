@@ -137,7 +137,7 @@ export default function GarminConnectCard() {
             ) : (backfill?.state === 'DONE' || (backfill?.importedActivities || 0) > 0) ? (
               <p className="text-sm text-green-700 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
-                Synced — {Math.max(backfill?.totalActivities || 0, backfill?.importedActivities || 0)} activities imported
+                Synced — {Math.max(backfill?.totalActivities || 0, backfill?.importedActivities || 0)} imported · {backfill?.garminActivities || 0} via Garmin push
               </p>
             ) : (
               <button
