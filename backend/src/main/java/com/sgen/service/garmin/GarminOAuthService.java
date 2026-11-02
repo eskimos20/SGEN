@@ -163,6 +163,9 @@ public class GarminOAuthService {
                 String permJson = client.get().uri("/partner-gateway/rest/user/permissions")
                         .retrieve().bodyToMono(String.class).block();
                 conn.setScopes(permJson);
+            } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+                log.warn("Could not fetch Garmin permissions: {} - body: {}",
+                        e.getStatusCode(), e.getResponseBodyAsString());
             } catch (Exception e) {
                 log.warn("Could not fetch Garmin permissions: {}", e.getMessage());
             }
