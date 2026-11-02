@@ -77,12 +77,13 @@ public class FitnessModelService {
         List<GarminActivity> localGarmin = garminActivityRepository
                 .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
                         userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0), java.time.LocalDateTime.now().plusDays(1));
+        int skippedDup = 0;
         Map<LocalDate, double[]> byDay = new HashMap<>();
         for (JsonNode a : activities) {
             double load = a.path("icu_training_load").asDouble(0);
             String ds = a.path("start_date_local").asText("");
             if (load <= 0 || ds.length() < 10) continue;
-            if (!localGarmin.isEmpty() && garminMergeService.isDuplicateOfLocal(localGarmin, a)) continue;
+            if (!localGarmin.isEmpty() && garminMergeService.isDuplicateOfLocal(localGarmin, a)) { skippedDup++; continue; }
             LocalDate d;
             try { d = LocalDate.parse(ds.substring(0, 10)); } catch (Exception e) { continue; }
             double[] acc = byDay.computeIfAbsent(d, k -> new double[2]);

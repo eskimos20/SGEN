@@ -34,6 +34,7 @@ public class GarminActivityViewService {
         GarminActivity act = activityRepository.findById(id)
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new IllegalArgumentException("Activity not found"));
+        log.info("Serving activity {} for user {} from local Garmin DB (no Intervals call)", id, userId);
         Map<String, Object> details = new HashMap<>();
         details.put("activity", mergeService.toIntervalsActivityJson(act));
 

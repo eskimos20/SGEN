@@ -51,12 +51,15 @@ public class GarminMergeService {
         if (local.isEmpty()) return;
 
         // Remove Intervals copies of activities we hold locally
+        int removed = 0;
         for (int i = arr.size() - 1; i >= 0; i--) {
-            if (isDuplicateOfLocal(local, arr.get(i))) arr.remove(i);
+            if (isDuplicateOfLocal(local, arr.get(i))) { arr.remove(i); removed++; }
         }
         for (GarminActivity a : local) {
             arr.add(toIntervalsActivityJson(a));
         }
+        log.info("Garmin merge for user {}: {} local activities served from DB, {} Intervals duplicates suppressed",
+                userId, local.size(), removed);
     }
 
     /** True if an Intervals-feed activity matches any stored Garmin activity (start +-120s, duration +-10%). */
@@ -173,12 +176,18 @@ public class GarminMergeService {
             });
             wellnessViewMapper.toIntervalsFields(row).forEach(target::put);
         }
+        int fitnessDays = 0;
         for (UserFitness f : fitness) {
             Map<String, Object> target = byDate.get(f.getFitnessDate().toString());
             if (target == null) continue;
             target.put("ctl", round1(f.getCtl()));
             target.put("atl", round1(f.getAtl()));
             target.put("rampRate", f.getRampRate() != null ? f.getRampRate() : 0);
+            fitnessDays++;
+        }
+        if (!rows.isEmpty() || fitnessDays > 0) {
+            log.info("Wellness merge for user {}: {} Garmin wellness rows merged, {} days served with local CTL/ATL",
+                    userId, rows.size(), fitnessDays);
         }
         return new ArrayList<>(byDate.values());
     }
