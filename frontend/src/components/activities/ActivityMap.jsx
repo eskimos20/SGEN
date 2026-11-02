@@ -8,8 +8,9 @@ const ActivityMap = ({ mapData, className = "h-64" }) => {
   const resizeTimeoutRef = useRef(null);
 
   useEffect(() => {
+    console.log('[ActivityMap] mapData received:', mapData ? `latlngs=${mapData.latlngs?.length} first=${JSON.stringify(mapData.latlngs?.[0])}` : 'none');
     if (!mapData?.latlngs || !Array.isArray(mapData.latlngs) || mapData.latlngs.length === 0) return;
-    if (!mapRef.current) return;
+    if (!mapRef.current) { console.log('[ActivityMap] no mapRef'); return; }
 
     // Filter out null/invalid points
     const validPoints = mapData.latlngs.filter(point => 
