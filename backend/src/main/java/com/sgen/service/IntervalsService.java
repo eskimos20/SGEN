@@ -54,6 +54,22 @@ public class IntervalsService {
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
 
+    /** Response built entirely from local Garmin tables — used when the user has no Intervals credentials. */
+    private Map<String, Object> buildLocalOnly(String username, com.sgen.entity.User user)  {
+        Long uid = user.getId();
+        Map<String, Object> allData = new java.util.HashMap<>();
+        com.fasterxml.jackson.databind.node.ArrayNode activities = objectMapper.createArrayNode();
+        garminMergeService.mergeActivities(uid, activities);
+        allData.put("activities", activities);
+        allData.put("athlete", objectMapper.createObjectNode());
+        allData.put("sportSettings", objectMapper.createObjectNode());
+        allData.put("events", objectMapper.createArrayNode());
+        allData.put("wellness", garminMergeService.mergeWellness(uid, java.util.List.of()));
+        allData.put("hasIntervalsConfig", false);
+        log.info("User {} served purely local (no Intervals config)", uid);
+        return allData;
+    }
+
     @PreDestroy
     public void shutdown() {
         executorService.shutdown();
@@ -68,7 +84,17 @@ public class IntervalsService {
     // -------------------------------------------------------------------------
 
     public Map<String, Object> fetchAllData(String username, String oldest, String newest) {
-        ApiContext ctx = getValidatedContext(username);
+        ApiContext ctx;
+        try {
+            ctx = getValidatedContext(username);
+        } catch (RuntimeException e) {
+            com.sgen.entity.User u = userService.getUserEntityByUsername(username);
+            if (u != null && garminClientFactory.isConnected(u.getId())) {
+                // No Intervals creds but Garmin connected — serve purely local
+                return buildLocalOnly(username, u);
+            }
+            throw e;
+        }
         String athleteId = ctx.user.getIntervalsAthleteId();
         WebClient client = ctx.client;
         Map<String, Object> allData = new ConcurrentHashMap<>();
@@ -83,9 +109,6 @@ public class IntervalsService {
 
         // Activities (with per-activity intervals fetched concurrently)
         CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
-            if (garminConnected) {
-                return objectMapper.createArrayNode(); // local-only pipeline
-            }
             try {
                 rateLimiter.acquire();
                 String activitiesJson = client.get()

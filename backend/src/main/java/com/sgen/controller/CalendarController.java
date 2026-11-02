@@ -188,10 +188,10 @@ public class CalendarController {
             @RequestParam String newest) {
         if (oldest.compareTo(newest) > 0) { String tmp = oldest; oldest = newest; newest = tmp; }
         var user = userService.getUserEntityByUsername(authentication.getName());
-        // Garmin-connected: serve local wellness only — no Intervals call
-        var base = garminClientFactory.isConnected(user.getId())
-                ? java.util.List.<Map<String, Object>>of()
-                : wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
+        java.util.List<Map<String, Object>> base = java.util.List.of();
+        if (user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()) {
+            base = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
+        }
         return ResponseEntity.ok(garminMergeService.mergeWellness(user.getId(), base));
     }
 
