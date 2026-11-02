@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS garmin_connections (
     scopes              VARCHAR(512) NULL,
     status              VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',   -- ACTIVE | NEEDS_REAUTH | REVOKED
     consent_ai_processing TINYINT(1) NOT NULL DEFAULT 0,          -- krävs av Garmins avtal för AI-analys
+    consent_at          DATETIME     NULL,                        -- policy-godkännande (anonymiserad datalagring)
     created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uq_garmin_conn_user UNIQUE (user_id),
@@ -240,8 +241,7 @@ CREATE TABLE IF NOT EXISTS local_sport_settings (
     CONSTRAINT fk_local_sport_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Consent timestamp for the anonymized-data policy gate
-ALTER TABLE garmin_connections ADD COLUMN IF NOT EXISTS consent_at DATETIME NULL;
+-- Garmin OAuth credentials managed via admin panel (app_settings finns redan — behöver ALTER)
 
 -- Garmin OAuth credentials managed via admin panel (alternative to env vars)
 ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS garmin_client_id VARCHAR(128) NULL;
