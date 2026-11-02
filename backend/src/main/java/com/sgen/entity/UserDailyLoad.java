@@ -23,12 +23,15 @@ public class UserDailyLoad {
     @Column(name = "source", nullable = false, length = 16)
     private String source;
 
+    @Builder.Default
     @Column(name = "training_load", nullable = false)
     private Double trainingLoad = 0.0;
 
+    @Builder.Default
     @Column(name = "activity_count", nullable = false)
     private Integer activityCount = 0;
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 

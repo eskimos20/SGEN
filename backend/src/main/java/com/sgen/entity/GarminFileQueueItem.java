@@ -28,9 +28,11 @@ public class GarminFileQueueItem {
     @Column(name = "file_type", length = 16)
     private String fileType;
 
+    @Builder.Default
     @Column(name = "status", nullable = false, length = 16)
     private String status = "PENDING";
 
+    @Builder.Default
     @Column(name = "attempts", nullable = false)
     private Integer attempts = 0;
 
@@ -44,6 +46,7 @@ public class GarminFileQueueItem {
     @Column(name = "fit_bytes", columnDefinition = "MEDIUMBLOB")
     private byte[] fitBytes;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

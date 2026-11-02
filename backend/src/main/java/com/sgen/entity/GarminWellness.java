@@ -29,6 +29,7 @@ public class GarminWellness {
     @Column(name = "payload_json", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String payloadJson;
 
+    @Builder.Default
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt = LocalDateTime.now();
 

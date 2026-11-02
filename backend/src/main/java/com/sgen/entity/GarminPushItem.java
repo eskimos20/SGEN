@@ -22,15 +22,18 @@ public class GarminPushItem {
     @Column(name = "payload_json", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String payloadJson;
 
+    @Builder.Default
     @Column(name = "status", nullable = false, length = 16)
     private String status = "PENDING";
 
+    @Builder.Default
     @Column(name = "attempts", nullable = false)
     private Integer attempts = 0;
 
     @Column(name = "last_error", length = 1024)
     private String lastError;
 
+    @Builder.Default
     @Column(name = "received_at", nullable = false)
     private LocalDateTime receivedAt = LocalDateTime.now();
 

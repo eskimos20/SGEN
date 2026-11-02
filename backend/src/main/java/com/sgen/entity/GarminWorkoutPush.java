@@ -35,15 +35,18 @@ public class GarminWorkoutPush {
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
+    @Builder.Default
     @Column(name = "status", nullable = false, length = 16)
     private String status = "PENDING";
 
     @Column(name = "last_error", length = 1024)
     private String lastError;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 

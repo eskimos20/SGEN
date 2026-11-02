@@ -40,6 +40,7 @@ public class LocalSportSettings {
     @Column(name = "zones_json", columnDefinition = "MEDIUMTEXT")
     private String zonesJson;
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 

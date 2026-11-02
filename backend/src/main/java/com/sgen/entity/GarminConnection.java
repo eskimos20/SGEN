@@ -34,18 +34,22 @@ public class GarminConnection {
     @Column(name = "scopes", length = 512)
     private String scopes;
 
+    @Builder.Default
     @Column(name = "status", nullable = false, length = 16)
     private String status = "ACTIVE";
 
+    @Builder.Default
     @Column(name = "consent_ai_processing", nullable = false)
     private Boolean consentAiProcessing = false;
 
     @Column(name = "consent_at")
     private LocalDateTime consentAt;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 

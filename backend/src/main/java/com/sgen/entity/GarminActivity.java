@@ -82,21 +82,25 @@ public class GarminActivity {
     @Column(name = "training_load")
     private Double trainingLoad;
 
+    @Builder.Default
     @Column(name = "manual", nullable = false)
     private Boolean manual = false;
 
     @Column(name = "device_name", length = 128)
     private String deviceName;
 
+    @Builder.Default
     @Column(name = "source", nullable = false, length = 16)
     private String source = "GARMIN";
 
     @Column(name = "raw_json", columnDefinition = "MEDIUMTEXT")
     private String rawJson;
 
+    @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
