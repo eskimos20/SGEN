@@ -93,6 +93,20 @@ public class IntervalsAthleteService {
             "huawei_sync_activities", "huawei_download_wellness", "huawei_upload_workouts"
     );
 
+    /** Fields that live under PUT /api/v1/athlete/{id}/settings, not the athlete record. */
+    private static final Set<String> SETTINGS_FIELDS = Set.of(
+            "icu_garmin_sync_activities", "icu_garmin_download_wellness", "icu_garmin_health",
+            "icu_garmin_training", "icu_garmin_upload_workouts",
+            "zwift_sync_activities", "zwift_upload_workouts",
+            "polar_sync_activities", "polar_download_wellness",
+            "suunto_sync_activities", "suunto_download_wellness", "suunto_upload_workouts",
+            "coros_sync_activities", "coros_download_wellness", "coros_upload_workouts",
+            "wahoo_sync_activities", "wahoo_upload_workouts",
+            "concept2_sync_activities",
+            "zepp_sync_activities", "zepp_download_wellness", "zepp_upload_workouts",
+            "huawei_sync_activities", "huawei_download_wellness", "huawei_upload_workouts"
+    );
+
     public JsonNode updateAthleteProfile(String username, Map<String, Object> updates) {
         Map<String, Object> filtered = new HashMap<>();
         for (Map.Entry<String, Object> entry : updates.entrySet()) {
@@ -112,14 +126,26 @@ public class IntervalsAthleteService {
 
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            log.info("Updating athlete profile for \"{}\", fields: {}", username, filtered.keySet());
-            String responseJson = ctx.client.put()
-                    .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
-                    .bodyValue(filtered)
-                    .retrieve().bodyToMono(String.class).block();
-            log.info("Intervals athlete PUT sent {} -> response echo: {}", filtered,
-                    responseJson != null && responseJson.length() > 500 ? responseJson.substring(0, 500) + "..." : responseJson);
-            JsonNode result = objectMapper.readTree(responseJson);
+            // Connection sync toggles live under /athlete/{id}/settings — PUTs
+            // to /athlete/{id} are silently ignored by Intervals.icu, which is
+            // why toggles reverted. Route each field to its own endpoint.
+            Map<String, Object> settingsUpdates = new HashMap<>();
+            Map<String, Object> athleteUpdates = new HashMap<>();
+            filtered.forEach((k, v) ->
+                    (SETTINGS_FIELDS.contains(k) ? settingsUpdates : athleteUpdates).put(k, v));
+
+            JsonNode result = objectMapper.createObjectNode();
+            if (!settingsUpdates.isEmpty()) {
+                result = updateAthleteSettings(username, settingsUpdates);
+            }
+            if (!athleteUpdates.isEmpty()) {
+                log.info("Updating athlete profile for \"{}\", fields: {}", username, athleteUpdates.keySet());
+                String responseJson = ctx.client.put()
+                        .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
+                        .bodyValue(athleteUpdates)
+                        .retrieve().bodyToMono(String.class).block();
+                result = objectMapper.readTree(responseJson);
+            }
             if (filtered.containsKey("weight") || filtered.containsKey("height")) {
                 zwiftService.syncProfile(username, null);
             }
