@@ -37,7 +37,12 @@ public class GarminMergeService {
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    /** Appends Garmin activities (deduped) to the Intervals activities array. */
+    /**
+     * Local Garmin data wins: Intervals activities that match a stored
+     * Garmin activity are removed, then all local activities are appended.
+     * Intervals is fallback for Garmin data not yet in the DB; other
+     * brands (Suunto/Polar/etc.) always come from Intervals untouched.
+     */
     public void mergeActivities(Long userId, JsonNode activitiesNode) {
         if (!(activitiesNode instanceof ArrayNode arr)) return;
         List<GarminActivity> local = activityRepository
@@ -45,10 +50,35 @@ public class GarminMergeService {
                         userId, LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now().plusDays(1));
         if (local.isEmpty()) return;
 
+        // Remove Intervals copies of activities we hold locally
+        for (int i = arr.size() - 1; i >= 0; i--) {
+            if (isDuplicateOfLocal(local, arr.get(i))) arr.remove(i);
+        }
         for (GarminActivity a : local) {
-            if (isDuplicate(arr, a)) continue;
             arr.add(toIntervalsActivityJson(a));
         }
+    }
+
+    /** True if an Intervals-feed activity matches any stored Garmin activity (start +-120s, duration +-10%). */
+    public boolean isDuplicateOfLocal(List<GarminActivity> local, JsonNode intervalsActivity) {
+        String ds = intervalsActivity.path("start_date_local").asText("");
+        if (ds.length() < 19) return false;
+        long t;
+        try {
+            t = LocalDateTime.parse(ds.substring(0, 19)).toEpochSecond(ZoneOffset.UTC);
+        } catch (Exception e) { return false; }
+        double dur1 = intervalsActivity.path("moving_time").asDouble(
+                intervalsActivity.path("elapsed_time").asDouble(0));
+        for (GarminActivity a : local) {
+            if (a.getStartTime() == null) continue;
+            long localT = a.getStartTime() + (a.getStartTimeOffset() != null ? a.getStartTimeOffset() : 0);
+            if (Math.abs(t - localT) > 120) continue;
+            double dur2 = a.getDurationS() != null ? a.getDurationS() : 0;
+            if (dur1 <= 0 || dur2 <= 0 || Math.abs(dur1 - dur2) / Math.max(dur1, dur2) <= 0.10) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isDuplicate(ArrayNode arr, GarminActivity a) {
@@ -141,7 +171,7 @@ public class GarminMergeService {
                 fresh.put("id", d);
                 return fresh;
             });
-            wellnessViewMapper.toIntervalsFields(row).forEach((k, v) -> target.putIfAbsent(k, v));
+            wellnessViewMapper.toIntervalsFields(row).forEach(target::put);
         }
         for (UserFitness f : fitness) {
             Map<String, Object> target = byDate.get(f.getFitnessDate().toString());
