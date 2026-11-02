@@ -24,6 +24,12 @@
 - With an active Garmin connection, `IntervalsService.fetchAllData` serves
   activities/events **only** from the local mirror tables
   (`intervals_activity`, `intervals_event`) — `SOURCE=DB` in logs.
+  If the mirror is empty (`countByUserId == 0`) it falls back to the
+  Intervals API and persists what it fetches via `IntervalsMirrorService`.
+- `IntervalsBackfillService` runs on a dedicated single-thread executor —
+  `@Async` does NOT work here (self-invocation + no @EnableAsync). The
+  HTTP endpoint must return immediately; never run the import inline.
+  `clearStatus` cancels a running job via the generation counter.
 - The mirror is populated by `IntervalsBackfillService` (import via
   `/api/statistics/backfill-loads`), which also writes `user_daily_load`
   rows with `source='INTERVALS'` and recomputes `user_fitness` (CTL/ATL).

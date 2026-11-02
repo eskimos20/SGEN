@@ -4,25 +4,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.service.IntervalsClientFactory;
 import com.sgen.service.IntervalsClientFactory.ApiContext;
-import com.sgen.entity.IntervalsActivity;
-import com.sgen.entity.IntervalsActivityStreams;
-import com.sgen.entity.IntervalsEvent;
 import com.sgen.repository.GarminActivityRepository;
-import com.sgen.repository.IntervalsActivityRepository;
-import com.sgen.repository.IntervalsActivityStreamsRepository;
-import com.sgen.repository.IntervalsEventRepository;
 import com.sgen.repository.UserDailyLoadRepository;
 import com.sgen.service.UserService;
 import com.sgen.util.IntervalsApiRateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -45,15 +40,17 @@ public class IntervalsBackfillService {
     private final ObjectMapper objectMapper;
     private final UserDailyLoadRepository dailyLoadRepository;
     private final GarminActivityRepository garminActivityRepository;
-    private final IntervalsActivityRepository activityRepository;
-    private final IntervalsActivityStreamsRepository streamsRepository;
-    private final IntervalsEventRepository eventRepository;
+    private final IntervalsMirrorService mirrorService;
 
     private static final int MAX_YEARS_BACK = 15;
     private static final long CHUNK_PAUSE_MS = 1_500;
 
     /** username -> progress state */
     private final Map<String, BackfillStatus> status = new ConcurrentHashMap<>();
+    /** username -> job generation; bumped on every start/clear so a stale job stops itself */
+    private final Map<String, Long> runGeneration = new ConcurrentHashMap<>();
+    /** Single worker: imports run sequentially behind the shared rate limiter. */
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public record BackfillStatus(String state, int yearsDone, int totalActivities, String error) {}
 
@@ -76,30 +73,22 @@ public class IntervalsBackfillService {
         return out;
     }
 
-    /** Forget the in-memory progress for a user (called on Garmin disconnect). */
+    /** Forget the in-memory progress + cancel a running job (called on Garmin disconnect). */
     public void clearStatus(String username) {
         status.remove(username);
+        runGeneration.merge(username, 1L, Long::sum);
+    }
+
+    private boolean cancelled(String username, long gen) {
+        return !Long.valueOf(gen).equals(runGeneration.get(username));
+    }
+
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        executor.shutdown();
     }
 
     private long safeSum(Long v) { return v != null ? v : 0; }
-
-    /** Persist the verbatim Intervals activity JSON so lists/details can replay it locally. */
-    private void persistActivity(Long userId, JsonNode a) {
-        try {
-            String id = a.path("id").asText("");
-            if (id.isBlank()) return;
-            var row = activityRepository.findByUserIdAndActivityId(userId, id)
-                    .orElseGet(() -> IntervalsActivity.builder().userId(userId).activityId(id).build());
-            String ds = a.path("start_date_local").asText("");
-            if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
-            if (a.hasNonNull("moving_time")) row.setMovingTimeS(a.get("moving_time").asInt());
-            row.setTrainingLoad(a.path("icu_training_load").asDouble(0));
-            row.setPayloadJson(objectMapper.writeValueAsString(a));
-            activityRepository.save(row);
-        } catch (Exception e) {
-            log.debug("Backfill persist activity failed: {}", e.getMessage());
-        }
-    }
 
     /** Fetch + store streams and icu_intervals for one activity (rate-limited). */
     private void fetchAndPersistStreams(ApiContext ctx, Long userId, String activityId) {
@@ -114,11 +103,9 @@ public class IntervalsBackfillService {
                 intervalsJson = ctx.client.get().uri("/api/v1/activity/{id}/intervals", activityId)
                         .retrieve().bodyToMono(String.class).block();
             } catch (Exception e) { log.debug("No intervals for {}: {}", activityId, e.getMessage()); }
-            var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
-                    .orElseGet(() -> IntervalsActivityStreams.builder().userId(userId).activityId(activityId).build());
-            if (streamsJson != null) row.setStreamsJson(streamsJson);
-            if (intervalsJson != null) row.setIntervalsJson(intervalsJson);
-            streamsRepository.save(row);
+            mirrorService.saveStreams(userId, activityId,
+                    streamsJson != null ? objectMapper.readTree(streamsJson) : null,
+                    intervalsJson != null ? objectMapper.readTree(intervalsJson) : null);
         } catch (Exception e) {
             log.debug("Backfill streams for {} failed: {}", activityId, e.getMessage());
         }
@@ -136,21 +123,7 @@ public class IntervalsBackfillService {
                             .build(ctx.user.getIntervalsAthleteId()))
                     .retrieve().bodyToMono(String.class).block();
             if (eventsJson == null) return;
-            JsonNode events = objectMapper.readTree(eventsJson);
-            if (!events.isArray()) return;
-            for (JsonNode ev : events) {
-                try {
-                    String id = ev.path("id").asText("");
-                    if (id.isBlank()) continue;
-                    var row = eventRepository.findByUserIdAndEventId(userId, id)
-                            .orElseGet(() -> IntervalsEvent.builder().userId(userId).eventId(id).build());
-                    String ds = ev.path("start_date_local").asText("");
-                    if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
-                    row.setCategory(ev.path("category").asText(null));
-                    row.setPayloadJson(objectMapper.writeValueAsString(ev));
-                    eventRepository.save(row);
-                } catch (Exception e) { log.debug("Backfill event failed: {}", e.getMessage()); }
-            }
+            mirrorService.saveEvents(userId, objectMapper.readTree(eventsJson));
         } catch (Exception e) {
             log.debug("Backfill events {}-{} failed: {}", oldest, newest, e.getMessage());
         }
@@ -161,11 +134,11 @@ public class IntervalsBackfillService {
         BackfillStatus cur = status.get(username);
         if (cur != null && "RUNNING".equals(cur.state())) return;
         status.put(username, new BackfillStatus("RUNNING", 0, 0, null));
-        runAsync(username);
+        long gen = runGeneration.merge(username, 1L, Long::sum);
+        executor.submit(() -> runAsync(username, gen));
     }
 
-    @Async
-    public void runAsync(String username) {
+    private void runAsync(String username, long gen) {
         AtomicInteger total = new AtomicInteger();
         try {
             ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -174,7 +147,7 @@ public class IntervalsBackfillService {
 
             LocalDate newest = LocalDate.now();
             int years = 0;
-            for (; years < MAX_YEARS_BACK; years++) {
+            for (; years < MAX_YEARS_BACK && !cancelled(username, gen); years++) {
                 LocalDate oldest = newest.minusYears(1).plusDays(1);
                 final LocalDate fNewest = newest;
                 try {
@@ -189,9 +162,11 @@ public class IntervalsBackfillService {
                     if (!acts.isArray() || acts.isEmpty()) break;
                     fitnessModelService.recordIntervalsLoads(ctx.user.getId(), acts, false);
                     for (JsonNode a : acts) {
-                        persistActivity(ctx.user.getId(), a);
+                        if (cancelled(username, gen)) break;
+                        mirrorService.saveActivity(ctx.user.getId(), a);
                         fetchAndPersistStreams(ctx, ctx.user.getId(), a.path("id").asText(""));
                     }
+                    if (cancelled(username, gen)) break;
                     fetchAndPersistEvents(ctx, ctx.user.getId(), oldest, fNewest);
                     total.addAndGet(acts.size());
                     int done = years + 1;
@@ -205,6 +180,10 @@ public class IntervalsBackfillService {
                     log.warn("Backfill chunk {}-{} failed: {}", oldest, fNewest, e.getMessage());
                 }
                 newest = oldest.minusDays(1);
+            }
+            if (cancelled(username, gen)) {
+                log.info("Backfill for {} cancelled after {} activities", username, total.get());
+                return;
             }
             fitnessModelService.recompute(ctx.user.getId());
             status.put(username, new BackfillStatus("DONE", years, total.get(), null));

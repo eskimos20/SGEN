@@ -52,6 +52,7 @@ public class IntervalsService {
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -111,7 +112,7 @@ public class IntervalsService {
 
         // Activities (with per-activity intervals fetched concurrently)
         CompletableFuture<JsonNode> activitiesFuture = CompletableFuture.supplyAsync(() -> {
-            if (garminConnected) {
+            if (garminConnected && intervalsActivityRepository.countByUserId(ctx.user.getId()) > 0) {
                 // Local mirror: verbatim Intervals payloads stored by backfill
                 var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
                 var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
@@ -188,6 +189,19 @@ public class IntervalsService {
                     }
                     CompletableFuture.allOf(intervalFutures.toArray(new CompletableFuture[0])).join();
                     log.info("Completed fetching interval data for all activities");
+                    // Garmin-connected but mirror empty: persist everything locally
+                    // so subsequent requests are served from the DB mirror.
+                    if (garminConnected) {
+                        Long uid = ctx.user.getId();
+                        for (JsonNode activity : activitiesNode) {
+                            intervalsMirrorService.saveActivity(uid, activity);
+                            String actId = activity.path("id").asText("");
+                            intervalsMirrorService.saveStreams(uid, actId,
+                                    streamsMap.get(actId), activity.get("icu_intervals"));
+                        }
+                        log.info("Mirror was empty for user {} — persisted {} activities + streams to local mirror",
+                                ctx.user.getUsername(), activitiesNode.size());
+                    }
                 }
                 return activitiesNode;
             } catch (Exception e) {
@@ -226,7 +240,7 @@ public class IntervalsService {
 
         // Events
         CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
-            if (garminConnected) {
+            if (garminConnected && intervalsEventRepository.countByUserId(ctx.user.getId()) > 0) {
                 log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
                 var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
                 var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
@@ -246,7 +260,12 @@ public class IntervalsService {
                                 .queryParam("oldest", oldest).queryParam("newest", newest)
                                 .build(athleteId))
                         .retrieve().bodyToMono(String.class).block();
-                return objectMapper.readTree(eventsJson);
+                JsonNode events = objectMapper.readTree(eventsJson);
+                // Garmin-connected but mirror empty: persist events locally too.
+                if (garminConnected) {
+                    intervalsMirrorService.saveEvents(ctx.user.getId(), events);
+                }
+                return events;
             } catch (Exception e) {
                 log.error("Failed to fetch events: {}", e.getMessage(), e);
                 return null;

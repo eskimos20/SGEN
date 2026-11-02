@@ -14,4 +14,5 @@ public interface IntervalsEventRepository extends JpaRepository<IntervalsEvent, 
     List<IntervalsEvent> findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
             Long userId, LocalDateTime from, LocalDateTime to);
     void deleteByUserId(Long userId);
+    long countByUserId(Long userId);
 }
