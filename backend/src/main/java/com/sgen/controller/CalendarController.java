@@ -38,6 +38,7 @@ public class CalendarController {
     private final GarminClientFactory garminClientFactory;
     private final IntervalsWellnessService wellnessService;
     private final CalendarEventService calendarEventService;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
 
     @GetMapping("/calendar")
     public ResponseEntity<?> getCalendarEvents(
@@ -189,10 +190,21 @@ public class CalendarController {
         if (oldest.compareTo(newest) > 0) { String tmp = oldest; oldest = newest; newest = tmp; }
         var user = userService.getUserEntityByUsername(authentication.getName());
         java.util.List<Map<String, Object>> base = java.util.List.of();
-        if (user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()) {
+        boolean garminConnected = garminClientFactory.isConnected(user.getId());
+        if (garminConnected && intervalsMirrorService.hasWellness(user.getId())) {
             org.slf4j.LoggerFactory.getLogger(CalendarController.class)
-                    .info("SOURCE=INTERVALS user {} fetching wellness {}-{}", user.getId(), oldest, newest);
+                    .info("SOURCE=DB user {} wellness served from local mirror {}-{}",
+                            authentication.getName(), oldest, newest);
+            base = intervalsMirrorService.findWellnessPayloads(user.getId(),
+                    java.time.LocalDate.parse(oldest), java.time.LocalDate.parse(newest));
+        } else if (user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()) {
+            org.slf4j.LoggerFactory.getLogger(CalendarController.class)
+                    .info("SOURCE=INTERVALS user {} fetching wellness {}-{}",
+                            authentication.getName(), oldest, newest);
             base = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
+            if (garminConnected) {
+                intervalsMirrorService.saveWellnessRows(user.getId(), base);
+            }
         }
         return ResponseEntity.ok(garminMergeService.mergeWellness(user.getId(), base));
     }

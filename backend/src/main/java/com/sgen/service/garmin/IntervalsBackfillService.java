@@ -129,6 +129,24 @@ public class IntervalsBackfillService {
         }
     }
 
+    /** Fetch + store wellness rows for a year range (rate-limited). */
+    private void fetchAndPersistWellness(ApiContext ctx, Long userId,
+                                         java.time.LocalDate oldest, java.time.LocalDate newest) {
+        try {
+            rateLimiter.acquire();
+            String wellnessJson = ctx.client.get()
+                    .uri(u -> u.path("/api/v1/athlete/{id}/wellness")
+                            .queryParam("oldest", oldest)
+                            .queryParam("newest", newest)
+                            .build(ctx.user.getIntervalsAthleteId()))
+                    .retrieve().bodyToMono(String.class).block();
+            if (wellnessJson == null) return;
+            mirrorService.saveWellness(userId, objectMapper.readTree(wellnessJson));
+        } catch (Exception e) {
+            log.debug("Backfill wellness {}-{} failed: {}", oldest, newest, e.getMessage());
+        }
+    }
+
     /** Kick off async backfill; returns immediately. */
     public void startAsync(String username) {
         BackfillStatus cur = status.get(username);
@@ -168,6 +186,7 @@ public class IntervalsBackfillService {
                     }
                     if (cancelled(username, gen)) break;
                     fetchAndPersistEvents(ctx, ctx.user.getId(), oldest, fNewest);
+                    fetchAndPersistWellness(ctx, ctx.user.getId(), oldest, fNewest);
                     total.addAndGet(acts.size());
                     int done = years + 1;
                     status.put(username, new BackfillStatus("RUNNING", done, total.get(), null));

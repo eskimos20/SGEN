@@ -28,6 +28,7 @@ public class GarminDataCleanupService {
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
     private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
+    private final com.sgen.repository.IntervalsWellnessRepository intervalsWellnessRepository;
 
     @Transactional
     public void deleteAllGarminData(Long userId) {
@@ -46,6 +47,7 @@ public class GarminDataCleanupService {
         intervalsActivityRepository.deleteByUserId(userId);
         intervalsStreamsRepository.deleteByUserId(userId);
         intervalsEventRepository.deleteByUserId(userId);
+        intervalsWellnessRepository.deleteByUserId(userId);
         dailyLoadRepository.deleteByUserId(userId);
         fitnessRepository.deleteByUserId(userId);
         log.info("Deleted all Garmin data for user {}", nameOf(userId));

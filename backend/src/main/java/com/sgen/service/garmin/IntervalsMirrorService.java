@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.entity.IntervalsActivity;
 import com.sgen.entity.IntervalsActivityStreams;
 import com.sgen.entity.IntervalsEvent;
+import com.sgen.entity.IntervalsWellness;
 import com.sgen.repository.IntervalsActivityRepository;
 import com.sgen.repository.IntervalsActivityStreamsRepository;
 import com.sgen.repository.IntervalsEventRepository;
+import com.sgen.repository.IntervalsWellnessRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ public class IntervalsMirrorService {
     private final IntervalsActivityRepository activityRepository;
     private final IntervalsActivityStreamsRepository streamsRepository;
     private final IntervalsEventRepository eventRepository;
+    private final IntervalsWellnessRepository wellnessRepository;
     private final ObjectMapper objectMapper;
 
     public boolean hasActivities(Long userId) {
@@ -35,6 +38,10 @@ public class IntervalsMirrorService {
 
     public boolean hasEvents(Long userId) {
         return eventRepository.countByUserId(userId) > 0;
+    }
+
+    public boolean hasWellness(Long userId) {
+        return wellnessRepository.countByUserId(userId) > 0;
     }
 
     /** Persist the verbatim Intervals activity JSON so lists/details can replay it locally. */
@@ -67,6 +74,53 @@ public class IntervalsMirrorService {
         } catch (Exception e) {
             log.debug("Mirror persist streams for {} failed: {}", activityId, e.getMessage());
         }
+    }
+
+    /** Persist every row of an Intervals wellness array (id = ISO date). */
+    public void saveWellness(Long userId, JsonNode wellness) {
+        if (wellness == null || !wellness.isArray()) return;
+        for (JsonNode w : wellness) {
+            saveWellnessNode(userId, w);
+        }
+    }
+
+    /** Persist wellness rows already converted to Maps (CalendarController path). */
+    public void saveWellnessRows(Long userId, java.util.List<java.util.Map<String, Object>> rows) {
+        if (rows == null) return;
+        for (var row : rows) {
+            saveWellnessNode(userId, objectMapper.valueToTree(row));
+        }
+    }
+
+    private void saveWellnessNode(Long userId, JsonNode w) {
+        try {
+            String id = w.path("id").asText("");
+            if (id.length() < 10) return;
+            java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
+            var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
+                    .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
+            row.setPayloadJson(objectMapper.writeValueAsString(w));
+            wellnessRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror persist wellness failed: {}", e.getMessage());
+        }
+    }
+
+    /** Verbatim wellness payloads for a range — same List<Map> shape the API path produces. */
+    public java.util.List<java.util.Map<String, Object>> findWellnessPayloads(
+            Long userId, java.time.LocalDate from, java.time.LocalDate to) {
+        var out = new java.util.ArrayList<java.util.Map<String, Object>>();
+        for (var row : wellnessRepository
+                .findByUserIdAndWellnessDateBetweenOrderByWellnessDateAsc(userId, from, to)) {
+            try {
+                @SuppressWarnings("unchecked")
+                var m = objectMapper.readValue(row.getPayloadJson(), java.util.Map.class);
+                out.add(m);
+            } catch (Exception e) {
+                log.debug("Mirror wellness parse failed: {}", e.getMessage());
+            }
+        }
+        return out;
     }
 
     /** Persist every event in an Intervals events array. */

@@ -282,3 +282,12 @@ CREATE TABLE IF NOT EXISTS intervals_events (
     UNIQUE KEY uq_intl_event (user_id, event_id),
     KEY idx_intl_event_user_date (user_id, start_date_local)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS intervals_wellness (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    wellness_date DATE NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_intl_wellness (user_id, wellness_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

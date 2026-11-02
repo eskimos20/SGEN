@@ -26,6 +26,10 @@
   (`intervals_activity`, `intervals_event`) — `SOURCE=DB` in logs.
   If the mirror is empty (`countByUserId == 0`) it falls back to the
   Intervals API and persists what it fetches via `IntervalsMirrorService`.
+  Same DB-first + persist pattern applies to wellness
+  (`intervals_wellness`, served via CalendarController), activity
+  details, streams/icu_intervals (hydrated into the FTP analysis step)
+  and training totals.
 - `IntervalsBackfillService` runs on a dedicated single-thread executor —
   `@Async` does NOT work here (self-invocation + no @EnableAsync). The
   HTTP endpoint must return immediately; never run the import inline.

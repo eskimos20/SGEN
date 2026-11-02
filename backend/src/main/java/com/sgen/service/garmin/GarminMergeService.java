@@ -187,7 +187,7 @@ public class GarminMergeService {
         }
         if (!rows.isEmpty() || fitnessDays > 0) {
             log.info("Wellness merge for user {}: {} Garmin wellness rows merged, {} days served with local CTL/ATL",
-                    userId, rows.size(), fitnessDays);
+                    nameOf(userId), rows.size(), fitnessDays);
         }
         return new ArrayList<>(byDate.values());
     }

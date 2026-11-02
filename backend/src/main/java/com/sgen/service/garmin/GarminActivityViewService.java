@@ -83,7 +83,8 @@ public class GarminActivityViewService {
 
     private ObjectNode mapData(JsonNode streams) {
         ObjectNode map = objectMapper.createObjectNode();
-        if (streams.has("latlng")) map.set("latlng", streams.get("latlng"));
+        // Frontend reads mapData.latlngs (same key as the Intervals /map payload).
+        if (streams.has("latlng")) map.set("latlngs", streams.get("latlng"));
         return map;
     }
 
