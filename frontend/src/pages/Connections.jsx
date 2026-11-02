@@ -209,16 +209,21 @@ const Connections = () => {
                         {provider.options.map(opt => {
                           const checked = isChecked(opt.field, opt.invert);
                           const saving = savingField === opt.field;
+                          // Intervals.icu API accepts writes only for icu_garmin_*
+                          // toggles — all other provider sync flags are re-derived
+                          // server-side and cannot be changed via the API.
+                          const readOnly = provider.key !== 'garmin';
                           return (
                             <label
                               key={opt.field}
-                              className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none"
+                              className={`flex items-center gap-2 text-sm text-gray-700 select-none ${readOnly ? '' : 'cursor-pointer'}`}
+                              title={readOnly ? 'Managed on intervals.icu — not writable via API' : undefined}
                             >
                               <div
-                                onClick={() => !saving && handleToggle(opt.field, opt.invert, !checked)}
+                                onClick={() => !readOnly && !saving && handleToggle(opt.field, opt.invert, !checked)}
                                 className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                                  checked ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                                } ${saving ? 'opacity-50' : ''}`}
+                                  checked ? (readOnly ? 'bg-blue-400 border-blue-400' : 'bg-blue-600 border-blue-600') : 'bg-white border-gray-300'
+                                } ${(saving || readOnly) ? 'opacity-60' : ''}`}
                               >
                                 {checked && (
                                   <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
