@@ -13,4 +13,5 @@ public interface UserFitnessRepository extends JpaRepository<UserFitness, Long> 
     List<UserFitness> findByUserIdAndFitnessDateBetweenOrderByFitnessDateAsc(Long userId, LocalDate from, LocalDate to);
     Optional<UserFitness> findTopByUserIdOrderByFitnessDateDesc(Long userId);
     Optional<UserFitness> findTopByUserIdAndFitnessDateBeforeOrderByFitnessDateDesc(Long userId, LocalDate before);
+    void deleteByUserId(Long userId);
 }

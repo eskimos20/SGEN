@@ -9,4 +9,5 @@ import java.util.List;
 public interface GarminFileQueueItemRepository extends JpaRepository<GarminFileQueueItem, Long> {
     List<GarminFileQueueItem> findTop20ByStatusOrderByCreatedAtAsc(String status);
     boolean existsBySummaryId(String summaryId);
+    void deleteByUserId(Long userId);
 }

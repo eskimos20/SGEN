@@ -188,6 +188,11 @@ public class IntervalsBackfillService {
                     JsonNode acts = objectMapper.readTree(json);
                     if (!acts.isArray() || acts.isEmpty()) break;
                     fitnessModelService.recordIntervalsLoads(ctx.user.getId(), acts, false);
+                    for (JsonNode a : acts) {
+                        persistActivity(ctx.user.getId(), a);
+                        fetchAndPersistStreams(ctx, ctx.user.getId(), a.path("id").asText(""));
+                    }
+                    fetchAndPersistEvents(ctx, ctx.user.getId(), oldest, fNewest);
                     total.addAndGet(acts.size());
                     int done = years + 1;
                     status.put(username, new BackfillStatus("RUNNING", done, total.get(), null));

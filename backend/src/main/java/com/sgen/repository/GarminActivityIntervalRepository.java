@@ -9,4 +9,5 @@ import java.util.List;
 public interface GarminActivityIntervalRepository extends JpaRepository<GarminActivityInterval, Long> {
     List<GarminActivityInterval> findByActivityIdOrderByStepOrderAsc(Long activityId);
     void deleteByActivityId(Long activityId);
+    void deleteByActivityIdIn(java.util.Collection<Long> activityIds);
 }

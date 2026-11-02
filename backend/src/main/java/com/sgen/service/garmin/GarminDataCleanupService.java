@@ -18,7 +18,11 @@ public class GarminDataCleanupService {
 
     private final com.sgen.repository.UserRepository userRepository;
     private final GarminActivityRepository activityRepository;
+    private final GarminActivityStreamsRepository activityStreamsRepository;
+    private final GarminActivityIntervalRepository activityIntervalRepository;
     private final GarminWellnessRepository wellnessRepository;
+    private final GarminFileQueueItemRepository fileQueueRepository;
+    private final GarminWorkoutPushRepository workoutPushRepository;
     private final UserDailyLoadRepository dailyLoadRepository;
     private final com.sgen.repository.UserFitnessRepository fitnessRepository;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
@@ -27,11 +31,23 @@ public class GarminDataCleanupService {
 
     @Transactional
     public void deleteAllGarminData(Long userId) {
+        // Child rows keyed by garmin_activities.id must go first (FK).
+        java.util.List<Long> activityIds = activityRepository.findIdsByUserId(userId);
+        if (!activityIds.isEmpty()) {
+            activityStreamsRepository.deleteAllById(activityIds);
+            activityIntervalRepository.deleteByActivityIdIn(activityIds);
+        }
         activityRepository.deleteByUserId(userId);
         wellnessRepository.deleteByUserId(userId);
-        dailyLoadRepository.findByUserIdAndLoadDateGreaterThanEqual(userId, java.time.LocalDate.of(2000, 1, 1))
-                .stream().filter(l -> "GARMIN".equals(l.getSource()))
-                .forEach(dailyLoadRepository::delete);
+        fileQueueRepository.deleteByUserId(userId);
+        workoutPushRepository.deleteByUserId(userId);
+        // Everything imported/derived via the Intervals backfill goes too —
+        // otherwise the status endpoint resurrects the old import count.
+        intervalsActivityRepository.deleteByUserId(userId);
+        intervalsStreamsRepository.deleteByUserId(userId);
+        intervalsEventRepository.deleteByUserId(userId);
+        dailyLoadRepository.deleteByUserId(userId);
+        fitnessRepository.deleteByUserId(userId);
         log.info("Deleted all Garmin data for user {}", nameOf(userId));
     }
 

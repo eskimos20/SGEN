@@ -27,7 +27,7 @@ export default function GarminConnectCard() {
     loadStatus().then(() => pollBackfill());
     const onMsg = (e) => {
       if (e.origin === window.location.origin && e.data?.type === 'GARMIN_AUTH_SUCCESS') {
-        loadStatus();
+        loadStatus().then(() => pollBackfill());
       }
     };
     window.addEventListener('message', onMsg);

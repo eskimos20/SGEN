@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface GarminWorkoutPushRepository extends JpaRepository<GarminWorkoutPush, Long> {
     Optional<GarminWorkoutPush> findByCalendarEventId(Long calendarEventId);
     List<GarminWorkoutPush> findByUserIdAndStatus(Long userId, String status);
+    void deleteByUserId(Long userId);
 }
