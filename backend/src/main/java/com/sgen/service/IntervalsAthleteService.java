@@ -51,7 +51,13 @@ public class IntervalsAthleteService {
             String settingsJson = ctx.client.get()
                     .uri("/api/v1/athlete/{id}/settings", athleteId)
                     .retrieve().bodyToMono(String.class).block();
-            profile.put("settings", objectMapper.readTree(settingsJson));
+            JsonNode settings = objectMapper.readTree(settingsJson);
+            profile.put("settings", settings);
+            // Sync toggles live under settings, not the athlete record —
+            // merge them into athlete so Connections.jsx reads authoritative values
+            if (profile.get("athlete") instanceof JsonNode a && a.isObject()) {
+                ((com.fasterxml.jackson.databind.node.ObjectNode) a).setAll((com.fasterxml.jackson.databind.node.ObjectNode) settings);
+            }
         } catch (Exception e) {
             profile.put("settingsError", e.getMessage());
         }
@@ -108,6 +114,8 @@ public class IntervalsAthleteService {
                     .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                     .bodyValue(filtered)
                     .retrieve().bodyToMono(String.class).block();
+            log.info("Intervals athlete PUT sent {} -> response echo: {}", filtered,
+                    responseJson != null && responseJson.length() > 500 ? responseJson.substring(0, 500) + "..." : responseJson);
             JsonNode result = objectMapper.readTree(responseJson);
             if (filtered.containsKey("weight") || filtered.containsKey("height")) {
                 zwiftService.syncProfile(username, null);
