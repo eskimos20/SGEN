@@ -7,58 +7,7 @@ import ActivityZoneBreakdown from './ActivityZoneBreakdown';
 import ActivityMap from './ActivityMap';
 import ActivityPowerCurve from './ActivityPowerCurve';
 import PaceCurveChart from '../charts/PaceCurveChart';
-import StravaMedia from './StravaMedia';
-import StravaSegments from './StravaSegments';
 
-const RATE_LIMIT_KEY = 'strava_rate_limit_expiry';
-
-const StravaRateLimitBanner = ({ retryAfterSeconds }) => {
-  const [secondsLeft, setSecondsLeft] = useState(null);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (retryAfterSeconds > 0) {
-      const expiry = Date.now() + retryAfterSeconds * 1000;
-      localStorage.setItem(RATE_LIMIT_KEY, String(expiry));
-    }
-
-    const calcLeft = () => {
-      const stored = localStorage.getItem(RATE_LIMIT_KEY);
-      if (!stored) return 0;
-      const left = Math.max(0, Math.ceil((Number(stored) - Date.now()) / 1000));
-      return left;
-    };
-
-    const left = calcLeft();
-    setSecondsLeft(left);
-    if (left <= 0) return;
-
-    intervalRef.current = setInterval(() => {
-      const remaining = calcLeft();
-      setSecondsLeft(remaining);
-      if (remaining <= 0) clearInterval(intervalRef.current);
-    }, 1000);
-
-    return () => clearInterval(intervalRef.current);
-  }, [retryAfterSeconds]);
-
-  if (secondsLeft === null || secondsLeft <= 0) return null;
-
-  const mins = Math.floor(secondsLeft / 60);
-  const secs = secondsLeft % 60;
-
-  return (
-    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-3 mb-3">
-      <Timer className="h-5 w-5 text-orange-500 flex-shrink-0" />
-      <div className="text-sm text-orange-700">
-        <p className="font-medium">Strava API rate limit reached</p>
-        <p className="text-orange-600">
-          Available again in {mins > 0 ? `${mins} min ` : ''}{secs} sec
-        </p>
-      </div>
-    </div>
-  );
-};
 
 const Tooltip = ({ text, children }) => {
   const [visible, setVisible] = useState(false);
@@ -75,7 +24,7 @@ const Tooltip = ({ text, children }) => {
   );
 };
 
-const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile, stravaData, stravaLoading }) => {
+const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile }) => {
   const activityData = details.activity || {};
   const intervalsData = details.intervals || {};
   const allIntervals = intervalsData.icu_intervals || [];
@@ -293,14 +242,12 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
         </div>
       )}
 
-      {/* Strava rate limit banner - shown once at top */}
       {stravaData?.rateLimit && (
         <StravaRateLimitBanner
           retryAfterSeconds={stravaData?.rateLimitSeconds || stravaData?.photos?.error?.retryAfterSeconds || stravaData?.segments?.error?.retryAfterSeconds || 0}
         />
       )}
 
-      {/* Strava Photos - using pre-fetched data */}
       {!stravaData?.rateLimit && <StravaMedia activity={activityData} preFetchedData={stravaData?.photos} />}
 
       {/* Activity Overview: Chart + Zone Breakdown + Stats */}
@@ -577,7 +524,6 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
         </div>
       )}
 
-      {/* Strava Segments - using pre-fetched data */}
       {!stravaData?.rateLimit && <StravaSegments activity={activityData} preFetchedData={stravaData?.segments ? { ...stravaData.segments, segmentPRs: stravaData.segmentPRs } : null} />}
 
       {/* Achievements / Records */}

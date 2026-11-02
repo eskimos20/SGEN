@@ -204,14 +204,7 @@ echo "✅ Network config updated with: ${DDNS_OR_IP}"
 export JWT_SECRET="$JWT_SECRET"
 export CORS_ALLOWED_ORIGINS="$CORS_ORIGINS"
 
-# Strava OAuth redirect URI (for Strava API integration)
-export STRAVA_REDIRECT_URI="${PROTOCOL}://${DDNS_OR_IP}:${EXTERNAL_PORT}/api/strava/callback"
-echo "🔗 Strava OAuth redirect: $STRAVA_REDIRECT_URI"
 
-# Force HTTPS for Strava callback if using HTTPS protocol
-if [[ "$PROTOCOL" == "https" ]]; then
-    export FORCE_HTTPS="true"
-    echo "🔒 FORCE_HTTPS enabled for Strava callback URL"
 fi
 
 # VIKTIGAST: API URL för Android app (use external port)

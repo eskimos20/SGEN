@@ -40,6 +40,9 @@ public class GarminConnection {
     @Column(name = "consent_ai_processing", nullable = false)
     private Boolean consentAiProcessing = false;
 
+    @Column(name = "consent_at")
+    private LocalDateTime consentAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

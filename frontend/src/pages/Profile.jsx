@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { Save, CheckCircle, XCircle, Loader2, ChevronDown, Sparkles, ExternalLink, Share2, Bike } from 'lucide-react';
-import { openStravaAuthPopup } from '../utils/stravaOAuth';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -22,17 +21,6 @@ const Profile = () => {
   const [models, setModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  // Strava state
-  const [stravaEnabled, setStravaEnabled] = useState(false);
-  const [stravaClientId, setStravaClientId] = useState('');
-  const [stravaClientSecret, setStravaClientSecret] = useState('');
-  const [hasStravaConfig, setHasStravaConfig] = useState(false);
-  const [hasStravaToken, setHasStravaToken] = useState(false);
-  const [stravaAuthUrl, setStravaAuthUrl] = useState('');
-  const [stravaMessage, setStravaMessage] = useState({ type: '', text: '' });
-  const [testingStrava, setTestingStrava] = useState(false);
-  const [exchangingStrava, setExchangingStrava] = useState(false);
-  const [savingStrava, setSavingStrava] = useState(false);
 
   // Zwift state
   const [zwiftEnabled, setZwiftEnabled] = useState(false);
@@ -61,15 +49,6 @@ const Profile = () => {
       }
       // Load OpenAI config
       await loadOpenAIConfig();
-      // Load Strava config
-      setStravaEnabled(response.data.stravaEnabled || false);
-      if (response.data.hasStravaConfig) {
-        setStravaClientId(response.data.stravaClientId || '');
-        setStravaClientSecret('••••••••••••••••');
-        setHasStravaConfig(true);
-        setStravaAuthUrl(response.data.stravaAuthorizationUrl || '');
-      }
-      setHasStravaToken(response.data.hasStravaToken || false);
       // Load Zwift config
       setZwiftEnabled(response.data.zwiftEnabled || false);
       setZwiftUsername(response.data.zwiftUsername || '');
@@ -104,8 +83,6 @@ const Profile = () => {
       const response = await api.put('/user/profile', {
         intervalsApiKey: apiKey.includes('•') ? undefined : apiKey,
         intervalsAthleteId: athleteId,
-        stravaClientId: stravaClientId.includes('•') ? undefined : stravaClientId,
-        stravaClientSecret: stravaClientSecret.includes('•') ? undefined : stravaClientSecret,
       });
       
       // Fetch updated user data to refresh context immediately
@@ -119,7 +96,6 @@ const Profile = () => {
       setConnectionStatus(null);
       setHasCredentialsSaved(true);
       
-      // Reload to get updated Strava auth URL
       await loadProfile();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save profile' });
@@ -201,20 +177,6 @@ const Profile = () => {
     }
   };
 
-  // Build Strava auth URL dynamically based on current browser location
-  const buildStravaAuthUrl = () => {
-    if (!stravaClientId) return null;
-    const protocol = window.location.protocol.replace(':', '');
-    const host = window.location.host;
-    const redirectUri = `${protocol}://${host}/api/strava/callback`;
-    
-    return `https://www.strava.com/oauth/authorize?` +
-           `client_id=${encodeURIComponent(stravaClientId)}` +
-           `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-           `&response_type=code` +
-           `&scope=read,activity:read_all,profile:read_all`;
-  };
-
   // Zwift handlers
   const toggleZwift = async (enabled) => {
     try {
@@ -292,114 +254,6 @@ const Profile = () => {
     }
   };
 
-  // Strava handlers
-  const handleConnectStrava = async () => {
-    if (!stravaClientId) {
-      setStravaMessage({ type: 'error', text: 'Please save your Strava credentials first' });
-      return;
-    }
-    
-    const authUrl = buildStravaAuthUrl();
-    if (!authUrl) {
-      setStravaMessage({ type: 'error', text: 'Failed to build authorization URL' });
-      return;
-    }
-    
-    setExchangingStrava(true);
-    setStravaMessage({ type: '', text: '' });
-    
-    try {
-      const code = await openStravaAuthPopup(authUrl);
-      
-      // Exchange the code for tokens
-      const response = await api.post('/strava/exchange-code', { code });
-      
-      if (response.data.success) {
-        setHasStravaToken(true);
-        setStravaMessage({ type: 'success', text: '✅ Strava connected successfully! Authorization completed automatically.' });
-      } else {
-        setStravaMessage({ type: 'error', text: 'Authorization failed. Please try again.' });
-      }
-    } catch (err) {
-      if (err.message.includes('Popup blocked')) {
-        setStravaMessage({ type: 'error', text: '⚠️ Popup blocked. Please allow popups for this site and try again.' });
-      } else if (err.message.includes('cancelled')) {
-        setStravaMessage({ type: 'warning', text: 'Authorization cancelled.' });
-      } else {
-        setStravaMessage({ type: 'error', text: `Failed to authorize: ${err.message}` });
-      }
-    } finally {
-      setExchangingStrava(false);
-    }
-  };
-
-  const testStravaConnection = async () => {
-    setTestingStrava(true);
-    setStravaMessage({ type: '', text: '' });
-
-    try {
-      const response = await api.get('/strava/test');
-      if (response.data.success) {
-        setStravaMessage({ type: 'success', text: `Connected as ${response.data.athleteName}` });
-      } else {
-        setStravaMessage({ type: 'error', text: 'Connection failed' });
-      }
-    } catch (err) {
-      setStravaMessage({ type: 'error', text: 'Connection failed. Please reconnect.' });
-    } finally {
-      setTestingStrava(false);
-    }
-  };
-
-  const handleSaveStrava = async () => {
-    setSavingStrava(true);
-    setStravaMessage({ type: '', text: '' });
-
-    try {
-      const payload = {
-        stravaClientId: stravaClientId.includes('•') ? undefined : stravaClientId,
-        stravaClientSecret: stravaClientSecret.includes('•') ? undefined : stravaClientSecret,
-      };
-      
-      const response = await api.put('/user/profile', payload);
-
-      // Fetch updated user data
-      const userResponse = await api.get('/user/me');
-      if (userResponse.data) {
-        window.dispatchEvent(new CustomEvent('userUpdated', { detail: userResponse.data }));
-      }
-
-      setHasStravaConfig(true);
-      setStravaAuthUrl(userResponse.data.stravaAuthorizationUrl || '');
-      setStravaMessage({ type: 'success', text: 'Strava settings saved! You can now connect.' });
-    } catch (err) {
-      setStravaMessage({ type: 'error', text: err.response?.data?.error || 'Failed to save Strava settings' });
-    } finally {
-      setSavingStrava(false);
-    }
-  };
-
-  const toggleStrava = async (enabled) => {
-    try {
-      setStravaMessage({ type: '', text: '' });
-      if (enabled) {
-        await api.post('/user/strava/enable');
-        setStravaEnabled(true);
-      } else {
-        await api.post('/user/strava/disable');
-        setStravaEnabled(false);
-        setHasStravaToken(false);
-        setStravaAuthUrl('');
-      }
-      // Refresh auth context with updated user data
-      const userResponse = await api.get('/user/me');
-      if (userResponse.data) {
-        window.dispatchEvent(new CustomEvent('userUpdated', { detail: userResponse.data }));
-      }
-    } catch (err) {
-      setStravaMessage({ type: 'error', text: 'Failed to update Strava settings' });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -628,146 +482,7 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Strava Configuration */}
-          <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ExternalLink className="h-5 w-5 text-orange-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Strava Configuration</h2>
-            </div>
-            <p className="text-gray-600 text-sm mb-6">
-              Strava integration now requires an active Strava subscription and a registered API application to view activities and segments. 
-              Subscribe at <a href="https://www.strava.com/subscribe" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/subscribe</a> and create an API application at <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">strava.com/settings/api</a>.
-            </p>
-
-            <div className="space-y-6">
-              {stravaMessage.text && (
-                <div className={`p-3 rounded-xl text-sm ${
-                  stravaMessage.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                }`}>
-                  {stravaMessage.text}
-                </div>
-              )}
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <div
-                  onClick={() => toggleStrava(!stravaEnabled)}
-                  className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                    stravaEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                  }`}
-                >
-                  {stravaEnabled && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <span className="font-medium text-gray-900">Enable Strava Integration</span>
-              </label>
-
-          {stravaEnabled && (
-                <>
-                  <div>
-                    <label htmlFor="stravaClientId" className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                      Strava Client ID
-                      {hasStravaConfig && stravaClientId && !stravaClientId.includes('•') && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ Saved</span>
-                      )}
-                      {hasStravaConfig && stravaClientId.includes('•') && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">✓ Configured</span>
-                      )}
-                    </label>
-                    <input
-                      id="stravaClientId"
-                      type="text"
-                      value={stravaClientId}
-                      onChange={(e) => setStravaClientId(e.target.value)}
-                      className="input-field max-w-md"
-                      placeholder="Enter your Strava Client ID"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      From your Strava API application settings
-                    </p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="stravaClientSecret" className="block text-sm font-medium text-gray-700 mb-1">
-                      Strava Client Secret
-                    </label>
-                    <input
-                      id="stravaClientSecret"
-                      type="password"
-                      value={stravaClientSecret}
-                      onChange={(e) => setStravaClientSecret(e.target.value)}
-                      className="input-field max-w-md"
-                      placeholder={hasStravaConfig ? "•••••••••••••••• (enter new to change)" : "Enter your Strava Client Secret"}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Keep this secret! Do not share or commit to code.
-                      {hasStravaConfig && " Type a new value only if you want to change it."}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      onClick={handleSaveStrava}
-                      disabled={savingStrava || (!stravaClientId && !stravaClientSecret)}
-                      className="btn-primary flex items-center justify-center gap-2 min-w-[150px]"
-                    >
-                      {savingStrava ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-5 w-5" />
-                          Save Strava Settings
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleConnectStrava}
-                      disabled={exchangingStrava || !hasStravaConfig}
-                      className="btn-secondary flex items-center justify-center gap-2 min-w-[150px] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {exchangingStrava ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : hasStravaToken ? (
-                        <>
-                          <CheckCircle className="h-5 w-5" />
-                          Reconnect Strava
-                        </>
-                      ) : (
-                        <>
-                          <ExternalLink className="h-5 w-5" />
-                          Connect Strava
-                        </>
-                      )}
-                    </button>
-
-                    {hasStravaToken && (
-                      <button
-                        type="button"
-                        onClick={testStravaConnection}
-                        disabled={testingStrava}
-                        className="btn-secondary flex items-center justify-center gap-2 min-w-[150px]"
-                      >
-                        {testingStrava ? (
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="h-5 w-5" />
-                            Test Connection
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
+          
           {/* Zwift Configuration */}
           <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
             <div className="flex items-center gap-2 mb-4">

@@ -45,8 +45,6 @@ public class UserService {
     @Value("${jwt.mobile-expiration:31536000000}")
     private long mobileExpiration;
 
-    @Value("${strava.oauth.redirect-uri:http://localhost:8081/api/strava/callback}")
-    private String stravaRedirectUri;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
@@ -162,7 +160,6 @@ public class UserService {
         return mapToUserResponse(user, redirectUri);
     }
 
-    // Overloaded method for backward compatibility (no Strava auth URL needed)
     public UserResponse getCurrentUser(String username) {
         return getCurrentUser(username, null);
     }
@@ -191,22 +188,6 @@ public class UserService {
         }
         if (request.getOpenaiConnectionTested() != null) {
             user.setOpenaiConnectionTested(request.getOpenaiConnectionTested());
-        }
-        // Strava configuration
-        if (request.getStravaEnabled() != null) {
-            user.setStravaEnabled(request.getStravaEnabled());
-            if (!request.getStravaEnabled()) {
-                // Clear Strava OAuth tokens when disabled
-                user.setStravaAccessToken(null);
-                user.setStravaRefreshToken(null);
-                user.setStravaTokenExpiresAt(null);
-            }
-        }
-        if (request.getStravaClientId() != null) {
-            user.setStravaClientId(request.getStravaClientId());
-        }
-        if (request.getStravaClientSecret() != null) {
-            user.setStravaClientSecret(request.getStravaClientSecret());
         }
         if (request.getShareWorkoutsEnabled() != null) {
             user.setShareWorkoutsEnabled(request.getShareWorkoutsEnabled());
@@ -253,12 +234,6 @@ public class UserService {
                 .openaiEnabled(user.getOpenaiEnabled())
                 .openaiModel(user.getOpenaiModel())
                 .openaiConnectionTested(user.getOpenaiConnectionTested())
-                // Strava configuration
-                .stravaEnabled(user.getStravaEnabled())
-                .hasStravaConfig(user.getStravaClientId() != null && user.getStravaClientSecret() != null)
-                .hasStravaToken(user.getStravaAccessToken() != null || user.getStravaRefreshToken() != null)
-                .stravaClientId(user.getStravaClientId())
-                .stravaAuthorizationUrl(buildStravaAuthUrl(user, redirectUri))
                 .shareWorkoutsEnabled(user.getShareWorkoutsEnabled())
                 // Zwift configuration
                 .zwiftEnabled(user.getZwiftEnabled())
@@ -270,18 +245,4 @@ public class UserService {
                 .build();
     }
 
-    private String buildStravaAuthUrl(User user, String redirectUri) {
-        if (user.getStravaClientId() == null || redirectUri == null) {
-            return null;
-        }
-        try {
-            return "https://www.strava.com/oauth/authorize?" +
-                   "client_id=" + java.net.URLEncoder.encode(user.getStravaClientId(), java.nio.charset.StandardCharsets.UTF_8) +
-                   "&redirect_uri=" + java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8) +
-                   "&response_type=code" +
-                   "&scope=read,activity:read_all,profile:read_all";
-        } catch (Exception e) {
-            return null;
-        }
-    }
 }

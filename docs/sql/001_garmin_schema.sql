@@ -239,3 +239,6 @@ CREATE TABLE IF NOT EXISTS local_sport_settings (
     CONSTRAINT uq_local_sport UNIQUE (user_id, sport_key),
     CONSTRAINT fk_local_sport_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Consent timestamp for the anonymized-data policy gate
+ALTER TABLE garmin_connections ADD COLUMN IF NOT EXISTS consent_at DATETIME NULL;

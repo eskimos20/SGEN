@@ -56,13 +56,27 @@ public class GarminConnectionController {
         return ResponseEntity.ok(out);
     }
 
+    /**
+     * Issues the Garmin authorize URL ONLY if the user has accepted the
+     * anonymized-data storage policy in the same request. Frontend must
+     * send {consent:true} after the user ticks the policy checkbox.
+     */
     @PostMapping("/connect-url")
     @ResponseBody
-    public ResponseEntity<Map<String, String>> connectUrl(Authentication auth) {
+    public ResponseEntity<Map<String, String>> connectUrl(Authentication auth,
+                                                          @RequestBody(required = false) Map<String, Object> body) {
         if (!oauthService.isConfigured()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Garmin OAuth not configured"));
         }
+        boolean consented = body != null && Boolean.TRUE.equals(body.get("consent"));
+        if (!consented) {
+            return ResponseEntity.badRequest().body(Map.of("error", "consent_required"));
+        }
         User user = userService.getUserEntityByUsername(auth.getName());
+        GarminConnection conn = connectionRepository.findByUserId(user.getId())
+                .orElseGet(() -> GarminConnection.builder().userId(user.getId()).status("CONSENTED").build());
+        conn.setConsentAt(java.time.LocalDateTime.now());
+        connectionRepository.save(conn);
         return ResponseEntity.ok(Map.of("url", oauthService.buildAuthorizeUrl(user.getId())));
     }
 

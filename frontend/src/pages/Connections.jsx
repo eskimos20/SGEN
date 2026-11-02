@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import GarminConnectCard from '../components/connections/GarminConnectCard';
 import api from '../api/axios';
 import { Loader2, CheckCircle, XCircle, ExternalLink, AlertTriangle } from 'lucide-react';
 
@@ -9,17 +10,6 @@ import { Loader2, CheckCircle, XCircle, ExternalLink, AlertTriangle } from 'luci
  * (e.g. "Use Strava gear" checked -> ignore_strava_gear = false).
  */
 const PROVIDERS = [
-  {
-    key: 'strava', name: 'Strava',
-    isConnected: (a) => a.strava_authorized === true || !!a.strava_id,
-    options: [
-      { field: 'strava_sync_activities', label: 'Download activities' },
-      { field: 'strava_sync_other_activities', label: 'Download activities uploaded by other apps' },
-      { field: 'update_strava_name', label: 'Update activity name on Strava when renamed' },
-      { field: 'add_weather_to_strava_descr', label: 'Add weather to activity description on Strava' },
-      { field: 'ignore_strava_gear', label: 'Use gear from Strava', invert: true },
-    ],
-  },
   {
     key: 'garmin', name: 'Garmin Connect',
     isConnected: (a) => !!(a.icu_garmin_last_upload || a.icu_garmin_sync_activities ||
@@ -173,6 +163,8 @@ const Connections = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Connections</h1>
           <p className="text-gray-600 mt-1">Manage your Intervals.icu provider connections and sync settings</p>
         </div>
+
+        <GarminConnectCard />
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-3 rounded-lg">

@@ -143,14 +143,6 @@ openai:
       input: 0.50
       output: 1.50
 
-# Strava API Configuration
-strava:
-  api:
-    base-url: https://www.strava.com/api/v3
-  oauth:
-    authorize-url: https://www.strava.com/oauth/authorize
-    token-url: https://www.strava.com/oauth/token
-    redirect-uri: ${STRAVA_REDIRECT_URI:http://localhost:8081/api/strava/callback}
 
 # CORS Configuration
 cors:

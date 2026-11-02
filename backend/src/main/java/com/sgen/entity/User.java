@@ -57,10 +57,6 @@ public class User {
     @Builder.Default
     private Boolean openaiConnectionTested = false;
 
-    // Strava OAuth configuration
-    @Column(name = "strava_enabled", columnDefinition = "boolean default false")
-    @Builder.Default
-    private Boolean stravaEnabled = false;
 
     @Column(name = "share_workouts_enabled", columnDefinition = "boolean default false")
     @Builder.Default
@@ -69,21 +65,6 @@ public class User {
     @Column(name = "open_meteo_enabled", columnDefinition = "boolean default false")
     @Builder.Default
     private Boolean openMeteoEnabled = false;
-
-    @Column(name = "strava_client_id")
-    private String stravaClientId;
-
-    @Column(name = "strava_client_secret")
-    private String stravaClientSecret;
-
-    @Column(name = "strava_access_token")
-    private String stravaAccessToken;
-
-    @Column(name = "strava_refresh_token")
-    private String stravaRefreshToken;
-
-    @Column(name = "strava_token_expires_at")
-    private Long stravaTokenExpiresAt;
 
     // Zwift configuration
     @Column(name = "zwift_enabled", columnDefinition = "boolean default false")
