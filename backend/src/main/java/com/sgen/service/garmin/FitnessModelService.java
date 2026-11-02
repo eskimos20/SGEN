@@ -31,11 +31,22 @@ public class FitnessModelService {
     /** Rebuild GARMIN-sourced daily loads from stored garmin_activities. */
     @Transactional
     public void rebuildGarminLoads(Long userId) {
+        rebuildGarminLoads(userId, null);
+    }
+
+    /**
+     * Same, but skips Garmin activities that also appear in the Intervals
+     * feed (matched on start +-120s and duration +-10%) so the same workout
+     * is not double-counted while both feeds are live.
+     */
+    @Transactional
+    public void rebuildGarminLoads(Long userId, JsonNode intervalsActivities) {
         List<GarminActivity> acts = garminActivityRepository
                 .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
                         userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0), java.time.LocalDateTime.now().plusDays(1));
         Map<LocalDate, double[]> byDay = new HashMap<>();
         for (GarminActivity a : acts) {
+            if (a.isDuplicateOfIntervalsActivity(intervalsActivities)) continue;
             LocalDate d = a.getStartDateLocal() != null ? a.getStartDateLocal().toLocalDate() : null;
             if (d == null || a.getTrainingLoad() == null) continue;
             double[] acc = byDay.computeIfAbsent(d, k -> new double[2]);
@@ -56,6 +67,12 @@ public class FitnessModelService {
     /** Record INTERVALS-sourced loads seen during a fetchAllData call (cache + merge input). */
     @Transactional
     public void recordIntervalsLoads(Long userId, JsonNode activities) {
+        recordIntervalsLoads(userId, activities, true);
+    }
+
+    /** Same but optionally skips the expensive EMA recompute (backfill loops). */
+    @Transactional
+    public void recordIntervalsLoads(Long userId, JsonNode activities, boolean recompute) {
         if (activities == null || !activities.isArray()) return;
         Map<LocalDate, double[]> byDay = new HashMap<>();
         for (JsonNode a : activities) {

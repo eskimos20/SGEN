@@ -43,11 +43,23 @@ public class StatisticsController {
     private final ObjectMapper objectMapper;
     private final PerformanceService performanceService;
     private final GarminActivityViewService garminActivityViewService;
+    private final com.sgen.service.garmin.IntervalsBackfillService backfillService;
     private final UserService userService;
     private final CalendarEventService calendarEventService;
     private final UserVersionService userVersionService;
     private final AchievementNotificationService achievementNotificationService;
     private final PaceCurveService paceCurveService;
+
+    /** One-time Intervals history backfill -> user_daily_load (local CTL/ATL). */
+    @PostMapping("/backfill-loads")
+    public ResponseEntity<?> backfillLoads(Authentication authentication) {
+        try {
+            return ResponseEntity.ok(backfillService.backfill(authentication.getName()));
+        } catch (Exception e) {
+            log.error("Backfill failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @GetMapping("/fetch")
     public ResponseEntity<Map<String, Object>> fetchStatistics(

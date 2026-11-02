@@ -252,7 +252,7 @@ public class IntervalsService {
             fitnessModelService.recordIntervalsLoads(uid, acts);
             fitnessModelService.seedFromIntervalsWellness(uid, (JsonNode) allData.get("wellness"));
             garminMergeService.mergeActivities(uid, acts);
-            fitnessModelService.rebuildGarminLoads(uid);
+            fitnessModelService.rebuildGarminLoads(uid, (JsonNode) allData.get("activities"));
         } catch (Exception e) {
             log.warn("Garmin merge skipped: {}", e.getMessage());
         }

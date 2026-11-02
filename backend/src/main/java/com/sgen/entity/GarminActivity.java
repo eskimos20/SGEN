@@ -102,4 +102,25 @@ public class GarminActivity {
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
+
+    /** True if an Intervals-feed activity matches this one (start +-120s, duration +-10%). */
+    public boolean isDuplicateOfIntervalsActivity(com.fasterxml.jackson.databind.JsonNode intervalsActivities) {
+        if (intervalsActivities == null || !intervalsActivities.isArray() || startTime == null) return false;
+        long localT = startTime + (startTimeOffset != null ? startTimeOffset : 0);
+        for (com.fasterxml.jackson.databind.JsonNode n : intervalsActivities) {
+            String ds = n.path("start_date_local").asText("");
+            if (ds.length() < 19) continue;
+            try {
+                long t = java.time.LocalDateTime.parse(ds.substring(0, 19))
+                        .toEpochSecond(java.time.ZoneOffset.UTC);
+                if (Math.abs(t - localT) > 120) continue;
+                double dur1 = n.path("moving_time").asDouble(n.path("elapsed_time").asDouble(0));
+                double dur2 = durationS != null ? durationS : 0;
+                if (dur1 <= 0 || dur2 <= 0 || Math.abs(dur1 - dur2) / Math.max(dur1, dur2) <= 0.10) {
+                    return true;
+                }
+            } catch (Exception ignored) {}
+        }
+        return false;
+    }
 }
