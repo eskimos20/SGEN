@@ -91,17 +91,23 @@ och Intervals (distribution till Zwift/Rouvy/MyWhoosh).
 
 ---
 
-## 2. Garmin-implementering — design
+## 2. Garmin-implementering — design (verifierad mot officiella specar v2.0/2.1)
 
 ### 2.1 Tier: Starter (business) — push only, ingen historik
 
-- Alla API:er använder **OAuth 2.0 + PKCE** (inte gamla 1.0a)
-- Notifikationer konfigureras per summary-typ i portalen → samma endpoint
-- `activities`/`activityDetails` m.fl. kommer inline i push-body
-- `activityFiles` (FIT) kommer som `callbackURL` att ladda ner
-- Ingen backfill/pull → data flödar först efter connect + device-synk
+Verifierat ur Start Guide 2.0 + API-specarna:
+- ≤1000 anslutna användare, **en** client ID per licensee, app markeras "unverified"
+- Krav: **publikt nåbar webbsajt + publicerad privacy policy** (för Garmins review)
+- Push-only: alla notifikationer konfigureras per summary-typ på
+  `https://apis.garmin.com/tools/endpoints` — HTTPS POST, data inline i body
+- **"Other protocols and non-standard ports are not supported"** — notifikations-URL:er måste vara
+  standard-HTTPS på port 443. `:50505` godkänns troligen EJ → stunnel/proxy måste lyssna på 443
+  (samma begränsning kan gälla OAuth redirect_uri — verifiera i portalen)
+- Enabled/On Hold per typ: On Hold köar notifikationer i ≤7 dagar (bra vid underhåll)
+- Ny domän triggar security review 24–48h i endpoint-verktyget
+- Server-till-server only; "ad hoc requests for data are not permitted"
 
-### 2.2 OAuth 2.0 PKCE-flöde
+### 2.2 OAuth 2.0 PKCE-flöde (officiell spec, bekräftad)
 
 ```
 Authorize:  GET https://connect.garmin.com/oauth2Confirm
@@ -109,16 +115,120 @@ Authorize:  GET https://connect.garmin.com/oauth2Confirm
             &code_challenge_method=S256&redirect_uri=..&state=..
 
 Token:      POST https://diauth.garmin.com/di-oauth2-service/oauth/token
-            grant_type=authorization_code|refresh_token
+            Authorization: Basic base64(client_id:client_secret)
+            form: grant_type=authorization_code|refresh_token, code, code_verifier,
+                  redirect_uri (= steg 1-värdet)
 
-UserId:     GET  https://apis.garmin.com/wellness-api/rest/user/id   (Bearer)
-Disconnect: DELETE https://apis.garmin.com/wellness-api/rest/user/registration
-Perms:      GET  https://apis.garmin.com/wellness-api/rest/user/permissions
+UserId:     GET  https://apis.garmin.com/partner-gateway/rest/user/id
+Disconnect: DELETE https://apis.garmin.com/partner-gateway/rest/user/registration
+Perms:      GET  https://apis.garmin.com/partner-gateway/rest/user/permissions
 ```
 
-Access token ~24h (lita på `expires_in`), refresh ~90d, **roteras vid varje refresh**.
+Svar: `access_token, expires_in:86400 (24h), refresh_token,
+refresh_token_expires_in:~7775998 (90d), scope:"PARTNER_WRITE PARTNER_READ
+CONNECT_READ CONNECT_WRITE" (fast scope)` — refresh token **roteras vid varje
+refresh**, spara alltid nya. Dra av ≥600s från expires_in. Token exchange ska
+ALLTID ske från backend (aldrig klient). Behörigheter användaren kan ge:
+`ACTIVITY_EXPORT, HEALTH_EXPORT, WORKOUT_IMPORT, COURSE_IMPORT, MCT_EXPORT
+(HISTORICAL_DATA_EXPORT = Enterprise only)`. userId är persistent över
+om-registreringar (samma Garmin-konto → samma API userId).
 
-### 2.3 Nya tabeller (MySQL — schema.sql behövs, ddl-auto:none)
+### 2.3 Push Service — officiella krav
+
+- Timeout **30s**; svara **HTTP 200 INNAN all bearbetning** (async obligatoriskt)
+- Retry: en gång/timme i upp till **7 dagar** vid non-200
+- **Header `garmin-client-id`** skickas med varje POST (+ userId i items) —
+  validera den mot din client-id istf. path-token (specens curl-exempel visar
+  även `user-agent: Garmin Health API`)
+- Käll-IP:n att whitelist:a (valfritt extra lager):
+  `204.77.162.0/23, 204.77.163.0/24, 98.199.124.0/23, 185.132.79.0/24,
+  208.65.206.0/23, 185.207.94.0/23, 198.233.176.0/24`
+- **Uppdaterade summaries:** samma userId+startTime+type kan komma igen med
+  nyare data → alltid UPSERT, senaste vinner (sleep/dailies uppdateras ofta)
+- Summary-typer Health API: `dailies, epochs, sleeps, bodyComps, stressDetails,
+  userMetrics, pulseox, allDayRespiration, healthSnapshot, hrv, bloodPressures,
+  skinTemp, nutrition, hydration, breathingVariations`
+- Summary-typer Activity API: `activities, activityDetails, activityFiles,
+  moveIQActivities, manuallyUpdatedActivities`
+- Special-nycklar: `deregistrations` ([{userId}]) + `userPermissionsChange`
+  ([{userId, summaryId, permissions[], changeTimeInSeconds}]) → svara 200,
+  radera connection vid deregistration
+
+### 2.4 Activity API — payloads (bekräftade fält)
+
+**activities** (summary): `summaryId, activityId, activityType, activityName,
+startTimeInSeconds, startTimeOffsetInSeconds, durationInSeconds,
+averageSpeedInMetersPerSecond, distanceInMeters, activeKilocalories,
+averageHeartRateInBeatsPerMinute, maxHeartRateInBeatsPerMinute,
+averageBikeCadenceInRoundsPerMinute, averageRunCadenceInStepsPerMinute,
+averagePaceInMinutesPerKilometer, steps, totalElevationGainInMeters,
+totalElevationLossInMeters, startingLatitude/LongitudeInDegree, deviceName,
+isParent, parentSummaryId (MULTI_SPORT-barn!), manual, isWebUpload`
+
+**activityDetails**: `{ summary: {samma som activities}, samples: [{startTimeInSeconds,
+latitudeInDegree, longitudeInDegree, elevationInMeters, airTemperatureCelcius,
+heartRate, speedMetersPerSecond, stepsPerMinute, totalDistanceInMeters,
+timerDurationInSeconds, clockDurationInSeconds, movingDurationInSeconds,
+powerInWatts, bikeCadenceInRPM, swimCadenceInStrokesPerMinute}],
+laps: [{startTimeInSeconds}] }` — max 24h-pass, samples ~1Hz "valid until next"
+→ mappa rakt in i `garmin_activity_streams.streams_json` (Intervals-format:
+time←timerDurationInSeconds, watts←powerInWatts, heartrate←heartRate,
+velocity_smooth←speedMetersPerSecond, distance←totalDistanceInMeters,
+latlng←lat/lng, altitude←elevationInMeters, cadence←bikeCadence|stepsPerMinute)
+
+**activityFiles**: `{userId, summaryId:"<id>-file", fileType:"FIT|TCX|GPX",
+callbackURL, activityType, deviceName, startTimeInSeconds, activityId,
+activityName, activityDescription?, manual}` — callbackURL giltig **24h**,
+**EN** nedladdning (dup → HTTP 410), token i URL-param. Starter-limit 50/min.
+Behövs ej i fas 1 (activityDetails täcker <24h-pass) men köa i garmin_file_queue.
+
+**moveIQActivities** / **manuallyUpdatedActivities**: auto-detecterade resp.
+manuellt redigerade pass — lagra som aktiviteter, flagga `manual`.
+
+### 2.5 Training API v2 — push av pass till Garmin
+
+Endpoints (Bearer):
+```
+POST   https://apis.garmin.com/workoutportal/workout/v2        ← create (obs: workoutportal!)
+GET    https://apis.garmin.com/training-api/workout/v2/{workoutId}
+PUT    https://apis.garmin.com/training-api/workout/v2/{workoutId}
+DELETE https://apis.garmin.com/training-api/workout/v2/{workoutId}
+
+POST   https://apis.garmin.com/training-api/schedule/          {workoutId, date:"YYYY-mm-dd"}
+GET/PUT/DELETE https://apis.garmin.com/training-api/schedule/{workoutScheduleId}
+GET    https://apis.garmin.com/training-api/schedule?startDate&endDate
+```
+
+Workout-JSON (v2 = segments-modell):
+`workoutName, description(≤1024), sport (RUNNING|CYCLING|LAP_SWIMMING|
+STRENGTH_TRAINING|CARDIO_TRAINING|GENERIC|YOGA|PILATES|MULTI_SPORT),
+poolLength/-Unit (swim), workoutProvider, workoutSourceId (≤20 tecken),
+isSessionTransitionEnabled, segments:[{segmentOrder, sport, steps:[...]}]`
+
+Step: `type: WorkoutStep|WorkoutRepeatStep, stepOrder, intensity
+(REST|WARMUP|COOLDOWN|RECOVERY|ACTIVE|INTERVAL|MAIN), description(≤512),
+durationType (TIME|DISTANCE|HR_LESS_THAN|HR_GREATER_THAN|CALORIES|OPEN|
+POWER_LESS_THAN|POWER_GREATER_THAN|REPS|FIXED_REST|LAP_BUTTON-likn.),
+durationValue, durationValueType(PERCENT), targetType (SPEED|HEART_RATE|
+CADENCE|POWER|GRADE|RESISTANCE|POWER_3S/10S/30S|POWER_LAP|SPEED_LAP|
+HEART_RATE_LAP|PACE|OPEN), targetValue (zon 1-5 HR / 1-7 power),
+targetValueLow/High (custom range), targetValueType(PERCENT),
+secondaryTarget*` (+ swim-fält: strokeType, drillType, equipmentType,
+exerciseCategory/Name för styrka/kondition).
+
+RepeatStep: `repeatType: REPEAT_UNTIL_STEPS_CMPLT|REPEAT_UNTIL_TIME|
+REPEAT_UNTIL_DISTANCE|REPEAT_UNTIL_CALORIES|REPEAT_UNTIL_HR_*|
+REPEAT_UNTIL_POWER_*` + `repeatValue` + `steps:[...]` (nästlat).
+
+Gränser: 100 steg/single-sport, 25 segment + 250 steg/multisport.
+Svarskoder: 200/204 ok, 400, 401 (UAT saknas), 403, 412 (permission saknas),
+429 (rate limit).
+
+**Rate limits Starter:** 100 req/min per app (OAuth+API räknat ihop),
+**200 req/användare/dygn** — viktigt: schemalägg workout-pushar sparsamt,
+batcha ej per aktivitet.
+
+### 2.6 Nya tabeller (MySQL — docs/sql/001_garmin_schema.sql)
 
 ```sql
 garmin_connections
@@ -161,7 +271,7 @@ garmin_file_queue          -- activityFiles/FIT-hämtning
   file_type VARCHAR, status, fit_bytes MEDIUMBLOB, created_at, fetched_at
 ```
 
-### 2.4 Nya klasser (paket `com.sgen.garmin`)
+### 2.7 Nya klasser (paket `com.sgen.garmin`)
 
 | Klass | Ansvar |
 |---|---|
@@ -182,7 +292,7 @@ garmin_file_queue          -- activityFiles/FIT-hämtning
 | `GarminMergeService` | Unified read: Intervals-aktiviteter + `garmin_activities` → samma JSON-shape; dedup `start_time ±2min + duration ±10%` |
 | `GarminFileService` | `activityFiles`-callbackURL → ladda FIT → (fas 2: FIT-parse; fas 1: räcker med activityDetails) |
 
-### 2.5 Ändringar i befintlig kod
+### 2.8 Ändringar i befintlig kod
 
 - `SecurityConfig`: `permitAll` på `/api/garmin/callback`, `/api/garmin/push/**`, `/garmin-callback.html`
 - `fetchAllData`: appenda lokala Garmin-aktiviteter till `activities`-arrayen (samma shape, `source:'GARMIN'`)
@@ -193,31 +303,43 @@ garmin_file_queue          -- activityFiles/FIT-hämtning
 - `application.yml`: `garmin.client-id/secret/redirect-uri/push-token/api-base`
 - Frontend: `garmin-callback.html` (kopia av strava-callback), Connections-sidan: Garmin-knapp istället för/efter Strava-borttagning
 
-### 2.6 Strava-borttagning (samma branch)
+### 2.9 Strava-borttagning (samma branch)
 
 `StravaService`, `StravaCallbackController`, `StravaStatisticsController`,
 `StravaNotConnectedException`, `StravaRateLimitException`, User-entity strava-fält,
 `stravaOAuth.js`, `strava-callback.html`, `STRAVA_REDIRECT_URI` i deploy-script,
 `strava:` i application.yml, frontend-strava-sektioner, DB-migration som droppar kolumner.
 
-### 2.7 Portal-värden (att fylla i hos Garmin)
+### 2.10 Portal-värden (att fylla i hos Garmin) — BEKRÄFTADE
 
 ```
-Redirect URI:   https://<DIN-DDNS>:<EXT-PORT>/api/garmin/callback
-Push endpoints (alla typer, samma):
-                https://<DIN-DDNS>:<EXT-PORT>/api/garmin/push/<HEMLIG-TOKEN>
-                (hemligheten i path — överlever garanterat, osäkert om Garmin
-                behåller query-parametrar)
+Logo:           https://raw.githubusercontent.com/eskimos20/SGEN/main/frontend/public/logo.png
+Redirect URI:   https://eskimoshome.freeddns.org/api/garmin/callback      ← utan port! (443)
+Push endpoints (alla typer, samma URL, konfigureras på apis.garmin.com/tools/endpoints):
+                https://eskimoshome.freeddns.org/api/garmin/push
 ```
 
-Aktivera: Activity API (activities, activityDetails, activityFiles),
-Health API (dailies, sleeps, hrv, bodyComps, userMetrics, stressDetails,
-epochs, pulseOx, respiration, bloodPressures, skinTemp), Training API.
+**⚠️ PORT-KRAV:** Specen säger explicit "non-standard ports are not supported".
+`eskimoshome.freeddns.org:50505` funkar troligen EJ för notifikations-URL:er
+(eventuellt inte heller för redirect_uri). Servern måste svara på
+**standard-HTTPS port 443** → stunnel/proxy måste flyttas till 443, eller en
+separat vhost/subdomän på 443 som proxar till backend:8081.
 
-### 2.8 Öppna punkter att verifiera mot portalspecen
+Validering av inkommande notifikationer (istf. path-token):
+kolla header `garmin-client-id` == vår client id + userId finns i
+garmin_connections. (IP-whitelist finns också som extra lager, se 2.3.)
 
-- Exakta fältnamn per summary-typ i push-payloads
-- Om `activityFiles` ingår i Starter-push (annars: enbart activityDetails)
-- Training API: fullt workout-schema, DELETE/PUT för workout & schedule, returvärden
-- Notification-signatur (finns `garmin-client-id`-header eller liknande?)
-- Token-livstid (24h vs 3 mån — implementera efter `expires_in`)
+Aktivera per summary-typ: Activity API (activities, activityDetails,
+activityFiles), Health API (dailies, sleeps, hrv, bodyComps, userMetrics,
+stressDetails, epochs, pulseox, allDayRespiration, bloodPressures, skinTemp),
+Training API + permissions WORKOUT_IMPORT/ACTIVITY_EXPORT/HEALTH_EXPORT.
+Deregistrations + UserPermission-webhooken ska också peka hit.
+
+Övriga Starter-krav: publik sajt + publicerad privacy policy, ≤1000 users.
+
+### 2.11 Återstående öppna punkter
+
+- Testa om portalen accepterar redirect_uri/push-URL med :50505 (annars 443-omkonfig, se ovan)
+- Exakt payload för `userPermissionsChange` vid revoked HEALTH_EXPORT (markera connection NEEDS_REAUTH)
+- Om `activityFiles` pushas till Starter (annars enbart activityDetails — ok för <24h-pass)
+- Svarsdetaljer vid Training API 400-fel (fältnivå-feedback)
