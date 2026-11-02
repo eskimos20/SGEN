@@ -82,8 +82,13 @@ const ActivityMap = ({ mapData, className = "h-64" }) => {
       if (mapInstanceRef.current) {
         if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
         resizeTimeoutRef.current = setTimeout(() => {
-          mapInstanceRef.current?.invalidateSize();
-          mapInstanceRef.current?.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+          try {
+            const m = mapInstanceRef.current;
+            if (m && m._container) {
+              m.invalidateSize();
+              m.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+            }
+          } catch { /* map removed */ }
         }, 100);
       }
     });
