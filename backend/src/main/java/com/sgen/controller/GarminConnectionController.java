@@ -93,6 +93,18 @@ public class GarminConnectionController {
         return ResponseEntity.ok().build();
     }
 
+    /** Base URL of the request (scheme + host + port) — used for callback redirect. */
+    private String deriveBaseUrl(jakarta.servlet.http.HttpServletRequest request) {
+        String scheme = request.getHeader("X-Forwarded-Proto") != null
+                ? request.getHeader("X-Forwarded-Proto") : request.getScheme();
+        String host = request.getHeader("X-Forwarded-Host") != null
+                ? request.getHeader("X-Forwarded-Host") : request.getServerName();
+        int port = request.getServerPort();
+        String portStr = ("https".equals(scheme) && port == 443) || ("http".equals(scheme) && port == 80)
+                ? "" : ":" + port;
+        return scheme + "://" + host + portStr;
+    }
+
     /** Fallback redirect derived from the request (DB setting / env take precedence). */
     private String derivedRedirectUri(jakarta.servlet.http.HttpServletRequest request) {
         String scheme = request.getHeader("X-Forwarded-Proto") != null
@@ -110,8 +122,9 @@ public class GarminConnectionController {
     public RedirectView callback(@RequestParam(required = false) String code,
                                  @RequestParam(required = false) String state,
                                  @RequestParam(required = false) String error,
-                                 @RequestParam(required = false) String error_description) {
-        StringBuilder url = new StringBuilder(frontendUrl).append("/garmin-callback.html");
+                                 @RequestParam(required = false) String error_description,
+                                 jakarta.servlet.http.HttpServletRequest request) {
+        StringBuilder url = new StringBuilder(deriveBaseUrl(request)).append("/garmin-callback.html");
         if (error != null) {
             url.append("?error=").append(error);
             if (error_description != null) url.append("&error_description=").append(error_description);
