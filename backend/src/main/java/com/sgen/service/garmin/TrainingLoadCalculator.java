@@ -3,10 +3,6 @@ package com.sgen.service.garmin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.sgen.entity.GarminActivity;
-import com.sgen.entity.LocalSportSettings;
-import com.sgen.repository.LocalSportSettingsRepository;
-import com.sgen.service.IntervalsAthleteService;
-import com.sgen.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,15 +18,13 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class TrainingLoadCalculator {
 
-    private final LocalSportSettingsRepository localSportSettingsRepository;
-    private final IntervalsAthleteService intervalsAthleteService;
-    private final UserRepository userRepository;
+    private final GarminSportSettingsService sportSettings;
 
     public Double compute(GarminActivity act, JsonNode streams) {
         if (streams == null) return null;
         ArrayNode watts = streams.has("watts") ? (ArrayNode) streams.get("watts") : null;
         if (watts != null && watts.size() > 60) {
-            Double ftp = ftpFor(act.getUserId(), act.getSportType());
+            Double ftp = sportSettings.ftpWatts(act.getUserId(), act.getSportType());
             if (ftp != null && ftp > 0) {
                 double np = normalizedPower(watts);
                 if (np > 0) {
@@ -68,7 +62,7 @@ public class TrainingLoadCalculator {
     /** hrTSS ~ duration_s * (avgHr/lthr)^2 * 100 / 3600 (simplified TRIMP). */
     private Double hrTss(GarminActivity act) {
         if (act.getAvgHr() == null) return null;
-        Integer lthr = lthrFor(act.getUserId(), act.getSportType());
+        Integer lthr = sportSettings.lthr(act.getUserId(), act.getSportType());
         if (lthr == null || lthr <= 0) return null;
         double durationS = act.getMovingTimeS() != null
                 ? act.getMovingTimeS()
@@ -76,40 +70,6 @@ public class TrainingLoadCalculator {
         if (durationS <= 0) return null;
         double ratio = (double) act.getAvgHr() / lthr;
         return round1(durationS * ratio * ratio * 100 / 3600);
-    }
-
-    private Double ftpFor(Long userId, String sportType) {
-        try {
-            JsonNode settings = intervalsAthleteService.getSportSettings(
-                    userRepository.findById(userId).map(u -> u.getUsername()).orElse(null));
-            Integer ftp = intervalsAthleteService.getFtpForSport(settings, mapToIntervalsType(sportType));
-            if (ftp != null && ftp > 0) return ftp.doubleValue();
-        } catch (Exception ignored) {}
-        return localSportSettingsRepository.findByUserIdAndSportKey(userId,
-                sportType != null ? sportType : "ride")
-                .map(LocalSportSettings::getFtp).map(Integer::doubleValue).orElse(null);
-    }
-
-    private Integer lthrFor(Long userId, String sportType) {
-        try {
-            JsonNode settings = intervalsAthleteService.getSportSettings(
-                    userRepository.findById(userId).map(u -> u.getUsername()).orElse(null));
-            Integer lthr = intervalsAthleteService.getLthrForSport(settings, mapToIntervalsType(sportType));
-            if (lthr != null && lthr > 0) return lthr;
-        } catch (Exception ignored) {}
-        return localSportSettingsRepository.findByUserIdAndSportKey(userId,
-                sportType != null ? sportType : "ride")
-                .map(LocalSportSettings::getLthr).orElse(null);
-    }
-
-    private String mapToIntervalsType(String sportType) {
-        if (sportType == null) return "Ride";
-        return switch (sportType) {
-            case "run" -> "Run";
-            case "swim" -> "Swim";
-            case "walk" -> "Walk";
-            default -> "Ride";
-        };
     }
 
     private Double round1(double v) {

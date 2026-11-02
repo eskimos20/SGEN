@@ -10,6 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.sgen.entity.CalendarEvent;
+import com.sgen.entity.User;
+import com.sgen.repository.CalendarEventRepository;
+import com.sgen.service.UserService;
+import com.sgen.service.garmin.GarminWorkoutService;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +29,9 @@ import java.util.Map;
 public class CalendarController {
 
     private final IntervalsEventService eventService;
+    private final GarminWorkoutService garminWorkoutService;
+    private final CalendarEventRepository calendarEventRepository;
+    private final UserService userService;
     private final IntervalsWellnessService wellnessService;
     private final CalendarEventService calendarEventService;
 
@@ -77,7 +85,9 @@ public class CalendarController {
             @PathVariable int eventId,
             @RequestBody Map<String, Object> updates) {
         try {
-            return ResponseEntity.ok(eventService.updateEvent(authentication.getName(), eventId, updates));
+            JsonNode updated = eventService.updateEvent(authentication.getName(), eventId, updates);
+            rescheduleGarminWorkout(authentication.getName(), eventId, updates);
+            return ResponseEntity.ok(updated);
         } catch (Exception e) {
             log.error("Failed to update event {}: {}", eventId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -91,6 +101,7 @@ public class CalendarController {
         try {
             eventService.deleteEvent(authentication.getName(), eventId);
             calendarEventService.deleteCalendarEvent(authentication.getName(), eventId);
+            deleteGarminWorkout(authentication.getName(), eventId);
             return ResponseEntity.ok(Map.of("success", true, "message", "Event deleted successfully"));
         } catch (Exception e) {
             log.error("Failed to delete event {}: {}", eventId, e.getMessage());
@@ -119,6 +130,7 @@ public class CalendarController {
                                 : Integer.parseInt(eventIdObj.toString()))).intValue();
                         eventService.deleteEvent(authentication.getName(), eventId);
                         calendarEventService.deleteCalendarEvent(authentication.getName(), eventId);
+                        deleteGarminWorkout(authentication.getName(), eventId);
                         deletedCount++;
                         log.info("Deleted existing event {} before creating new one", eventId);
                     } catch (Exception e) {
@@ -146,6 +158,7 @@ public class CalendarController {
                     eventsWithIds.add(eventWithId);
                 }
                 calendarEventService.saveCalendarEvents(authentication.getName(), eventsWithIds);
+                pushWorkoutsToGarmin(authentication.getName(), eventsWithIds);
             } catch (Exception e) {
                 log.error("Failed to save calendar events deload status: {}", e.getMessage());
             }
@@ -197,6 +210,51 @@ public class CalendarController {
         } catch (Exception e) {
             log.error("Failed to fetch HR curves: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /** Push WORKOUT events to the user's Garmin calendar (async, fail-safe). */
+    private void pushWorkoutsToGarmin(String username, List<Map<String, Object>> eventsWithIds) {
+        try {
+            User user = userService.getUserEntityByUsername(username);
+            for (Map<String, Object> ev : eventsWithIds) {
+                if (!"WORKOUT".equals(ev.get("category")) || ev.get("workout_doc") == null) continue;
+                Object idObj = ev.get("id");
+                Integer intervalsId = idObj != null ? Integer.valueOf(idObj.toString()) : null;
+                Long calId = calendarEventRepository
+                        .findByIntervalsEventIdAndUsername(intervalsId, username)
+                        .map(CalendarEvent::getId).orElse(null);
+                String type = String.valueOf(ev.getOrDefault("type", "Ride"));
+                String sportKey = "Run".equalsIgnoreCase(type) ? "run" : "ride";
+                garminWorkoutService.scheduleWorkout(user.getId(), calId, intervalsId, ev, sportKey);
+            }
+        } catch (Exception e) {
+            log.warn("Garmin workout push skipped: {}", e.getMessage());
+        }
+    }
+
+    private void deleteGarminWorkout(String username, Integer intervalsEventId) {
+        try {
+            User user = userService.getUserEntityByUsername(username);
+            calendarEventRepository.findByIntervalsEventIdAndUsername(intervalsEventId, username)
+                    .ifPresent(ev -> garminWorkoutService.deleteWorkout(user.getId(), ev.getId()));
+        } catch (Exception e) {
+            log.warn("Garmin workout delete skipped: {}", e.getMessage());
+        }
+    }
+
+    private void rescheduleGarminWorkout(String username, Integer intervalsEventId, Map<String, Object> updates) {
+        try {
+            Object sdl = updates.get("start_date_local");
+            if (sdl == null) return;
+            String d = sdl.toString();
+            if (d.length() < 10) return;
+            User user = userService.getUserEntityByUsername(username);
+            calendarEventRepository.findByIntervalsEventIdAndUsername(intervalsEventId, username)
+                    .ifPresent(ev -> garminWorkoutService.reschedule(
+                            user.getId(), ev.getId(), java.time.LocalDate.parse(d.substring(0, 10))));
+        } catch (Exception e) {
+            log.warn("Garmin reschedule skipped: {}", e.getMessage());
         }
     }
 }
