@@ -33,6 +33,7 @@ const PROVIDERS = [
       { field: 'ignore_strava_gear', label: 'Do not use gear from Strava' },
       { field: 'update_strava_name', label: 'Use Strava names for activities in sync' },
       { field: 'add_weather_to_strava_descr', label: 'Add weather data to Strava descriptions' },
+      { field: 'icu_weight_sync', label: 'Update weight from Strava', onValue: 'STRAVA', offValue: 'NONE' },
     ],
   },
   {
@@ -148,27 +149,30 @@ const Connections = () => {
     fetchProfile();
   }, [fetchProfile]);
 
-  const isChecked = (field, invert) => {
-    const value = athlete?.[field];
-    if (invert) return value !== true;
+  const isChecked = (opt) => {
+    const value = athlete?.[opt.field];
+    if (opt.onValue !== undefined) return value === opt.onValue;
+    if (opt.invert) return value !== true;
     return value === true;
   };
 
-  const handleToggle = async (field, invert, checked) => {
-    const newValue = invert ? !checked : checked;
-    const previousValue = athlete[field];
+  const handleToggle = async (opt, checked) => {
+    const newValue = opt.onValue !== undefined
+      ? (checked ? opt.onValue : opt.offValue)
+      : (opt.invert ? !checked : checked);
+    const previousValue = athlete[opt.field];
 
     // Optimistic update
-    setAthlete(prev => ({ ...prev, [field]: newValue }));
-    setSavingField(field);
+    setAthlete(prev => ({ ...prev, [opt.field]: newValue }));
+    setSavingField(opt.field);
     setSaveError('');
 
     try {
-      await api.put('/statistics/athlete/profile', { [field]: newValue });
+      await api.put('/statistics/athlete/profile', { [opt.field]: newValue });
     } catch (err) {
       // Revert on failure
-      setAthlete(prev => ({ ...prev, [field]: previousValue }));
-      setSaveError(`Failed to update ${field}. Please try again.`);
+      setAthlete(prev => ({ ...prev, [opt.field]: previousValue }));
+      setSaveError(`Failed to update ${opt.field}. Please try again.`);
     } finally {
       setSavingField(null);
     }
@@ -228,7 +232,7 @@ const Connections = () => {
                     ) : (
                       <div className="space-y-2">
                         {provider.options.map(opt => {
-                          const checked = isChecked(opt.field, opt.invert);
+                          const checked = isChecked(opt);
                           const saving = savingField === opt.field;
                           // Intervals.icu accepts writes only for garmin/strava
                           // toggles — other provider sync flags are re-derived
@@ -241,7 +245,7 @@ const Connections = () => {
                               title={readOnly ? 'Managed on intervals.icu — not writable via API' : undefined}
                             >
                               <div
-                                onClick={() => !readOnly && !saving && handleToggle(opt.field, opt.invert, !checked)}
+                                onClick={() => !readOnly && !saving && handleToggle(opt, !checked)}
                                 className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
                                   checked ? (readOnly ? 'bg-blue-400 border-blue-400' : 'bg-blue-600 border-blue-600') : 'bg-white border-gray-300'
                                 } ${(saving || readOnly) ? 'opacity-60' : ''}`}
