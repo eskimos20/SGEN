@@ -125,6 +125,7 @@ public class IntervalsMirrorService {
             } else {
                 row.setPayloadJson(objectMapper.writeValueAsString(w));
             }
+            projectWellnessFields(row, w);
             wellnessRepository.save(row);
         } catch (Exception e) {
             log.debug("Mirror persist wellness failed: {}", e.getMessage());
@@ -137,6 +138,10 @@ public class IntervalsMirrorService {
         var out = new java.util.ArrayList<java.util.Map<String, Object>>();
         for (var row : wellnessRepository
                 .findByUserIdAndWellnessDateBetweenOrderByWellnessDateAsc(userId, from, to)) {
+            if (Boolean.TRUE.equals(row.getProjected())) {
+                out.add(projectedWellnessMap(row));
+                continue;
+            }
             try {
                 @SuppressWarnings("unchecked")
                 var m = objectMapper.readValue(row.getPayloadJson(), java.util.Map.class);
@@ -366,5 +371,52 @@ public class IntervalsMirrorService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** Extract the served fields into real columns at persist time. */
+    private void projectWellnessFields(com.sgen.entity.IntervalsWellness row, JsonNode w) {
+        try {
+            row.setCtl(num(w, "ctl")); row.setAtl(num(w, "atl")); row.setTsb(num(w, "tsb"));
+            row.setRampRate(num(w, "rampRate")); row.setHrv(num(w, "hrv"));
+            row.setRestingHr(intNum(w, "restingHR"));
+            row.setSleepSecs(intNum(w, "sleepSecs")); row.setSleepScore(num(w, "sleepScore"));
+            row.setWeightKg(num(w, "weight")); row.setSpO2(num(w, "spO2"));
+            row.setReadiness(num(w, "readiness")); row.setFatigue(num(w, "fatigue"));
+            row.setMood(num(w, "mood")); row.setSoreness(num(w, "soreness"));
+            row.setStress(num(w, "stress"));
+            row.setProjected(true);
+        } catch (Exception e) {
+            log.debug("Wellness projection failed for {}: {}", row.getWellnessDate(), e.getMessage());
+        }
+    }
+
+    /** Build the served map straight from columns — no JSON parsing. */
+    private java.util.Map<String, Object> projectedWellnessMap(com.sgen.entity.IntervalsWellness r) {
+        var m = new java.util.HashMap<String, Object>();
+        m.put("id", r.getWellnessDate().toString());
+        if (r.getCtl() != null) m.put("ctl", r.getCtl());
+        if (r.getAtl() != null) m.put("atl", r.getAtl());
+        if (r.getTsb() != null) m.put("tsb", r.getTsb());
+        if (r.getRampRate() != null) m.put("rampRate", r.getRampRate());
+        if (r.getHrv() != null) m.put("hrv", r.getHrv());
+        if (r.getRestingHr() != null) m.put("restingHR", r.getRestingHr());
+        if (r.getSleepSecs() != null) m.put("sleepSecs", r.getSleepSecs());
+        if (r.getSleepScore() != null) m.put("sleepScore", r.getSleepScore());
+        if (r.getWeightKg() != null) m.put("weight", r.getWeightKg());
+        if (r.getSpO2() != null) m.put("spO2", r.getSpO2());
+        if (r.getReadiness() != null) m.put("readiness", r.getReadiness());
+        if (r.getFatigue() != null) m.put("fatigue", r.getFatigue());
+        if (r.getMood() != null) m.put("mood", r.getMood());
+        if (r.getSoreness() != null) m.put("soreness", r.getSoreness());
+        if (r.getStress() != null) m.put("stress", r.getStress());
+        return m;
+    }
+
+    private Double num(JsonNode n, String k) {
+        return n.hasNonNull(k) && n.get(k).isNumber() ? n.get(k).asDouble() : null;
+    }
+
+    private Integer intNum(JsonNode n, String k) {
+        return n.hasNonNull(k) && n.get(k).isNumber() ? n.get(k).asInt() : null;
     }
 }
