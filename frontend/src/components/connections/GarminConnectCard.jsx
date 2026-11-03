@@ -134,18 +134,21 @@ export default function GarminConnectCard() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Importing… {backfill.totalActivities} activities ({backfill.yearsDone} years)
               </p>
-            ) : (backfill?.state === 'DONE' || (backfill?.importedActivities || 0) > 0) ? (
-              <p className="text-sm text-green-700 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4" />
-                Synced — {Math.max(backfill?.totalActivities || 0, backfill?.importedActivities || 0)} imported · {backfill?.garminActivities || 0} via Garmin push
-              </p>
             ) : (
-              <button
-                onClick={startBackfill}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-white hover:bg-gray-800"
-              >
-                <Download className="h-4 w-4" /> Import historical data
-              </button>
+              <div className="space-y-2">
+                {(backfill?.state === 'DONE' || (backfill?.importedActivities || 0) > 0) && (
+                  <p className="text-sm text-green-700 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Synced — {Math.max(backfill?.totalActivities || 0, backfill?.importedActivities || 0)} imported · {backfill?.garminActivities || 0} via Garmin push
+                  </p>
+                )}
+                <button
+                  onClick={startBackfill}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-700 text-white hover:bg-gray-800"
+                >
+                  <Download className="h-4 w-4" /> {(backfill?.importedActivities || 0) > 0 ? 'Re-import historical data' : 'Import historical data'}
+                </button>
+              </div>
             )}
             {backfill?.state === 'ERROR' && (
               <p className="text-sm text-red-600 mt-1">{backfill.error}</p>
