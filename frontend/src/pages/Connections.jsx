@@ -31,8 +31,8 @@ const PROVIDERS = [
       { field: 'strava_sync_activities', label: 'Download activities' },
       { field: 'strava_sync_other_activities', label: 'Download other activities' },
       { field: 'ignore_strava_gear', label: 'Do not use gear from Strava' },
-      { field: 'update_strava_name', label: 'Use Strava names for activities' },
-      { field: 'add_weather_to_strava_descr', label: 'Add weather data to descriptions' },
+      { field: 'update_strava_name', label: 'Use Strava names for activities in sync' },
+      { field: 'add_weather_to_strava_descr', label: 'Add weather data to Strava descriptions' },
     ],
   },
   {
@@ -85,7 +85,7 @@ const PROVIDERS = [
     ],
   },
   {
-    key: 'zepp', name: 'Zepp',
+    key: 'zepp', name: 'Amazfit',
     isConnected: (a) => !!a.zepp_user_id,
     options: [
       { field: 'zepp_sync_activities', label: 'Download activities' },
@@ -103,7 +103,7 @@ const PROVIDERS = [
     ],
   },
   {
-    key: 'oura', name: 'Oura Ring',
+    key: 'oura', name: 'Oura',
     isConnected: (a) => !!a.oura_scope,
     options: [],
   },
