@@ -78,6 +78,23 @@ public class IntervalsService {
     /** Session cache: activity ids whose FTP/VO2 stream analysis already ran. */
     private final Map<Long, Set<String>> analyzedIds = new ConcurrentHashMap<>();
 
+    /** Short-TTL cache for expensive mirror computations (curve history, totals). */
+    private static final long MIRROR_CACHE_TTL_MS = 5 * 60 * 1000;
+    private final Map<String, long[]> mirrorCacheTs = new ConcurrentHashMap<>();
+    private final Map<String, JsonNode> mirrorCache = new ConcurrentHashMap<>();
+
+    private JsonNode mirrorCached(String key, java.util.function.Supplier<JsonNode> compute) {
+        long now = System.currentTimeMillis();
+        long[] ts = mirrorCacheTs.get(key);
+        if (ts != null && now - ts[0] < MIRROR_CACHE_TTL_MS && mirrorCache.containsKey(key)) {
+            return mirrorCache.get(key);
+        }
+        JsonNode v = compute.get();
+        mirrorCache.put(key, v);
+        mirrorCacheTs.put(key, new long[]{now});
+        return v;
+    }
+
     @PreDestroy
     public void shutdown() {
         executorService.shutdown();
@@ -1188,6 +1205,11 @@ public class IntervalsService {
     // -------------------------------------------------------------------------
 
     public JsonNode getPowerCurveHistory(String username, String oldest, String newest, String type) {
+        return mirrorCached(username + "|curves|" + oldest + "|" + newest + "|" + type,
+                () -> computePowerCurveHistory(username, oldest, newest, type));
+    }
+
+    private JsonNode computePowerCurveHistory(String username, String oldest, String newest, String type) {
         ApiContext ctx = getValidatedContext(username);
         Long uid = ctx.user.getId();
         if (garminClientFactory.isConnected(uid) && intervalsActivityRepository.countByUserId(uid) > 0) {
@@ -1269,6 +1291,11 @@ public class IntervalsService {
 
     /** Fetch only the fields used by the Fitness & Form training totals panel. */
     public JsonNode getTrainingTotalsActivities(String username, String oldest, String newest) {
+        return mirrorCached(username + "|totals|" + oldest + "|" + newest,
+                () -> computeTrainingTotalsActivities(username, oldest, newest));
+    }
+
+    private JsonNode computeTrainingTotalsActivities(String username, String oldest, String newest) {
         ApiContext ctx = getValidatedContext(username);
         Long uid = ctx.user.getId();
         String fields = "id,type,start_date_local,moving_time,distance,icu_distance,coasting_time,total_elevation_gain,icu_training_load,calories,kg_lifted,icu_joules,icu_zone_times,icu_hr_zone_times,pace_zone_times,gap_zone_times,use_gap_zone_times,tiz_order";
