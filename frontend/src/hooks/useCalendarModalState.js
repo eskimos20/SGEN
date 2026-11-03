@@ -9,10 +9,6 @@ export const useCalendarModalState = () => {
   const [athleteProfile, setAthleteProfile] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Strava data for activity (photos and segments)
-  const [stravaData, setStravaData] = useState(null);
-  const [stravaLoading, setStravaLoading] = useState(false);
-  
   // Scheduler modal
   const [showScheduler, setShowScheduler] = useState(false);
   const [schedulerData, setSchedulerData] = useState(null);
@@ -47,13 +43,7 @@ export const useCalendarModalState = () => {
     setAthleteProfile,
     isDeleting,
     setIsDeleting,
-    
-    // Strava data states
-    stravaData,
-    setStravaData,
-    stravaLoading,
-    setStravaLoading,
-    
+
     // Scheduler states
     showScheduler,
     setShowScheduler,

@@ -4,7 +4,7 @@ import { useCalendar } from '../context/CalendarContext';
 import api from '../api/axios';
 import { Loader2, Utensils, Flame, Zap, Activity, Clock, TrendingUp, ChevronDown, ChevronUp, Info, Target, ChevronLeft, ChevronRight } from 'lucide-react';
 import { calculateAge } from '../utils/athleteUtils';
-import { formatDuration } from '../utils/dataUtils';
+import { formatDuration, formatHoursMinutes } from '../utils/dataUtils';
 import {
   calculateBMR,
   calculateTDEE,
@@ -288,7 +288,7 @@ const Nutrition = () => {
           {heightCm > 0 && <span>Height: <strong>{heightCm} cm</strong></span>}
           {age && <span>Age: <strong>{age} yr</strong></span>}
           <span>Sex: <strong>{sex === 'female' ? 'Female' : 'Male'}</strong></span>
-          <span>Weekly hours: <strong>{weeklyHours.toFixed(1)}h</strong></span>
+          <span>Weekly hours: <strong>{formatHoursMinutes(weeklyHours, true)}</strong></span>
         </div>
 
         {/* Activity level selector */}

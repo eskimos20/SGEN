@@ -20,7 +20,7 @@ import java.util.Map;
 
 /**
  * Garmin connection lifecycle: status, authorize URL, OAuth callback,
- * disconnect. Mirrors the Strava flow shape (popup + callback html page).
+ * disconnect. Uses a popup + callback html page flow.
  */
 @Controller
 @RequestMapping("/api/garmin")

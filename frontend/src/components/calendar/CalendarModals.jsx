@@ -22,10 +22,6 @@ const CalendarModals = ({
   setActivityDetails,
   detailsLoading,
   setDetailsLoading,
-  stravaData,
-  setStravaData,
-  stravaLoading,
-  setStravaLoading,
   athleteProfile,
   isDeleting,
   handleDeleteEvent,
@@ -88,8 +84,6 @@ const CalendarModals = ({
         selectedEvent={selectedEvent}
         activityDetails={activityDetails}
         detailsLoading={detailsLoading}
-        stravaData={stravaData}
-        stravaLoading={stravaLoading}
         athleteProfile={athleteProfile}
         isDeleting={isDeleting}
         onClose={() => setSelectedEvent(null)}

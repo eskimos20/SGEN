@@ -48,10 +48,10 @@ public class IntervalsMirrorService {
     }
 
     /**
-     * Providers whose data Intervals may stop exposing through its API
-     * (Garmin policy change; Strava already restricted). Mirror rows from
-     * these sources are never pruned on absence, and stripped response
-     * shells never overwrite stored payloads.
+     * Providers whose data Intervals does not (or may stop) exposing through
+     * its API — Strava is already restricted, Garmin is restricted by the new
+     * policy. Mirror rows from these sources are never pruned on absence, and
+     * stripped response shells never overwrite stored payloads.
      */
     private static final java.util.Set<String> PROTECTED_SOURCES =
             java.util.Set.of("GARMIN_CONNECT", "STRAVA");

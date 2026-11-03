@@ -17,8 +17,6 @@ const EventDetailModal = ({
   selectedEvent,
   activityDetails,
   detailsLoading,
-  stravaData,
-  stravaLoading,
   athleteProfile,
   isDeleting,
   onClose,
@@ -547,12 +545,11 @@ const EventDetailModal = ({
                     <p className="text-xs mt-2 text-amber-600">Connect your device/app directly to Intervals.icu to resolve this (e.g. Zwift, Garmin, Polar, Suunto, Wahoo).</p>
                   </div>
                 </div>
-              ) : (detailsLoading || stravaLoading) ? (
+              ) : detailsLoading ? (
                 <div className="bg-gray-50 rounded-lg p-8">
                   <div className="flex flex-col items-center justify-center text-gray-500">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
                     <p className="text-sm">Loading activity data...</p>
-                    {stravaLoading && <p className="text-xs text-gray-400 mt-1">Fetching Strava data...</p>}
                   </div>
                 </div>
               ) : activityDetails ? (
@@ -561,7 +558,6 @@ const EventDetailModal = ({
                   activity={selectedEvent}
                   formatDuration={formatDuration}
                   athleteProfile={athleteProfile}
-                  stravaData={stravaData}
                 />
               ) : (
                 <div className="bg-gray-50 rounded-lg p-4">

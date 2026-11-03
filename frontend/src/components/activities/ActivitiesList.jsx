@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React from 'react';
 import { ChevronDown, ChevronUp, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import ActivityDetailsView from './ActivityDetailsView';
@@ -17,25 +17,21 @@ const ActivitiesList = ({
     return null;
   }
 
-  const isStravaRestricted = useCallback((activity) => activity._strava_restricted || 
-    (!activity.name && !activity.type && activity.source === 'STRAVA'), []);
-
   return (
     <div className="card-mobile">
       <h2 className="text-lg font-semibold text-gray-900 mb-4 px-2 sm:px-0">Activities ({data.activities.length})</h2>
       <div className="space-y-2">
         {data.activities.map((activity) => {
-          const restricted = isStravaRestricted(activity);
           return (
-          <div key={activity.id} className={`border rounded-xl overflow-hidden ${restricted ? 'border-amber-300 bg-amber-50/30' : 'border-gray-200'}`}>
+          <div key={activity.id} className="border rounded-xl overflow-hidden border-gray-200">
             <button
-              onClick={() => !restricted && toggleActivityDetails(activity.id)}
-              className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${restricted ? 'cursor-default' : 'hover:bg-gray-50'}`}
+              onClick={() => toggleActivityDetails(activity.id)}
+              className="w-full px-4 py-3 flex items-center justify-between transition-colors hover:bg-gray-50"
             >
               <div className="flex items-center gap-4">
                 <div className="text-left">
                   <div className="font-medium text-gray-900 flex items-center gap-2">
-                    {activity.name || (restricted ? 'Strava Activity (restricted)' : 'Unknown Activity')}
+                    {activity.name || 'Unknown Activity'}
                     {activity.garmin_activity_id ? (
                       <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">Garmin</span>
                     ) : activity.source === 'GARMIN' ? (
@@ -43,36 +39,26 @@ const ActivitiesList = ({
                     ) : null}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {activity.start_date_local || activity.start_date 
-                      ? format(new Date(activity.start_date_local || activity.start_date), 'MMM d, yyyy HH:mm') 
-                      : 'Unknown date'} • {activity.type || (restricted ? 'Strava' : 'Unknown')}
+                    {activity.start_date_local || activity.start_date
+                      ? format(new Date(activity.start_date_local || activity.start_date), 'MMM d, yyyy HH:mm')
+                      : 'Unknown date'} • {activity.type || 'Unknown'}
                   </div>
-                  {restricted && (
-                    <div className="flex items-center gap-1 mt-1 text-xs text-amber-700">
-                      <AlertTriangle className="h-3 w-3" />
-                      <span>Not available via API — connect your device/app directly to Intervals.icu (e.g. Zwift, Garmin, Polar, Suunto, Wahoo)</span>
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                {!restricted && (
-                  <>
-                    <div className="text-right text-sm">
-                      <div className="text-gray-900">{formatDuration(activity.moving_time)}</div>
-                      <div className="text-gray-500">{activity.icu_training_load ? `TSS: ${Math.round(activity.icu_training_load)}` : ''}</div>
-                    </div>
-                    {expandedActivities.has(activity.id) ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </>
+                <div className="text-right text-sm">
+                  <div className="text-gray-900">{formatDuration(activity.moving_time)}</div>
+                  <div className="text-gray-500">{activity.icu_training_load ? `TSS: ${Math.round(activity.icu_training_load)}` : ''}</div>
+                </div>
+                {expandedActivities.has(activity.id) ? (
+                  <ChevronUp className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-gray-400" />
                 )}
               </div>
             </button>
-            
-            {!restricted && expandedActivities.has(activity.id) && (
+
+            {expandedActivities.has(activity.id) && (
               <div className="pb-4 bg-gray-50">
                 {loadingDetails.has(activity.id) ? (
                   <div className="flex items-center justify-center py-8">
@@ -92,7 +78,6 @@ const ActivitiesList = ({
                     activity={activity}
                     formatDuration={formatDuration}
                     athleteProfile={athleteProfile}
-                    stravaData={activityDetails[activity.id]?.stravaData}
                   />
                 ) : (
                   <div className="py-4 text-center text-gray-500">

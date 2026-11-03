@@ -234,13 +234,6 @@ public class IntervalsService {
                     List<CompletableFuture<Void>> intervalFutures = new ArrayList<>();
                     for (JsonNode activity : activitiesNode) {
                         String activityId = activity.path("id").asText();
-                        String name = activity.path("name").asText("");
-                        String type = activity.path("type").asText("");
-                        String source = activity.path("source").asText("");
-                        if (name.isEmpty() && type.isEmpty() && "STRAVA".equals(source)) {
-                            ((com.fasterxml.jackson.databind.node.ObjectNode) activity).put("_strava_restricted", true);
-                            continue;
-                        }
                         if (activityId == null || activityId.isEmpty()) {
                             continue;
                         }

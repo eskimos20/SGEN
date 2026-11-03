@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { Loader2, CheckCircle, XCircle, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 
 /**
  * Provider definitions: detection + toggleable sync options.
@@ -244,18 +244,6 @@ const Connections = () => {
                 ))
               )}
             </div>
-
-            {/* Strava warning when relevant */}
-            {athlete?.strava_sync_activities === true && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs sm:text-sm text-amber-800">
-                  Activities downloaded from Strava are masked by the Intervals.icu API and appear
-                  without data in SGEN. If you also sync via Zwift/Garmin/etc., consider turning off
-                  Strava "Download activities" so activities arrive with full data.
-                </p>
-              </div>
-            )}
 
             {notConnectedProviders.length > 0 && (
               <div className="card-mobile">

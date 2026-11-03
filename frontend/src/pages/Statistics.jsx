@@ -29,7 +29,6 @@ import { usePersistentPreference } from '../hooks/usePersistentPreference';
 const Statistics = () => {
   const { hasIntervalsConfig, user } = useAuth();
   const { fetchCalendarData, getUpcomingWorkouts } = useCalendar();
-  const hasStravaToken = (user?.stravaEnabled && user?.hasStravaToken) || false;
   
   // State for wellness data (separate from statistics data)
   const [wellnessData, setWellnessData] = useState([]);
@@ -285,8 +284,6 @@ const Statistics = () => {
     weeklyData,
     wellnessData,
     chatMessages,
-    // Strava
-    hasStravaToken,
     // External functions
     fetchCalendarData,
     getUpcomingWorkouts

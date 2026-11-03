@@ -448,7 +448,7 @@ const Dashboard = () => {
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">5</span>
-                <span>Optional: Add <strong>OpenAI</strong> and <strong>Strava</strong> credentials in Profile for AI-powered analysis and Strava integration</span>
+                <span>Optional: Add <strong>OpenAI</strong> credentials in Profile for AI-powered analysis</span>
               </li>
             </ol>
           </div>

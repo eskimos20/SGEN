@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useCalendar } from '../context/CalendarContext';
 import { getDaysInMonth, calculateMonthlyTotals } from '../utils/calendarUtils';
 import { fetchCalendarEvents, fetchAthleteProfile } from '../services/calendarService';
-import api from '../api/axios';
 import { useCalendarDragDrop } from '../hooks/useCalendarDragDrop';
 import { useCalendarMobileNavigation } from '../hooks/useCalendarMobileNavigation';
 import { useCalendarEventHandlers } from '../hooks/useCalendarEventHandlers';
@@ -18,28 +17,14 @@ import CalendarModals from '../components/calendar/CalendarModals';
 const Calendar = () => {
   const { logout } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [hasStravaToken, setHasStravaToken] = useState(false);
-  
-  const { 
-    calendarEvents, 
-    calendarActivities, 
+
+  const {
+    calendarEvents,
+    calendarActivities,
     fetchCalendarData,
     refreshCalendarData,
-    isDateRangeCovered 
+    isDateRangeCovered
   } = useCalendar();
-  
-  // Check if user has Strava connection
-  useEffect(() => {
-    const checkStravaConnection = async () => {
-      try {
-        const response = await api.get('/user/me');
-        setHasStravaToken((response.data.stravaEnabled && response.data.hasStravaToken) || false);
-      } catch (err) {
-        setHasStravaToken(false);
-      }
-    };
-    checkStravaConnection();
-  }, []);
   
   // Use calendar modal state hook
   const {
@@ -69,11 +54,7 @@ const Calendar = () => {
     confirmDialog,
     setConfirmDialog,
     alertDialog,
-    setAlertDialog,
-    stravaData,
-    setStravaData,
-    stravaLoading,
-    setStravaLoading
+    setAlertDialog
   } = useCalendarModalState();
   
   // Use consolidated calendar state hook
@@ -144,10 +125,7 @@ const Calendar = () => {
     currentDate,
     refreshCalendarData,
     setEvents,
-    setActivities,
-    setStravaData,
-    setStravaLoading,
-    hasStravaToken
+    setActivities
   );
   
   // Use consolidated calendar handlers hook
@@ -383,10 +361,6 @@ const Calendar = () => {
         setActivityDetails={setActivityDetails}
         detailsLoading={detailsLoading}
         setDetailsLoading={setDetailsLoading}
-        stravaData={stravaData}
-        setStravaData={setStravaData}
-        stravaLoading={stravaLoading}
-        setStravaLoading={setStravaLoading}
         athleteProfile={athleteProfile}
         isDeleting={isDeleting}
         handleDeleteEvent={handleDeleteEvent}

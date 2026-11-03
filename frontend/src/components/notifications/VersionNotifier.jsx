@@ -113,17 +113,12 @@ const VERSION_NOTES = [
       {
         icon: '🔌',
         title: 'New Connections Page',
-        description: 'A new Connections page (between Gear and Profile) lists all your linked Intervals.icu providers – Strava, Garmin, Zwift, Wahoo, Polar, Suunto, Coros, Concept2, Zepp, Huawei, Oura and Whoop.'
+        description: 'A new Connections page (between Gear and Profile) lists all your linked Intervals.icu providers – Garmin, Zwift, Wahoo, Polar, Suunto, Coros, Concept2, Zepp, Huawei, Oura and Whoop.'
       },
       {
         icon: '⚙️',
         title: 'Manage Sync Settings',
         description: 'Toggle each provider\'s sync options directly from SGEN – e.g. Download activities, Download wellness and Upload planned workouts. Changes apply instantly on Intervals.icu.'
-      },
-      {
-        icon: '⚠️',
-        title: 'Strava Activity Warning',
-        description: 'SGEN now warns when Strava activity download is enabled, since Strava activities are masked by the Intervals.icu API and appear without data. Direct provider sync (e.g. Zwift) is recommended.'
       }
     ]
   },

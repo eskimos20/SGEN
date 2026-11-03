@@ -10,7 +10,7 @@
   **no** `Co-Authored-By` lines.
 - **All code, comments, docs and UI strings must be in English** — no Swedish
   anywhere in the repo.
-- Active branch: `feature/garmin-integration` (remote: github.com/eskimos20/SGEN).
+- Active branch: `main` (remote: github.com/eskimos20/SGEN).
 
 ## Build / run
 

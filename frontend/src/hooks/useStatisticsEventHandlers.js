@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from 'react';
-import api from '../api/axios';
 import { buildMinimalData, fetchPerformanceData as fetchPerformanceDataAPI } from '../utils/statisticsUtils';
 import { analyzeData as analyzeDataAPI, fetchActivityDetails, fetchStatisticsData } from '../services/statisticsService';
 
@@ -42,8 +41,6 @@ export const useStatisticsEventHandlers = ({
   weeklyData,
   wellnessData,
   chatMessages,
-  // Strava
-  hasStravaToken,
   // External functions
   fetchCalendarData,
   getUpcomingWorkouts
@@ -113,91 +110,21 @@ export const useStatisticsEventHandlers = ({
 
   // Toggle activity details
   const toggleActivityDetails = useCallback(async (activityId) => {
-    // Find the activity from the data
-    const activity = data?.activities?.find(a => a.id === activityId);
-    
     toggleActivityExpansion(activityId);
 
     // Fetch details if not already loaded
     if (!activityDetails[activityId]) {
       setLoadingDetail(activityId, true);
       try {
-        // Fetch Intervals data and Strava data (if available) in parallel
-        const promises = [fetchActivityDetails(activityId)];
-        
-        // Check if we should fetch Strava data
-        if (hasStravaToken && activity?.start_date) {
-          const startDate = Math.floor(new Date(activity.start_date).getTime() / 1000);
-          
-          const stravaPhotosPromise = api.get('/strava/photos/by-date', {
-            params: { startDate, toleranceSeconds: 300 }
-          }).catch(err => ({ data: { found: false, photos: [], error: err?.response?.data } }));
-          
-          const stravaSegmentsPromise = api.get('/strava/segments/by-date', {
-            params: { startDate, toleranceSeconds: 300 }
-          }).catch(err => ({ data: { found: false, segments: [], error: err?.response?.data } }));
-          
-          promises.push(stravaPhotosPromise);
-          promises.push(stravaSegmentsPromise);
-        }
-        
-        // Wait for Intervals + photos + segments to complete in parallel
-        const results = await Promise.allSettled(promises);
-        
-        // Extract Intervals data (always first)
-        const intervalsData = results[0].status === 'fulfilled' ? results[0].value : null;
-        
-        // Extract Strava data (if fetched)
-        let stravaData = null;
-        if (hasStravaToken && results.length > 1) {
-          const segmentsData = results[2]?.status === 'fulfilled' ? results[2].value?.data : null;
-          
-          // Batch-fetch PR data for ALL segments in parallel via single backend call
-          let segmentPRs = {};
-          if (segmentsData?.found && segmentsData?.segments?.length > 0) {
-            const segmentIds = segmentsData.segments.map(e => e.segment?.id).filter(Boolean);
-            if (segmentIds.length > 0) {
-              try {
-                const batchResponse = await api.post('/strava/segments/batch-pr', { segmentIds });
-                const batchData = batchResponse.data || {};
-                Object.entries(batchData).forEach(([id, pr]) => {
-                  segmentPRs[Number(id)] = {
-                    time: pr.prTime,
-                    watts: pr.prWatts,
-                    komTime: pr.komTime,
-                    qomTime: pr.qomTime,
-                    hasPR: pr.hasPR
-                  };
-                });
-              } catch (err) {
-                // Silent fail - PR data is optional
-              }
-            }
-          }
-
-          const photosData = results[1]?.status === 'fulfilled' ? results[1].value?.data : null;
-          stravaData = {
-            photos: photosData,
-            segments: segmentsData,
-            segmentPRs,
-            hasStravaToken: true,
-            rateLimit: photosData?.error?.error === 'rate_limit' || segmentsData?.error?.error === 'rate_limit',
-            rateLimitSeconds: photosData?.error?.retryAfterSeconds || segmentsData?.error?.retryAfterSeconds || 0
-          };
-        }
-        
-        // Store combined data - only set after ALL data is ready
-        setActivityDetail(activityId, {
-          ...intervalsData,
-          stravaData
-        });
+        const intervalsData = await fetchActivityDetails(activityId);
+        setActivityDetail(activityId, intervalsData);
       } catch (err) {
         console.error('Failed to fetch activity details for', activityId, err);
       } finally {
         setLoadingDetail(activityId, false);
       }
     }
-  }, [toggleActivityExpansion, setLoadingDetail, setActivityDetail, activityDetails, expandedActivities, data, hasStravaToken]);
+  }, [toggleActivityExpansion, setLoadingDetail, setActivityDetail, activityDetails, expandedActivities, data]);
 
   // Toggle event details
   const toggleEventDetails = useCallback((eventId) => {
