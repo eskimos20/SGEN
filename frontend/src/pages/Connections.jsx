@@ -112,6 +112,16 @@ const PROVIDERS = [
     isConnected: (a) => !!a.whoop_scope,
     options: [],
   },
+  {
+    key: 'dropbox', name: 'Dropbox',
+    isConnected: (a) => !!a.dropbox_scope,
+    options: [],
+  },
+  {
+    key: 'google', name: 'Google Fit',
+    isConnected: (a) => !!a.google_scope,
+    options: [],
+  },
 ];
 
 const Connections = () => {
