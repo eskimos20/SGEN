@@ -63,21 +63,6 @@ export const updateAthleteProfile = async (updates) => {
 };
 
 /**
- * Update athlete settings (HR zones, power zones, etc.)
- * @param {Object} updates - Settings updates
- * @returns {Object} Updated settings data
- */
-export const updateAthleteSettings = async (updates) => {
-  try {
-    const response = await api.put('/statistics/athlete/settings', updates);
-    return response.data;
-  } catch (error) {
-    console.error('Failed to update athlete settings:', error);
-    throw error;
-  }
-};
-
-/**
  * Update athlete sport settings (FTP, LTHR, etc. per sport)
  * @param {Object} updates - Sport settings updates
  * @returns {Object} Updated sport settings data
@@ -320,7 +305,6 @@ export default {
   fetchSchedulerData,
   getLatestFitness,
   updateAthleteProfile,
-  updateAthleteSettings,
   updateAthleteSportSettings,
   createAthleteSportSettings,
   deleteAthleteSportSettings,

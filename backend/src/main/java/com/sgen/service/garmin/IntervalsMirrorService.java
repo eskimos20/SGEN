@@ -256,6 +256,7 @@ public class IntervalsMirrorService {
             if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
             if (merged.hasNonNull("moving_time")) row.setMovingTimeS(merged.get("moving_time").asInt());
             row.setTrainingLoad(merged.path("icu_training_load").asDouble(0));
+            if (merged.hasNonNull("type")) row.setActivityType(merged.get("type").asText());
             row.setPayloadJson(objectMapper.writeValueAsString(merged));
             activityRepository.save(row);
         } catch (Exception e) {

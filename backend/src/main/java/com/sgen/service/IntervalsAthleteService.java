@@ -131,20 +131,6 @@ public class IntervalsAthleteService {
         }
     }
 
-    public JsonNode updateAthleteSettings(String username, Map<String, Object> updates) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        try {
-            String responseJson = ctx.client.put()
-                    .uri("/api/v1/athlete/{id}/settings", ctx.user.getIntervalsAthleteId())
-                    .bodyValue(updates)
-                    .retrieve().bodyToMono(String.class).block();
-            return objectMapper.readTree(responseJson);
-        } catch (Exception e) {
-            log.error("Failed to update athlete settings: {}", e.getMessage());
-            throw new RuntimeException("Failed to update athlete settings: " + e.getMessage());
-        }
-    }
-
     public JsonNode updateAthleteSportSettings(String username, Object updates) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {

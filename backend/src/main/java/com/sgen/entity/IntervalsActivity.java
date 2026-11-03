@@ -31,6 +31,9 @@ public class IntervalsActivity {
     @Builder.Default
     private Double trainingLoad = 0.0;
 
+    @Column(name = "activity_type", length = 64)
+    private String activityType;
+
     @Column(name = "payload_json", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String payloadJson;
 

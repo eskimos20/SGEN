@@ -45,18 +45,6 @@ public class AthleteController {
         }
     }
 
-    @PutMapping("/athlete/settings")
-    public ResponseEntity<JsonNode> updateAthleteSettings(
-            Authentication authentication,
-            @RequestBody Map<String, Object> updates) {
-        try {
-            return ResponseEntity.ok(athleteService.updateAthleteSettings(authentication.getName(), updates));
-        } catch (Exception e) {
-            log.error("Failed to update athlete settings: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @PutMapping("/athlete/sport-settings")
     public ResponseEntity<JsonNode> updateAthleteSportSettings(
             Authentication authentication,

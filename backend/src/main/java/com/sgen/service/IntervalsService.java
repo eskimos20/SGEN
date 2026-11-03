@@ -1391,11 +1391,8 @@ public class IntervalsService {
                 .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
         var byType = new LinkedHashMap<String, java.util.List<String>>();
         for (var r : rows) {
-            String t;
-            try {
-                t = objectMapper.readTree(r.getPayloadJson()).path("type").asText("");
-            } catch (Exception e) { continue; }
-            if (t.isEmpty()) continue;
+            String t = r.getActivityType();
+            if (t == null || t.isEmpty()) continue;
             if (type != null && !type.isBlank() && !"all".equalsIgnoreCase(type) && !type.equalsIgnoreCase(t)) continue;
             byType.computeIfAbsent(t, k -> new ArrayList<>()).add(r.getActivityId());
         }
