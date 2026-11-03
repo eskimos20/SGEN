@@ -10,7 +10,7 @@ import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
  */
 const PROVIDERS = [
   {
-    key: 'garmin', name: 'Garmin Connect',
+    key: 'garmin', name: 'Garmin Connect', writable: true,
     isConnected: (a) => !!(a.icu_garmin_last_upload || a.icu_garmin_sync_activities ||
         a.icu_garmin_health || a.icu_garmin_training ||
         a.icu_garmin_download_wellness || a.icu_garmin_upload_workouts),
@@ -22,6 +22,17 @@ const PROVIDERS = [
       // shown as editable options (intervals.icu doesn't show them either).
       { field: 'icu_garmin_download_wellness', label: 'Download wellness' },
       { field: 'icu_garmin_upload_workouts', label: 'Upload planned workouts' },
+    ],
+  },
+  {
+    key: 'strava', name: 'Strava', writable: true,
+    isConnected: (a) => !!a.strava_id || !!a.strava_authorized,
+    options: [
+      { field: 'strava_sync_activities', label: 'Download activities' },
+      { field: 'strava_sync_other_activities', label: 'Download other activities' },
+      { field: 'ignore_strava_gear', label: 'Use Strava gear', invert: true },
+      { field: 'update_strava_name', label: 'Update activity names' },
+      { field: 'add_weather_to_strava_descr', label: 'Add weather to descriptions' },
     ],
   },
   {
@@ -209,10 +220,10 @@ const Connections = () => {
                         {provider.options.map(opt => {
                           const checked = isChecked(opt.field, opt.invert);
                           const saving = savingField === opt.field;
-                          // Intervals.icu API accepts writes only for icu_garmin_*
-                          // toggles — all other provider sync flags are re-derived
+                          // Intervals.icu accepts writes only for garmin/strava
+                          // toggles — other provider sync flags are re-derived
                           // server-side and cannot be changed via the API.
-                          const readOnly = provider.key !== 'garmin';
+                          const readOnly = !provider.writable;
                           return (
                             <label
                               key={opt.field}

@@ -70,6 +70,8 @@ public class IntervalsAthleteService {
             // Connection sync toggles
             "icu_garmin_sync_activities", "icu_garmin_download_wellness", "icu_garmin_health",
             "icu_garmin_training", "icu_garmin_upload_workouts",
+            "strava_sync_activities", "strava_sync_other_activities",
+            "ignore_strava_gear", "update_strava_name", "add_weather_to_strava_descr",
             "zwift_sync_activities", "zwift_upload_workouts",
             "polar_sync_activities", "polar_download_wellness",
             "suunto_sync_activities", "suunto_download_wellness", "suunto_upload_workouts",
