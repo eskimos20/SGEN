@@ -5,8 +5,8 @@ import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 /**
  * Provider definitions: detection + toggleable sync options.
  * Fields map to Intervals.icu athlete profile fields (PUT /api/v1/athlete/{id}).
- * `invert: true` means the checkbox label is positive but the stored field is negative
- * (e.g. "Use Strava gear" checked -> ignore_strava_gear = false).
+ * `invert: true` shows a positive label over a negative stored field
+ * (checked = the stored field is false).
  */
 const PROVIDERS = [
   {
@@ -20,7 +20,7 @@ const PROVIDERS = [
       // from the Garmin OAuth scopes — NOT user toggles. They always read
       // true on the athlete record and PUTs are re-derived, so they are not
       // shown as editable options (intervals.icu doesn't show them either).
-      { field: 'icu_garmin_download_wellness', label: 'Download wellness' },
+      { field: 'icu_garmin_download_wellness', label: 'Download wellness data' },
       { field: 'icu_garmin_upload_workouts', label: 'Upload planned workouts' },
     ],
   },
@@ -30,9 +30,9 @@ const PROVIDERS = [
     options: [
       { field: 'strava_sync_activities', label: 'Download activities' },
       { field: 'strava_sync_other_activities', label: 'Download other activities' },
-      { field: 'ignore_strava_gear', label: 'Use Strava gear', invert: true },
-      { field: 'update_strava_name', label: 'Update activity names' },
-      { field: 'add_weather_to_strava_descr', label: 'Add weather to descriptions' },
+      { field: 'ignore_strava_gear', label: 'Do not use gear from Strava' },
+      { field: 'update_strava_name', label: 'Use Strava names for activities' },
+      { field: 'add_weather_to_strava_descr', label: 'Add weather data to descriptions' },
     ],
   },
   {
@@ -56,7 +56,7 @@ const PROVIDERS = [
     isConnected: (a) => !!a.polar_scope,
     options: [
       { field: 'polar_sync_activities', label: 'Download activities' },
-      { field: 'polar_download_wellness', label: 'Download wellness' },
+      { field: 'polar_download_wellness', label: 'Download wellness data' },
     ],
   },
   {
@@ -64,7 +64,7 @@ const PROVIDERS = [
     isConnected: (a) => !!a.suunto_scope || !!a.suunto_user_id,
     options: [
       { field: 'suunto_sync_activities', label: 'Download activities' },
-      { field: 'suunto_download_wellness', label: 'Download wellness' },
+      { field: 'suunto_download_wellness', label: 'Download wellness data' },
       { field: 'suunto_upload_workouts', label: 'Upload planned workouts' },
     ],
   },
@@ -73,7 +73,7 @@ const PROVIDERS = [
     isConnected: (a) => !!a.coros_user_id,
     options: [
       { field: 'coros_sync_activities', label: 'Download activities' },
-      { field: 'coros_download_wellness', label: 'Download wellness' },
+      { field: 'coros_download_wellness', label: 'Download wellness data' },
       { field: 'coros_upload_workouts', label: 'Upload planned workouts' },
     ],
   },
@@ -89,7 +89,7 @@ const PROVIDERS = [
     isConnected: (a) => !!a.zepp_user_id,
     options: [
       { field: 'zepp_sync_activities', label: 'Download activities' },
-      { field: 'zepp_download_wellness', label: 'Download wellness' },
+      { field: 'zepp_download_wellness', label: 'Download wellness data' },
       { field: 'zepp_upload_workouts', label: 'Upload planned workouts' },
     ],
   },
@@ -98,7 +98,7 @@ const PROVIDERS = [
     isConnected: (a) => !!a.huawei_user_id,
     options: [
       { field: 'huawei_sync_activities', label: 'Download activities' },
-      { field: 'huawei_download_wellness', label: 'Download wellness' },
+      { field: 'huawei_download_wellness', label: 'Download wellness data' },
       { field: 'huawei_upload_workouts', label: 'Upload planned workouts' },
     ],
   },
