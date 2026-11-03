@@ -143,14 +143,17 @@ public class IntervalsService {
                             keepIds.add(a.path("id").asText());
                         }
                         intervalsMirrorService.pruneActivities(uid, from, to, keepIds);
-                        var list = new ArrayList<JsonNode>();
-                        recent.forEach(list::add);
-                        list.sort((x, y) -> y.path("start_date_local").asText("")
-                                .compareTo(x.path("start_date_local").asText("")));
-                        arr = objectMapper.createArrayNode();
-                        list.forEach(arr::add);
                         log.info("SOURCE=INTERVALS user {} mirror sync {}-{}: {} activities",
                                 ctx.user.getUsername(), oldest, newest, recent.size());
+                        // Re-read the mirror post-sync: fresh payloads plus
+                        // protected rows filtered from the API response.
+                        var fresh = intervalsActivityRepository
+                                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
+                        arr = objectMapper.createArrayNode();
+                        for (var r : fresh) {
+                            try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
+                            catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
+                        }
                     }
                 } catch (Exception e) {
                     log.debug("Incremental mirror sync failed: {}", e.getMessage());
@@ -322,6 +325,15 @@ public class IntervalsService {
                 return objectMapper.readTree(athleteJson);
             } catch (Exception e) {
                 log.error("Failed to fetch athlete profile: {}", e.getMessage(), e);
+                if (garminConnected) {
+                    String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "athlete");
+                    if (cached != null) {
+                        try {
+                            log.info("SOURCE=DB user {} stale athlete profile served from local mirror", username);
+                            return objectMapper.readTree(cached);
+                        } catch (Exception ignored) {}
+                    }
+                }
                 return null;
             }
         }, executorService);
@@ -348,6 +360,15 @@ public class IntervalsService {
                 return objectMapper.readTree(sportSettingsJson);
             } catch (Exception e) {
                 log.error("Failed to fetch sport settings: {}", e.getMessage(), e);
+                if (garminConnected) {
+                    String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "sport-settings");
+                    if (cached != null) {
+                        try {
+                            log.info("SOURCE=DB user {} stale sport settings served from local mirror", username);
+                            return objectMapper.readTree(cached);
+                        } catch (Exception ignored) {}
+                    }
+                }
                 return null;
             }
         }, executorService);

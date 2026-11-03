@@ -18,6 +18,9 @@ public class IntervalsEventService {
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
+    private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
+    private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
 
     public JsonNode fetchCalendarEvents(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -35,6 +38,40 @@ public class IntervalsEventService {
 
     public JsonNode fetchCalendarActivities(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        // Garmin-connected: refresh the mirror from Intervals, then serve it —
+        // protected sources survive even if the API starts filtering them.
+        if (garminClientFactory.isConnected(ctx.user.getId())) {
+            var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
+            var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
+            try {
+                String json = ctx.client.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/api/v1/athlete/{id}/activities")
+                                .queryParam("oldest", oldest)
+                                .queryParam("newest", newest)
+                                .build(ctx.user.getIntervalsAthleteId()))
+                        .retrieve().bodyToMono(String.class).block();
+                JsonNode fetched = objectMapper.readTree(json);
+                if (fetched != null && fetched.isArray()) {
+                    var keepIds = new java.util.HashSet<String>();
+                    for (JsonNode a : fetched) {
+                        intervalsMirrorService.saveActivity(ctx.user.getId(), a);
+                        keepIds.add(a.path("id").asText());
+                    }
+                    intervalsMirrorService.pruneActivities(ctx.user.getId(), from, to, keepIds);
+                }
+            } catch (Exception e) {
+                log.debug("Calendar activities mirror refresh failed: {}", e.getMessage());
+            }
+            var rows = intervalsActivityRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(ctx.user.getId(), from, to);
+            var arr = objectMapper.createArrayNode();
+            for (var r : rows) {
+                try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
+                catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
+            }
+            return arr;
+        }
         try {
             String json = ctx.client.get()
                     .uri(uriBuilder -> uriBuilder

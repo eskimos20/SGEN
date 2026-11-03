@@ -47,22 +47,26 @@ public class IntervalsMirrorService {
         return wellnessRepository.countByUserId(userId) > 0;
     }
 
-    /** Persist the verbatim Intervals activity JSON so lists/details can replay it locally. */
+    /**
+     * Providers whose data Intervals may stop exposing through its API
+     * (Garmin policy change; Strava already restricted). Mirror rows from
+     * these sources are never pruned on absence, and stripped response
+     * shells never overwrite stored payloads.
+     */
+    private static final java.util.Set<String> PROTECTED_SOURCES =
+            java.util.Set.of("GARMIN_CONNECT", "STRAVA");
+
+    /** Restricted providers return stripped shells: source set but name/type empty. */
+    private boolean isRestrictedShell(JsonNode a) {
+        return PROTECTED_SOURCES.contains(a.path("source").asText(""))
+                && a.path("name").asText("").isEmpty()
+                && a.path("type").asText("").isEmpty();
+    }
+
+    /** Persist an Intervals activity JSON; merges into an existing payload so a
+     *  stripped response can never clobber stored fields. */
     public void saveActivity(Long userId, JsonNode a) {
-        try {
-            String id = a.path("id").asText("");
-            if (id.isBlank()) return;
-            var row = activityRepository.findByUserIdAndActivityId(userId, id)
-                    .orElseGet(() -> IntervalsActivity.builder().userId(userId).activityId(id).build());
-            String ds = a.path("start_date_local").asText("");
-            if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
-            if (a.hasNonNull("moving_time")) row.setMovingTimeS(a.get("moving_time").asInt());
-            row.setTrainingLoad(a.path("icu_training_load").asDouble(0));
-            row.setPayloadJson(objectMapper.writeValueAsString(a));
-            activityRepository.save(row);
-        } catch (Exception e) {
-            log.debug("Mirror persist activity failed: {}", e.getMessage());
-        }
+        mergeActivityPayload(userId, a);
     }
 
     /** Persist already-fetched streams/intervals JSON for one activity. */
@@ -102,7 +106,14 @@ public class IntervalsMirrorService {
             java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
             var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
                     .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
-            row.setPayloadJson(objectMapper.writeValueAsString(w));
+            if (row.getPayloadJson() != null && w.isObject()) {
+                // Merge so a stripped response can't wipe stored fields.
+                ObjectNode merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
+                merged.setAll((ObjectNode) w);
+                row.setPayloadJson(objectMapper.writeValueAsString(merged));
+            } else {
+                row.setPayloadJson(objectMapper.writeValueAsString(w));
+            }
             wellnessRepository.save(row);
         } catch (Exception e) {
             log.debug("Mirror persist wellness failed: {}", e.getMessage());
@@ -231,7 +242,7 @@ public class IntervalsMirrorService {
     public void mergeActivityPayload(Long userId, JsonNode a) {
         try {
             String id = a.path("id").asText("");
-            if (id.isBlank()) return;
+            if (id.isBlank() || isRestrictedShell(a)) return;
             var row = activityRepository.findByUserIdAndActivityId(userId, id)
                     .orElseGet(() -> IntervalsActivity.builder().userId(userId).activityId(id).build());
             ObjectNode merged;
@@ -265,6 +276,13 @@ public class IntervalsMirrorService {
             for (var row : activityRepository
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(userId, from, to)) {
                 if (keepIds.contains(row.getActivityId())) continue;
+                // Absence only proves deletion for sources Intervals still
+                // serves — restricted providers may be filtered from the API.
+                String source = null;
+                try {
+                    source = objectMapper.readTree(row.getPayloadJson()).path("source").asText(null);
+                } catch (Exception ignored) {}
+                if (source == null || PROTECTED_SOURCES.contains(source)) continue;
                 activityRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
                 streamsRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
                 if (row.getStartDateLocal() != null) {
