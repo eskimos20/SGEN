@@ -17,6 +17,32 @@ public final class CurveCalculator {
 
     private CurveCalculator() {}
 
+    /** Normalize Intervals streams payload to {key: data[]} object form. */
+    public static ObjectNode normalizeStreams(JsonNode streams) {
+        if (streams == null || streams.isNull()) return null;
+        if (streams.isObject()) return (ObjectNode) streams;
+        if (streams.isArray()) {
+            ObjectNode wrapper = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            for (JsonNode el : streams) {
+                String type = el.path("type").asText("");
+                if (!type.isEmpty() && el.has("data")) wrapper.set(type, el.get("data"));
+            }
+            return wrapper;
+        }
+        return null;
+    }
+
+    /** Compute per-stream-key curves for a normalized streams object. */
+    public static ObjectNode computeCurves(JsonNode normalized, String... keys) {
+        ObjectNode out = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+        if (normalized == null) return out;
+        for (String key : keys) {
+            if (!normalized.has(key)) continue;
+            out.set(key, curve(normalized.get(key)));
+        }
+        return out;
+    }
+
     public static ObjectNode curve(JsonNode series) {
         ObjectNode out = M.createObjectNode();
         ArrayNode secs = out.putArray("secs");

@@ -75,7 +75,17 @@ public class IntervalsMirrorService {
         try {
             var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
                     .orElseGet(() -> IntervalsActivityStreams.builder().userId(userId).activityId(activityId).build());
-            if (streams != null) row.setStreamsJson(objectMapper.writeValueAsString(streams));
+            if (streams != null) {
+                row.setStreamsJson(objectMapper.writeValueAsString(streams));
+                // Precompute per-activity curves at persist time so curve history
+                // merges tiny precomputed objects instead of re-parsing streams.
+                var normalized = com.sgen.service.garmin.CurveCalculator.normalizeStreams(streams);
+                if (normalized != null) {
+                    var curves = com.sgen.service.garmin.CurveCalculator.computeCurves(
+                            normalized, "watts", "heartrate", "velocity_smooth");
+                    if (!curves.isEmpty()) row.setCurvesJson(objectMapper.writeValueAsString(curves));
+                }
+            }
             if (intervals != null) row.setIntervalsJson(objectMapper.writeValueAsString(intervals));
             streamsRepository.save(row);
         } catch (Exception e) {

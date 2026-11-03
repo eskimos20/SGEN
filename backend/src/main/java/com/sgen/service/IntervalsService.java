@@ -690,17 +690,7 @@ public class IntervalsService {
 
     /** Normalize Intervals streams (array [{type,data}] or object) to {type→data}. */
     private ObjectNode normalizeStreams(JsonNode streams) {
-        if (streams == null || streams.isNull()) return null;
-        if (streams.isObject()) return (ObjectNode) streams;
-        if (streams.isArray()) {
-            ObjectNode wrapper = objectMapper.createObjectNode();
-            for (JsonNode el : streams) {
-                String type = el.path("type").asText("");
-                if (!type.isEmpty() && el.has("data")) wrapper.set(type, el.get("data"));
-            }
-            return wrapper;
-        }
-        return null;
+        return com.sgen.service.garmin.CurveCalculator.normalizeStreams(streams);
     }
 
     /** Pace curve for running activities, shared by the API and mirror paths. */
