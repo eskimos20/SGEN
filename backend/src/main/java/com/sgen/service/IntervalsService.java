@@ -168,15 +168,19 @@ public class IntervalsService {
                     log.debug("Incremental mirror sync failed: {}", e.getMessage());
                 }
                 log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getUsername(), arr.size());
-                // Hydrate streams/icu_intervals from the mirror so the FTP/VO2 step
-                // below needs no Intervals calls. Missing rows are fetched once and
-                // persisted — next request is fully local.
+                // Hydrate streams/icu_intervals from the mirror — only needed when
+                // the Statistics analysis step (analyze=true) consumes them. Skipped
+                // entirely for plain period fetches (fitness slider, dashboard).
                 var ids = new ArrayList<String>();
-                for (JsonNode n : arr) {
+                if (analyze) for (JsonNode n : arr) {
                     String id = n.path("id").asText("");
                     if (!id.isEmpty()) ids.add(id);
                 }
                 Map<String, com.sgen.entity.IntervalsActivityStreams> have = new HashMap<>();
+                if (!ids.isEmpty()) for (JsonNode n : arr) {
+                    String id = n.path("id").asText("");
+                    if (!id.isEmpty()) ids.add(id);
+                }
                 if (!ids.isEmpty()) {
                     for (var s : intervalsStreamsRepository.findByUserIdAndActivityIdIn(uid, ids)) {
                         have.put(s.getActivityId(), s);

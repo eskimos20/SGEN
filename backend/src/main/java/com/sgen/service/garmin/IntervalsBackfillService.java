@@ -107,7 +107,7 @@ public class IntervalsBackfillService {
                     streamsJson != null ? objectMapper.readTree(streamsJson) : null,
                     intervalsJson != null ? objectMapper.readTree(intervalsJson) : null);
         } catch (Exception e) {
-            log.debug("Backfill streams for {} failed: {}", activityId, e.getMessage());
+            log.warn("Backfill streams for {} failed: {}", activityId, e.getMessage());
         }
     }
 
@@ -125,7 +125,7 @@ public class IntervalsBackfillService {
             if (eventsJson == null) return;
             mirrorService.saveEvents(userId, objectMapper.readTree(eventsJson));
         } catch (Exception e) {
-            log.debug("Backfill events {}-{} failed: {}", oldest, newest, e.getMessage());
+            log.warn("Backfill events {}-{} failed: {}", oldest, newest, e.getMessage());
         }
     }
 
