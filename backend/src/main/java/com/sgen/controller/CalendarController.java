@@ -191,20 +191,30 @@ public class CalendarController {
         var user = userService.getUserEntityByUsername(authentication.getName());
         java.util.List<Map<String, Object>> base = java.util.List.of();
         boolean garminConnected = garminClientFactory.isConnected(user.getId());
-        if (garminConnected && intervalsMirrorService.hasWellness(user.getId())) {
+        boolean hasIntervals = user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank();
+        if (garminConnected) {
+            // Incremental sync: refresh the requested range from Intervals so
+            // wellness synced there later (e.g. downloaded from Garmin) reaches
+            // the mirror — same pattern as the activities mirror sync.
+            if (hasIntervals) {
+                try {
+                    var fresh = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
+                    intervalsMirrorService.saveWellnessRows(user.getId(), fresh);
+                } catch (Exception e) {
+                    org.slf4j.LoggerFactory.getLogger(CalendarController.class)
+                            .debug("Wellness mirror refresh failed: {}", e.getMessage());
+                }
+            }
             org.slf4j.LoggerFactory.getLogger(CalendarController.class)
                     .info("SOURCE=DB user {} wellness served from local mirror {}-{}",
                             authentication.getName(), oldest, newest);
             base = intervalsMirrorService.findWellnessPayloads(user.getId(),
                     java.time.LocalDate.parse(oldest), java.time.LocalDate.parse(newest));
-        } else if (user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()) {
+        } else if (hasIntervals) {
             org.slf4j.LoggerFactory.getLogger(CalendarController.class)
                     .info("SOURCE=INTERVALS user {} fetching wellness {}-{}",
                             authentication.getName(), oldest, newest);
             base = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
-            if (garminConnected) {
-                intervalsMirrorService.saveWellnessRows(user.getId(), base);
-            }
         }
         return ResponseEntity.ok(garminMergeService.mergeWellness(user.getId(), base));
     }
