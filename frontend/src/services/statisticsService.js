@@ -7,7 +7,7 @@ export const fetchStatisticsData = async (startDate, endDate, fetchCalendarData)
   try {
     // Fetch statistics data
     const response = await api.get('/statistics/fetch', {
-      params: { startDate, endDate }
+      params: { startDate, endDate, analyze: 'true' }
     });
     
     // Also fetch calendar data (1 month ahead) for AI analysis

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -74,6 +75,9 @@ public class IntervalsService {
         return allData;
     }
 
+    /** Session cache: activity ids whose FTP/VO2 stream analysis already ran. */
+    private final Map<Long, Set<String>> analyzedIds = new ConcurrentHashMap<>();
+
     @PreDestroy
     public void shutdown() {
         executorService.shutdown();
@@ -88,6 +92,10 @@ public class IntervalsService {
     // -------------------------------------------------------------------------
 
     public Map<String, Object> fetchAllData(String username, String oldest, String newest) {
+        return fetchAllData(username, oldest, newest, false);
+    }
+
+    public Map<String, Object> fetchAllData(String username, String oldest, String newest, boolean analyze) {
         ApiContext ctx;
         try {
             ctx = getValidatedContext(username);
@@ -103,6 +111,7 @@ public class IntervalsService {
         WebClient client = ctx.client;
         Map<String, Object> allData = new ConcurrentHashMap<>();
         final Map<String, JsonNode> streamsMap = new ConcurrentHashMap<>();
+        final Set<String> analyzed = analyzedIds.computeIfAbsent(ctx.user.getId(), k -> ConcurrentHashMap.newKeySet());
 
         // Garmin-connected: serve everything from local DB — no Intervals
         // activity/stream/wellness calls at all (pure local pipeline).
@@ -426,8 +435,9 @@ public class IntervalsService {
             log.error("Failed to fetch dashboard data: {}", e.getMessage(), e);
         }
 
-        // FTP / VO2Max calculation via parallel activity processing
-        try {
+        // FTP / VO2Max analysis — only runs for the Statistics/Search view,
+        // not on plain dashboard/fitness-period fetches.
+        if (analyze) try {
             JsonNode activitiesNode = (JsonNode) allData.get("activities");
             JsonNode athleteNode = (JsonNode) allData.get("athlete");
             if (activitiesNode != null && activitiesNode.isArray() && athleteNode != null) {
@@ -440,6 +450,7 @@ public class IntervalsService {
                 Map<String, Boolean> indoorByActivityId = new HashMap<>();
                 for (JsonNode activity : activitiesNode) {
                     final String actId = activity.path("id").asText();
+                    if (analyzed.contains(actId)) continue; // already analyzed this session
                     indoorByActivityId.put(actId,
                             activity.path("trainer").asBoolean(false)
                                     || activity.path("type").asText("").startsWith("Virtual"));
@@ -455,6 +466,7 @@ public class IntervalsService {
                 for (CompletableFuture<ActivityProcessingResult> future : futures) {
                     try {
                         ActivityProcessingResult result = future.get();
+                        if (result != null) analyzed.add(result.activityId);
                         if (result != null && result.best5minAvg > 0) {
                             boolean indoor = indoorByActivityId.getOrDefault(result.activityId, false);
                             performanceService.updateFtpIfBetter(

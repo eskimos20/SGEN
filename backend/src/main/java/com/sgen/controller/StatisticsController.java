@@ -67,6 +67,7 @@ public class StatisticsController {
 
     @GetMapping("/fetch")
     public ResponseEntity<Map<String, Object>> fetchStatistics(
+            @RequestParam(required = false) String analyze,
             Authentication authentication,
             @RequestParam(required = false) String oldest,
             @RequestParam(required = false) String newest,
@@ -81,7 +82,8 @@ public class StatisticsController {
         }
         if (start.compareTo(end) > 0) { String tmp = start; start = end; end = tmp; }
 
-        Map<String, Object> data = intervalsService.fetchAllData(authentication.getName(), start, end);
+        Map<String, Object> data = intervalsService.fetchAllData(authentication.getName(), start, end,
+                "true".equals(analyze));
 
         try {
             List<Map<String, Object>> eventsWithDeload = calendarEventService

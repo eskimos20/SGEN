@@ -47,15 +47,20 @@ public class FitnessModelService {
             acc[0] += a.getTrainingLoad();
             acc[1]++;
         }
+        var changed = new java.util.concurrent.atomic.AtomicBoolean(false);
         byDay.forEach((d, acc) -> {
             UserDailyLoad row = dailyLoadRepository
                     .findByUserIdAndLoadDateAndSource(userId, d, "GARMIN")
                     .orElseGet(() -> UserDailyLoad.builder().userId(userId).loadDate(d).source("GARMIN").build());
-            row.setTrainingLoad(acc[0]);
-            row.setActivityCount((int) acc[1]);
-            dailyLoadRepository.save(row);
+            if (row.getTrainingLoad() == null || Math.abs(row.getTrainingLoad() - acc[0]) > 0.001
+                    || row.getActivityCount() == null || row.getActivityCount() != (int) acc[1]) {
+                row.setTrainingLoad(acc[0]);
+                row.setActivityCount((int) acc[1]);
+                dailyLoadRepository.save(row);
+                changed.set(true);
+            }
         });
-        recompute(userId);
+        if (changed.get()) recompute(userId);
     }
 
     /** Backwards-compatible overload — Intervals feed param no longer used (GARMIN wins). */
