@@ -139,9 +139,12 @@ public class IntervalsService {
                 // download toggles, other devices) enter the mirror.
                 try {
                     rateLimiter.acquire();
+                    // Only refresh a small trailing window — historical rows are
+                    // immutable, refetching the whole range per request is wasted.
+                    String syncOldest = java.time.LocalDate.parse(newest).minusDays(30).toString();
                     String recentJson = client.get()
                             .uri(b -> b.path("/api/v1/athlete/{id}/activities")
-                                    .queryParam("oldest", oldest).queryParam("newest", newest)
+                                    .queryParam("oldest", syncOldest).queryParam("newest", newest)
                                     .build(athleteId))
                             .retrieve().bodyToMono(String.class).block();
                     JsonNode recent = objectMapper.readTree(recentJson);
