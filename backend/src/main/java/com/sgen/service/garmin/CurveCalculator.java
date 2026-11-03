@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public final class CurveCalculator {
 
     private static final ObjectMapper M = new ObjectMapper();
-    private static final int[] DURATIONS = {5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600};
+    private static final int[] DURATIONS = {1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600};
 
     private CurveCalculator() {}
 
