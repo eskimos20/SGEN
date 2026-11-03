@@ -27,6 +27,9 @@ public class IntervalsActivityStreams {
     @Column(name = "intervals_json", columnDefinition = "MEDIUMTEXT")
     private String intervalsJson;
 
+    @Column(name = "curves_json", columnDefinition = "MEDIUMTEXT")
+    private String curvesJson;
+
     @Column(name = "best_efforts_json", columnDefinition = "MEDIUMTEXT")
     private String bestEffortsJson;
 

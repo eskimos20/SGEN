@@ -1386,14 +1386,28 @@ public class IntervalsService {
                 var srow = intervalsStreamsRepository.findByUserIdAndActivityId(uid, id).orElse(null);
                 if (srow == null || srow.getStreamsJson() == null) continue;
                 try {
-                    ObjectNode normalized = normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
-                    if (normalized == null || !normalized.has(streamKey)) continue;
-                    ObjectNode c = com.sgen.service.garmin.CurveCalculator.curve(normalized.get(streamKey));
+                    JsonNode c = null;
+                    // Stored per-activity curve — computed once, merged forever.
+                    if (srow.getCurvesJson() != null) {
+                        JsonNode stored = objectMapper.readTree(srow.getCurvesJson());
+                        if (stored.has(streamKey)) c = stored.get(streamKey);
+                    }
+                    if (c == null) {
+                        ObjectNode normalized = normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
+                        if (normalized == null || !normalized.has(streamKey)) continue;
+                        c = com.sgen.service.garmin.CurveCalculator.curve(normalized.get(streamKey));
+                        ObjectNode curves = srow.getCurvesJson() != null
+                                ? (ObjectNode) objectMapper.readTree(srow.getCurvesJson())
+                                : objectMapper.createObjectNode();
+                        curves.set(streamKey, c);
+                        srow.setCurvesJson(objectMapper.writeValueAsString(curves));
+                        intervalsStreamsRepository.save(srow);
+                    }
                     var secs = c.path("secs"); var vals = c.path("values");
                     for (int i = 0; i < secs.size(); i++) {
-                        int s = secs.get(i).asInt();
+                        int sec = secs.get(i).asInt();
                         double v = vals.get(i).asDouble();
-                        if (v > best.getOrDefault(s, 0.0)) best.put(s, v);
+                        if (v > best.getOrDefault(sec, 0.0)) best.put(sec, v);
                     }
                 } catch (Exception ex) { log.debug("local curve {} failed: {}", id, ex.getMessage()); }
             }
