@@ -96,6 +96,20 @@ public class IntervalsService {
     }
 
     public Map<String, Object> fetchAllData(String username, String oldest, String newest, boolean analyze) {
+        long t0 = System.currentTimeMillis();
+        Map<String, Object> result = fetchAllDataInner(username, oldest, newest, analyze);
+        try {
+            int bytes = objectMapper.writeValueAsString(result).length();
+            log.info("fetchAllData user {} {}-{}: {} ms, {} KB payload, analyze={}",
+                    username, oldest, newest, System.currentTimeMillis() - t0, bytes / 1024, analyze);
+        } catch (Exception e) {
+            log.info("fetchAllData user {} {}-{}: {} ms",
+                    username, oldest, newest, System.currentTimeMillis() - t0);
+        }
+        return result;
+    }
+
+    private Map<String, Object> fetchAllDataInner(String username, String oldest, String newest, boolean analyze) {
         ApiContext ctx;
         try {
             ctx = getValidatedContext(username);
