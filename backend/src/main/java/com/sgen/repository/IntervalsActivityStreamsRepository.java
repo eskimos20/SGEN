@@ -11,4 +11,5 @@ public interface IntervalsActivityStreamsRepository extends JpaRepository<Interv
     Optional<IntervalsActivityStreams> findByUserIdAndActivityId(Long userId, String activityId);
     java.util.List<IntervalsActivityStreams> findByUserIdAndActivityIdIn(Long userId, java.util.Collection<String> activityIds);
     void deleteByUserId(Long userId);
+    void deleteByUserIdAndActivityId(Long userId, String activityId);
 }

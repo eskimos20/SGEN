@@ -31,6 +31,7 @@ public class IntervalsMirrorService {
     private final IntervalsActivityStreamsRepository streamsRepository;
     private final IntervalsEventRepository eventRepository;
     private final IntervalsWellnessRepository wellnessRepository;
+    private final com.sgen.repository.UserDailyLoadRepository dailyLoadRepository;
     private final com.sgen.repository.IntervalsAthleteMirrorRepository athleteMirrorRepository;
     private final ObjectMapper objectMapper;
 
@@ -219,6 +220,77 @@ public class IntervalsMirrorService {
             streamsRepository.save(row);
         } catch (Exception e) {
             log.debug("Mirror persist {} image for {} failed: {}", kind, activityId, e.getMessage());
+        }
+    }
+
+    /**
+     * Merge a partial (fields-limited) Intervals activity payload into the
+     * stored row — used by endpoints that only request a subset of fields so
+     * the full payload is never clobbered. Creates the row when missing.
+     */
+    public void mergeActivityPayload(Long userId, JsonNode a) {
+        try {
+            String id = a.path("id").asText("");
+            if (id.isBlank()) return;
+            var row = activityRepository.findByUserIdAndActivityId(userId, id)
+                    .orElseGet(() -> IntervalsActivity.builder().userId(userId).activityId(id).build());
+            ObjectNode merged;
+            if (row.getPayloadJson() != null) {
+                merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
+                merged.setAll((ObjectNode) a);
+            } else {
+                merged = (ObjectNode) a;
+            }
+            String ds = merged.path("start_date_local").asText("");
+            if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
+            if (merged.hasNonNull("moving_time")) row.setMovingTimeS(merged.get("moving_time").asInt());
+            row.setTrainingLoad(merged.path("icu_training_load").asDouble(0));
+            row.setPayloadJson(objectMapper.writeValueAsString(merged));
+            activityRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Mirror merge activity failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Delete mirror activities in [from,to] whose ids are absent from keepIds
+     * (removed upstream). Also drops their streams row and the INTERVALS
+     * daily-load row for that date — recordIntervalsLoads rebuilds it when a
+     * surviving activity remains on the same day.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public void pruneActivities(Long userId, java.time.LocalDateTime from,
+                                java.time.LocalDateTime to, java.util.Set<String> keepIds) {
+        try {
+            for (var row : activityRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(userId, from, to)) {
+                if (keepIds.contains(row.getActivityId())) continue;
+                activityRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
+                streamsRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
+                if (row.getStartDateLocal() != null) {
+                    dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(
+                            userId, row.getStartDateLocal().toLocalDate(), "INTERVALS");
+                }
+                log.info("Pruned mirror activity {} (deleted upstream)", row.getActivityId());
+            }
+        } catch (Exception e) {
+            log.debug("Mirror activity prune failed: {}", e.getMessage());
+        }
+    }
+
+    /** Same pruning for events in [from,to] whose ids are absent upstream. */
+    @org.springframework.transaction.annotation.Transactional
+    public void pruneEvents(Long userId, java.time.LocalDateTime from,
+                            java.time.LocalDateTime to, java.util.Set<String> keepIds) {
+        try {
+            for (var row : eventRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(userId, from, to)) {
+                if (keepIds.contains(row.getEventId())) continue;
+                eventRepository.deleteByUserIdAndEventId(userId, row.getEventId());
+                log.info("Pruned mirror event {} (deleted upstream)", row.getEventId());
+            }
+        } catch (Exception e) {
+            log.debug("Mirror event prune failed: {}", e.getMessage());
         }
     }
 
