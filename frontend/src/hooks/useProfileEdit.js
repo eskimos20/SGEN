@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { 
-  updateAthleteProfile, 
-  updateAthleteSettings, 
-  updateAthleteSportSettings, 
-  updateWellnessData 
+import {
+  updateAthleteProfile,
+  updateAthleteSportSettings,
+  updateWellnessData
 } from '../utils/fitnessService';
 import { parsePaceToVelocity } from '../utils/zoneUtils';
 
