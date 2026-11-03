@@ -134,42 +134,6 @@ public class IntervalsService {
                     catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
                 }
                 Long uid = ctx.user.getId();
-                // Incremental sync: refresh the whole requested range so edits,
-                // deletions and activities synced to Intervals later (Garmin
-                // download toggles, other devices) enter the mirror.
-                try {
-                    rateLimiter.acquire();
-                    // Only refresh a small trailing window — historical rows are
-                    // immutable, refetching the whole range per request is wasted.
-                    String syncOldest = java.time.LocalDate.parse(newest).minusDays(30).toString();
-                    String recentJson = client.get()
-                            .uri(b -> b.path("/api/v1/athlete/{id}/activities")
-                                    .queryParam("oldest", syncOldest).queryParam("newest", newest)
-                                    .build(athleteId))
-                            .retrieve().bodyToMono(String.class).block();
-                    JsonNode recent = objectMapper.readTree(recentJson);
-                    if (recent != null && recent.isArray()) {
-                        var keepIds = new java.util.HashSet<String>();
-                        for (JsonNode a : recent) {
-                            intervalsMirrorService.saveActivity(uid, a);
-                            keepIds.add(a.path("id").asText());
-                        }
-                        intervalsMirrorService.pruneActivities(uid, from, to, keepIds);
-                        log.info("SOURCE=INTERVALS user {} mirror sync {}-{}: {} activities",
-                                ctx.user.getUsername(), oldest, newest, recent.size());
-                        // Re-read the mirror post-sync: fresh payloads plus
-                        // protected rows filtered from the API response.
-                        var fresh = intervalsActivityRepository
-                                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
-                        arr = objectMapper.createArrayNode();
-                        for (var r : fresh) {
-                            try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
-                            catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("Incremental mirror sync failed: {}", e.getMessage());
-                }
                 log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getUsername(), arr.size());
                 // Hydrate streams/icu_intervals from the mirror — only needed when
                 // the Statistics analysis step (analyze=true) consumes them. Skipped
