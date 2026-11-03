@@ -28,12 +28,11 @@ const PROVIDERS = [
     key: 'strava', name: 'Strava', writable: true,
     isConnected: (a) => !!a.strava_id || !!a.strava_authorized,
     options: [
-      { field: 'strava_sync_activities', label: 'Download activities' },
-      { field: 'strava_sync_other_activities', label: 'Download other activities' },
+      { field: 'strava_sync_activities', label: 'Download Activities' },
       { field: 'ignore_strava_gear', label: 'Do not use gear from Strava' },
-      { field: 'update_strava_name', label: 'Use Strava names for activities in sync' },
-      { field: 'add_weather_to_strava_descr', label: 'Add weather data to Strava descriptions' },
-      { field: 'icu_weight_sync', label: 'Update weight from Strava', onValue: 'STRAVA', offValue: 'NONE' },
+      { field: 'strava_sync_other_activities', label: 'Keep non-strava activities in sync with Strava' },
+      { field: 'update_strava_name', label: 'Update Strava name and Description' },
+      { field: 'icu_weight_sync', label: 'Update Weight from Strava', onValue: 'STRAVA', offValue: 'NONE' },
     ],
   },
   {
