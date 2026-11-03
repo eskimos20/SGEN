@@ -401,6 +401,12 @@ public class IntervalsService {
             allData.put("activities", activitiesFuture.getNow(null));
             allData.put("athlete", athleteFuture.getNow(null));
             allData.put("sportSettings", sportSettingsFuture.getNow(null));
+            if (garminConnected) {
+                JsonNode a = (JsonNode) allData.get("athlete");
+                JsonNode ss = (JsonNode) allData.get("sportSettings");
+                if (a != null) intervalsMirrorService.saveDoc(ctx.user.getId(), "athlete", a);
+                if (ss != null) intervalsMirrorService.saveDoc(ctx.user.getId(), "sportSettings", ss);
+            }
             allData.put("events", eventsFuture.getNow(null));
         } catch (Exception e) {
             log.error("Failed to fetch dashboard data: {}", e.getMessage(), e);

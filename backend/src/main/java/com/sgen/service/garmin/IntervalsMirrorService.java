@@ -31,6 +31,7 @@ public class IntervalsMirrorService {
     private final IntervalsActivityStreamsRepository streamsRepository;
     private final IntervalsEventRepository eventRepository;
     private final IntervalsWellnessRepository wellnessRepository;
+    private final com.sgen.repository.IntervalsDocumentRepository documentRepository;
     private final com.sgen.repository.UserDailyLoadRepository dailyLoadRepository;
     private final com.sgen.repository.IntervalsAthleteMirrorRepository athleteMirrorRepository;
     private final ObjectMapper objectMapper;
@@ -340,6 +341,30 @@ public class IntervalsMirrorService {
             } catch (Exception e) {
                 log.debug("Mirror persist event failed: {}", e.getMessage());
             }
+        }
+    }
+
+    /** Persist a mirrored document (athlete profile, sport settings). */
+    public void saveDoc(Long userId, String docKey, JsonNode doc) {
+        if (doc == null || docKey == null) return;
+        try {
+            var row = documentRepository.findByUserIdAndDocKey(userId, docKey)
+                    .orElseGet(() -> com.sgen.entity.IntervalsDocument.builder()
+                            .userId(userId).docKey(docKey).build());
+            row.setPayloadJson(objectMapper.writeValueAsString(doc));
+            documentRepository.save(row);
+        } catch (Exception e) {
+            log.warn("Mirror persist doc {} failed: {}", docKey, e.getMessage());
+        }
+    }
+
+    /** Read a mirrored document, or null when absent. */
+    public JsonNode getDoc(Long userId, String docKey) {
+        try {
+            var row = documentRepository.findByUserIdAndDocKey(userId, docKey).orElse(null);
+            return row != null ? objectMapper.readTree(row.getPayloadJson()) : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 }
