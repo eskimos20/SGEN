@@ -38,6 +38,7 @@ public class ActivityAnalysisService {
     private final IntervalsMirrorService mirrorService;
     private final IntervalsActivityAnalysisService analysisService;
     private final PerformanceService performanceService;
+    private final LocalAchievementDetectionService detectionService;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
@@ -46,6 +47,7 @@ public class ActivityAnalysisService {
                                    IntervalsMirrorService mirrorService,
                                    IntervalsActivityAnalysisService analysisService,
                                    PerformanceService performanceService,
+                                   LocalAchievementDetectionService detectionService,
                                    UserRepository userRepository,
                                    ObjectMapper objectMapper) {
         this.analysisRepository = analysisRepository;
@@ -53,6 +55,7 @@ public class ActivityAnalysisService {
         this.mirrorService = mirrorService;
         this.analysisService = analysisService;
         this.performanceService = performanceService;
+        this.detectionService = detectionService;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
     }
@@ -87,7 +90,7 @@ public class ActivityAnalysisService {
             int totalQueued = 0;
             for (Long userId : activityRepository.findDistinctUserIds()) {
                 Set<String> done = analysisRepository.findActivityIdsByUserId(userId);
-                List<String> ids = activityRepository.findActivityIdsByUserId(userId);
+                List<String> ids = activityRepository.findActivityIdsByUserIdOrderByDate(userId);
                 int queued = 0;
                 for (String activityId : ids) {
                     if (done.contains(activityId)) continue;
@@ -140,7 +143,10 @@ public class ActivityAnalysisService {
      */
     void analyzeFromMirror(Long userId, String activityId, boolean retried) {
         try {
-            if (analysisRepository.existsByUserIdAndActivityId(userId, activityId)) return;
+            var existing = analysisRepository.findByUserIdAndActivityId(userId, activityId).orElse(null);
+            // Rows analyzed before best-windows existed get the windows
+            // filled on the next pass — never a full re-analysis.
+            if (existing != null && existing.getBestWindowsJson() != null) return;
 
             String streamsJson = mirrorService.findStreamsJson(userId, activityId);
             if (streamsJson == null || streamsJson.isBlank()) return;
@@ -167,13 +173,24 @@ public class ActivityAnalysisService {
             boolean indoor = payload.path("trainer").asBoolean(false) || type.startsWith("Virtual");
             double weightKg = weightFromAthleteDoc(userId);
 
-            double best5 = analysisService.findBest5MinWindow(streams);
-            if (best5 <= 0) {
-                saveRow(userId, activityId, "NO_DATA", null, name, type, date, indoor, weightKg);
+            JsonNode windows = detectionService.computeWindows(streams);
+            String windowsJson = objectMapper.writeValueAsString(windows);
+
+            if (existing != null) {
+                existing.setBestWindowsJson(windowsJson);
+                analysisRepository.save(existing);
+                detectionService.detect(userId, activityId, payload, windows, name, type, date, indoor);
                 return;
             }
-            saveRow(userId, activityId, "COMPLETED", best5, name, type, date, indoor, weightKg);
-            feedTop3(userId, activityId, name, type, date, indoor, weightKg, best5);
+
+            double best5 = analysisService.findBest5MinWindow(streams);
+            if (best5 <= 0) {
+                saveRow(userId, activityId, "NO_DATA", null, name, type, date, indoor, weightKg, windowsJson);
+            } else {
+                saveRow(userId, activityId, "COMPLETED", best5, name, type, date, indoor, weightKg, windowsJson);
+                feedTop3(userId, activityId, name, type, date, indoor, weightKg, best5);
+            }
+            detectionService.detect(userId, activityId, payload, windows, name, type, date, indoor);
         } catch (Exception e) {
             log.debug("Activity analysis failed for {}: {}", activityId, e.getMessage());
         }
@@ -231,6 +248,12 @@ public class ActivityAnalysisService {
 
     private void saveRow(Long userId, String activityId, String status, Double best5minAvg,
                          String name, String type, LocalDate date, boolean indoor, double weightKg) {
+        saveRow(userId, activityId, status, best5minAvg, name, type, date, indoor, weightKg, null);
+    }
+
+    private void saveRow(Long userId, String activityId, String status, Double best5minAvg,
+                         String name, String type, LocalDate date, boolean indoor, double weightKg,
+                         String bestWindowsJson) {
         analysisRepository.save(ActivityAnalysis.builder()
                 .userId(userId)
                 .activityId(activityId)
@@ -241,6 +264,7 @@ public class ActivityAnalysisService {
                 .activityDate(date)
                 .indoor(indoor)
                 .weightKg(weightKg)
+                .bestWindowsJson(bestWindowsJson)
                 .build());
     }
 }

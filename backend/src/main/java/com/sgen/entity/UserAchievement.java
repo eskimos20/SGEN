@@ -51,6 +51,10 @@ public class UserAchievement {
     private Integer newLthrValue;
     private Integer oldLthrValue;
 
+    // For BEST_POWER/BEST_PACE achievements
+    private Double effortDistance; // meters (BEST_PACE target distance)
+    private Double effortPace;     // m/s
+
     // Whether the activity that produced this achievement was performed indoors
     private Boolean indoor;
     
@@ -71,6 +75,9 @@ public class UserAchievement {
     public enum AchievementStatus {
         PENDING,
         ACCEPTED,
-        DISMISSED
+        DISMISSED,
+        /** Locally detected record (BEST_POWER/BEST_PACE) — shown in
+         *  the achievements list but never requires a user decision. */
+        RECORDED
     }
 }

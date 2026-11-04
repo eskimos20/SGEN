@@ -24,6 +24,10 @@ public interface IntervalsActivityRepository extends JpaRepository<IntervalsActi
     @Query("SELECT a.activityId FROM IntervalsActivity a WHERE a.userId = :userId")
     List<String> findActivityIdsByUserId(@Param("userId") Long userId);
 
+    /** Chronological variant — record tables must grow in date order. */
+    @Query("SELECT a.activityId FROM IntervalsActivity a WHERE a.userId = :userId ORDER BY a.startDateLocal ASC")
+    List<String> findActivityIdsByUserIdOrderByDate(@Param("userId") Long userId);
+
     @Query("SELECT DISTINCT a.userId FROM IntervalsActivity a")
     Set<Long> findDistinctUserIds();
 }

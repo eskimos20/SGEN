@@ -51,6 +51,10 @@ public class ActivityAnalysis {
     @Column(name = "weight_kg")
     private Double weightKg;
 
+    /** Per-duration best averages: {"watts":{"300":350,...},"heartrate":{...},"pace":{...}} */
+    @Column(name = "best_windows_json", columnDefinition = "MEDIUMTEXT")
+    private String bestWindowsJson;
+
     @Builder.Default
     @Column(name = "computed_at", nullable = false)
     private LocalDateTime computedAt = LocalDateTime.now();

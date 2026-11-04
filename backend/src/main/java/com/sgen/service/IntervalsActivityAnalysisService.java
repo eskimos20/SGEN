@@ -475,28 +475,36 @@ public class IntervalsActivityAnalysisService {
     }
 
     double findBest5MinWindow(JsonNode streams) {
-        if (streams == null || !streams.isArray() || streams.size() == 0) return 0;
+        return findBestWindow(streams, "watts", 300);
+    }
 
-        JsonNode wattsStream = null, timeStream = null;
+    /**
+     * Sliding-window best average of the given stream type over
+     * windowSeconds. Same algorithm as the original 5-min search,
+     * parameterized for multi-duration power/HR analysis.
+     */
+    public double findBestWindow(JsonNode streams, String streamType, int windowSeconds) {
+        if (streams == null || !streams.isArray() || streams.size() == 0 || windowSeconds <= 0) return 0;
+
+        JsonNode valueStream = null, timeStream = null;
         for (JsonNode stream : streams) {
             String type = stream.path("type").asText();
-            if ("watts".equals(type)) wattsStream = stream.path("data");
+            if (streamType.equals(type)) valueStream = stream.path("data");
             else if ("time".equals(type)) timeStream = stream.path("data");
         }
 
-        if (wattsStream == null || timeStream == null || !wattsStream.isArray() || !timeStream.isArray()
-                || wattsStream.size() != timeStream.size()) return 0;
+        if (valueStream == null || timeStream == null || !valueStream.isArray() || !timeStream.isArray()
+                || valueStream.size() != timeStream.size()) return 0;
 
         int n = timeStream.size();
-        int windowSeconds = 300;
         double bestAvg = 0, windowSum = 0;
         int left = 0;
 
         for (int right = 0; right < n; right++) {
-            windowSum += wattsStream.get(right).asDouble(0);
+            windowSum += valueStream.get(right).asDouble(0);
             while (left < right &&
                     timeStream.get(right).asDouble() - timeStream.get(left).asDouble() >= windowSeconds) {
-                windowSum -= wattsStream.get(left).asDouble(0);
+                windowSum -= valueStream.get(left).asDouble(0);
                 left++;
             }
             int count = right - left + 1;
@@ -506,6 +514,56 @@ public class IntervalsActivityAnalysisService {
             }
         }
         return bestAvg;
+    }
+
+    /**
+     * Best pace (m/s) covering at least targetMeters, via sliding window
+     * over cumulative distance (built from a "distance" stream if present,
+     * else integrated from velocity_smooth). Returns 0 when the activity
+     * does not cover the distance.
+     */
+    public double findBestPace(JsonNode streams, double targetMeters) {
+        if (streams == null || !streams.isArray() || streams.size() == 0 || targetMeters <= 0) return 0;
+
+        JsonNode distStream = null, velStream = null, timeStream = null;
+        for (JsonNode stream : streams) {
+            String type = stream.path("type").asText();
+            if ("distance".equals(type)) distStream = stream.path("data");
+            else if ("velocity_smooth".equals(type)) velStream = stream.path("data");
+            else if ("time".equals(type)) timeStream = stream.path("data");
+        }
+        if (timeStream == null || !timeStream.isArray()) return 0;
+
+        int n = timeStream.size();
+        double[] cumDist = new double[n];
+        if (distStream != null && distStream.isArray() && distStream.size() == n) {
+            for (int i = 0; i < n; i++) cumDist[i] = distStream.get(i).asDouble(0);
+        } else if (velStream != null && velStream.isArray() && velStream.size() == n) {
+            double acc = 0, prevT = 0;
+            for (int i = 0; i < n; i++) {
+                double t = timeStream.get(i).asDouble(0);
+                acc += velStream.get(i).asDouble(0) * Math.max(0, t - prevT);
+                prevT = t;
+                cumDist[i] = acc;
+            }
+        } else {
+            return 0;
+        }
+
+        // Sliding window: fastest elapsed time covering targetMeters
+        double bestPace = 0;
+        int left = 0;
+        for (int right = 0; right < n; right++) {
+            while (left < right && cumDist[right] - cumDist[left] >= targetMeters) {
+                double elapsed = timeStream.get(right).asDouble(0) - timeStream.get(left).asDouble(0);
+                if (elapsed > 0) {
+                    double pace = (cumDist[right] - cumDist[left]) / elapsed;
+                    if (pace > bestPace) bestPace = pace;
+                }
+                left++;
+            }
+        }
+        return bestPace;
     }
 
     // -------------------------------------------------------------------------

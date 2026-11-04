@@ -208,6 +208,10 @@ public class AchievementNotificationService {
         map.put("effortSeconds", achievement.getEffortSeconds());
         map.put("newLthrValue", achievement.getNewLthrValue());
         map.put("oldLthrValue", achievement.getOldLthrValue());
+        map.put("distance", achievement.getEffortDistance());
+        map.put("pace", achievement.getEffortPace());
+        map.put("secs", achievement.getEffortSeconds());
+        map.put("watts", achievement.getEffortWatts());
         map.put("status", achievement.getStatus().toString());
         map.put("respondedAt", achievement.getRespondedAt());
         map.put("indoor", achievement.getIndoor());
@@ -482,10 +486,18 @@ public class AchievementNotificationService {
                     allAchievements.add(achievementMap);
                 }
             }
-            
+
+            // Merge locally detected achievements — only ever created for
+            // activities lacking icu_achievements, so no duplicates arise.
+            User user = userService.getUserEntityByUsername(username);
+            for (UserAchievement la : achievementRepository
+                    .findByUserAndAchievementDateBetweenOrderByAchievementDateDesc(user, startDate, endDate)) {
+                allAchievements.add(achievementToMap(la));
+            }
+
             // Sort by date descending
             allAchievements.sort((a, b) ->
-                    ((String) b.get("achievementDate")).compareTo((String) a.get("achievementDate"))
+                    (String.valueOf(b.get("achievementDate"))).compareTo(String.valueOf(a.get("achievementDate")))
             );
             
             return Map.of("achievements", allAchievements);

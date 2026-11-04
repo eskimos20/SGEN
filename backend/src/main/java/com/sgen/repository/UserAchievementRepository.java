@@ -23,10 +23,17 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
     );
     
     boolean existsByUserAndActivityIdAndAchievementType(
-            User user, 
-            String activityId, 
+            User user,
+            String activityId,
             String achievementType
     );
-    
+
+    /** Locally detected achievements within a date range (any status). */
+    List<UserAchievement> findByUserAndAchievementDateBetweenOrderByAchievementDateDesc(
+            User user,
+            java.time.LocalDate from,
+            java.time.LocalDate to
+    );
+
     void deleteByUser(User user);
 }
