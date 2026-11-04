@@ -15,6 +15,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -61,6 +62,45 @@ public class ActivityAnalysisService {
         t.setDaemon(true);
         return t;
     });
+
+    private final java.util.concurrent.ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "activity-analysis-scheduler");
+                t.setDaemon(true);
+                return t;
+            });
+
+    /**
+     * Scheduled sweep: 30s after startup and every hour, walk all mirrored
+     * activities for every user and analyze any that lack an analysis row.
+     * Work is handed to the single analysis executor so event-triggered and
+     * sweep-triggered analyses never run concurrently.
+     */
+    @jakarta.annotation.PostConstruct
+    void startSweep() {
+        scheduler.scheduleWithFixedDelay(
+                () -> executor.submit(this::sweepAllUsers), 30, 3600, TimeUnit.SECONDS);
+    }
+
+    void sweepAllUsers() {
+        try {
+            for (Long userId : activityRepository.findDistinctUserIds()) {
+                Set<String> done = analysisRepository.findActivityIdsByUserId(userId);
+                List<String> ids = activityRepository.findActivityIdsByUserId(userId);
+                int queued = 0;
+                for (String activityId : ids) {
+                    if (done.contains(activityId)) continue;
+                    analyzeFromMirror(userId, activityId, false);
+                    queued++;
+                }
+                if (queued > 0) {
+                    log.info("Analysis sweep queued {} activities for user {}", queued, userId);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Analysis sweep failed: {}", e.getMessage());
+        }
+    }
 
     /** All activity ids already analyzed — used to skip them at read time. */
     public Set<String> findAnalyzedIds(Long userId) {
