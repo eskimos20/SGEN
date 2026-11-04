@@ -21,9 +21,39 @@ public class IntervalsEventService {
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
+    private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
 
     public JsonNode fetchCalendarEvents(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        // Garmin-connected: refresh the mirror from Intervals, then serve it —
+        // same DB-first pattern as calendar activities.
+        if (garminClientFactory.isConnected(ctx.user.getId())) {
+            var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
+            var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
+            try {
+                String json = ctx.client.get()
+                        .uri("/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
+                                ctx.user.getIntervalsAthleteId(), oldest, newest)
+                        .retrieve().bodyToMono(String.class).block();
+                JsonNode fetched = objectMapper.readTree(json);
+                if (fetched != null && fetched.isArray()) {
+                    var keepIds = new java.util.HashSet<String>();
+                    fetched.forEach(e -> keepIds.add(e.path("id").asText()));
+                    intervalsMirrorService.saveEvents(ctx.user.getId(), fetched);
+                    intervalsMirrorService.pruneEvents(ctx.user.getId(), from, to, keepIds);
+                }
+            } catch (Exception e) {
+                log.debug("Calendar events mirror refresh failed: {}", e.getMessage());
+            }
+            var rows = intervalsEventRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
+            var arr = objectMapper.createArrayNode();
+            for (var r : rows) {
+                try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
+                catch (Exception e) { log.debug("mirror event parse {}", e.getMessage()); }
+            }
+            return arr;
+        }
         try {
             String json = ctx.client.get()
                     .uri("/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
@@ -109,7 +139,12 @@ public class IntervalsEventService {
                             ctx.user.getIntervalsAthleteId(), eventId)
                     .bodyValue(updates)
                     .retrieve().bodyToMono(String.class).block();
-            return objectMapper.readTree(json);
+            JsonNode updated = objectMapper.readTree(json);
+            if (garminClientFactory.isConnected(ctx.user.getId()) && updated != null) {
+                intervalsMirrorService.saveEvents(ctx.user.getId(),
+                        updated.isArray() ? updated : objectMapper.createArrayNode().add(updated));
+            }
+            return updated;
         } catch (Exception e) {
             log.error("Failed to update event {}: {}", eventId, e.getMessage());
             throw new RuntimeException("Failed to update event: " + e.getMessage());
@@ -123,6 +158,10 @@ public class IntervalsEventService {
                     .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
                             ctx.user.getIntervalsAthleteId(), eventId)
                     .retrieve().bodyToMono(Void.class).block();
+            if (garminClientFactory.isConnected(ctx.user.getId())) {
+                intervalsEventRepository.deleteByUserIdAndEventId(
+                        ctx.user.getId(), String.valueOf(eventId));
+            }
         } catch (Exception e) {
             log.error("Failed to delete event {}: {}", eventId, e.getMessage());
             throw new RuntimeException("Failed to delete event: " + e.getMessage());
@@ -145,6 +184,10 @@ public class IntervalsEventService {
                                     .map(body -> new RuntimeException("API error " + response.statusCode() + ": " + body)))
                     .bodyToMono(String.class).block();
             JsonNode result = objectMapper.readTree(json);
+            if (garminClientFactory.isConnected(ctx.user.getId()) && result != null) {
+                intervalsMirrorService.saveEvents(ctx.user.getId(),
+                        result.isArray() ? result : objectMapper.createArrayNode().add(result));
+            }
             if (result.isArray() && result.size() > 0) return result.get(0);
             return result;
         } catch (Exception e) {
