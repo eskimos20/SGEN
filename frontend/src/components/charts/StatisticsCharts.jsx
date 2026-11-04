@@ -293,7 +293,6 @@ const StatisticsCharts = ({
                     name="Best Pace"
                     stroke="#10b981"
                     strokeWidth={2}
-                    strokeDasharray="6 4"
                     dot={{ r: 3 }}
                     connectNulls={true}
                   />
