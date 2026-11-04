@@ -35,6 +35,7 @@ public class IntervalsMirrorService {
     private final com.sgen.repository.UserDailyLoadRepository dailyLoadRepository;
     private final com.sgen.repository.IntervalsAthleteMirrorRepository athleteMirrorRepository;
     private final ObjectMapper objectMapper;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public boolean hasActivities(Long userId) {
         return activityRepository.countByUserId(userId) > 0;
@@ -89,6 +90,9 @@ public class IntervalsMirrorService {
             }
             if (intervals != null) row.setIntervalsJson(objectMapper.writeValueAsString(intervals));
             streamsRepository.save(row);
+            if (streams != null && !streams.isEmpty()) {
+                eventPublisher.publishEvent(new StreamsPersistedEvent(userId, activityId));
+            }
         } catch (Exception e) {
             log.debug("Mirror persist streams for {} failed: {}", activityId, e.getMessage());
         }

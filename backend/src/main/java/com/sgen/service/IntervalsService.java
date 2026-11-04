@@ -48,6 +48,7 @@ public class IntervalsService {
     private final IntervalsApiRateLimiter rateLimiter;
     private final IntervalsClientFactory clientFactory;
     private final IntervalsActivityAnalysisService analysisService;
+    private final ActivityAnalysisService activityAnalysisService;
     private final GarminMergeService garminMergeService;
     private final FitnessModelService fitnessModelService;
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
@@ -436,39 +437,46 @@ public class IntervalsService {
                 if (tempWeight <= 0) tempWeight = athleteNode.path("weight").asDouble(0);
                 final double weightKg = tempWeight;
 
-                log.info("Analyzing streams for {} activities (FTP/VO2)", activitiesNode.size());
-                List<CompletableFuture<ActivityProcessingResult>> futures = new ArrayList<>();
-                Map<String, Boolean> indoorByActivityId = new HashMap<>();
+                // Activities already analyzed (stored in activity_analysis)
+                // are skipped permanently — analysis runs once at storage time.
+                analyzed.addAll(activityAnalysisService.findAnalyzedIds(ctx.user.getId()));
+
+                Map<String, CompletableFuture<ActivityProcessingResult>> futuresById = new HashMap<>();
+                Map<String, JsonNode> activityById = new HashMap<>();
                 for (JsonNode activity : activitiesNode) {
                     final String actId = activity.path("id").asText();
-                    if (analyzed.contains(actId)) continue; // already analyzed this session
-                    indoorByActivityId.put(actId,
-                            activity.path("trainer").asBoolean(false)
-                                    || activity.path("type").asText("").startsWith("Virtual"));
+                    if (actId.isEmpty() || analyzed.contains(actId)) continue;
+                    activityById.put(actId, activity);
                     final JsonNode cachedIntervals = activity.path("icu_intervals").isArray()
                             ? activity.path("icu_intervals") : null;
                     final JsonNode cachedStreams = streamsMap.get(actId);
-                    futures.add(CompletableFuture.supplyAsync(
+                    futuresById.put(actId, CompletableFuture.supplyAsync(
                             () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals, cachedStreams), executorService));
                 }
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                log.info("Completed stream analysis for all activities");
+                if (!futuresById.isEmpty()) {
+                    log.info("Analyzing streams for {} unanalyzed activities (FTP/VO2)", futuresById.size());
+                    CompletableFuture.allOf(futuresById.values().toArray(new CompletableFuture[0])).join();
+                }
 
-                for (CompletableFuture<ActivityProcessingResult> future : futures) {
+                for (var entry : futuresById.entrySet()) {
                     try {
-                        ActivityProcessingResult result = future.get();
-                        if (result != null) analyzed.add(result.activityId);
-                        if (result != null && result.best5minAvg > 0) {
-                            boolean indoor = indoorByActivityId.getOrDefault(result.activityId, false);
-                            performanceService.updateFtpIfBetter(
-                                    username, result.activityId, result.activityName,
-                                    result.activityType, result.activityDate, result.best5minAvg, indoor);
-                            if (weightKg > 0) {
-                                performanceService.updateVo2MaxIfBetter(
-                                        username, result.activityId, result.activityName,
-                                        result.activityType, result.activityDate, weightKg, result.best5minAvg, indoor);
-                            }
-                        }
+                        String actId = entry.getKey();
+                        JsonNode activity = activityById.get(actId);
+                        ActivityProcessingResult result = entry.getValue().get();
+                        analyzed.add(actId);
+
+                        // Metadata comes from the activity list node — reliable
+                        // even when processActivity used cached intervals.
+                        String actName = activity.path("name").asText("");
+                        String actType = activity.path("type").asText("");
+                        String ds = activity.path("start_date_local").asText("");
+                        java.time.LocalDate actDate = ds.length() >= 10
+                                ? java.time.LocalDate.parse(ds.substring(0, 10)) : null;
+                        boolean indoor = activity.path("trainer").asBoolean(false)
+                                || actType.startsWith("Virtual");
+                        double best5 = result != null ? result.best5minAvg : 0;
+                        activityAnalysisService.recordResult(ctx.user.getId(), username, actId,
+                                actName, actType, actDate, indoor, weightKg, best5);
                     } catch (Exception ignored) {}
                 }
             }
