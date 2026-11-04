@@ -6,6 +6,37 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Performance & Reliability Update',
+    date: '2026-11-04',
+    features: [
+      {
+        icon: '📈',
+        title: 'Background Activity Analysis',
+        description: 'Every activity is now analyzed exactly once when it is stored — new activities included. Statistics views never re-scan streams; results are served instantly from stored analysis.'
+      },
+      {
+        icon: '🔄',
+        title: 'Hourly Analysis Sweep',
+        description: 'A scheduled background job walks all stored activities hourly and fills any missing analysis — the FTP/VO2Max top-3 lists stay complete automatically.'
+      },
+      {
+        icon: '🏆',
+        title: 'Local Achievement Detection',
+        description: 'FTP upgrades, LTHR upgrades, best power and best pace are now detected locally for activities that bypass Intervals.icu — ready for direct Garmin push.'
+      },
+      {
+        icon: '🗓️',
+        title: 'Calendar Events Mirrored',
+        description: 'Calendar events are served from the local mirror and edits write straight through — consistent with activities, wellness, and athlete data.'
+      },
+      {
+        icon: '🎛️',
+        title: 'Corrected Connection Toggles',
+        description: 'Connection toggles now show the true values from Intervals.icu, and only API-writable settings are editable. Read-only provider flags display their real state.'
+      }
+    ]
+  },
+  {
     title: 'Garmin Connect Integration',
     date: '2026-11-02',
     features: [
