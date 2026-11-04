@@ -516,6 +516,9 @@ public class IntervalsActivityAnalysisService {
         return bestAvg;
     }
 
+    /** Per-step speed above this is treated as a GPS glitch and clamped. */
+    private static final double MAX_STEP_MPS = 12.0;
+
     /**
      * Best pace (m/s) covering at least targetMeters, via sliding window
      * over cumulative distance (built from a "distance" stream if present,
@@ -537,7 +540,21 @@ public class IntervalsActivityAnalysisService {
         int n = timeStream.size();
         double[] cumDist = new double[n];
         if (distStream != null && distStream.isArray() && distStream.size() == n) {
-            for (int i = 0; i < n; i++) cumDist[i] = distStream.get(i).asDouble(0);
+            // Clamp single-step distance jumps: a GPS teleport (+400m in one
+            // sample) would otherwise create impossible min-time windows.
+            double acc = 0, prevRaw = distStream.get(0).asDouble(0), prevT = timeStream.get(0).asDouble(0);
+            for (int i = 0; i < n; i++) {
+                double raw = distStream.get(i).asDouble(0);
+                double t = timeStream.get(i).asDouble(0);
+                double dt = t - prevT;
+                double inc = raw - prevRaw;
+                if (inc < 0) inc = 0;
+                if (dt > 0 && inc / dt > MAX_STEP_MPS) inc = MAX_STEP_MPS * dt;
+                acc += inc;
+                cumDist[i] = acc;
+                prevRaw = raw;
+                prevT = t;
+            }
         } else if (velStream != null && velStream.isArray() && velStream.size() == n) {
             double acc = 0, prevT = 0;
             for (int i = 0; i < n; i++) {

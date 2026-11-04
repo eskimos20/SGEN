@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from 'recharts';
 import { Zap, Heart, BarChart2, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
+import PowerCurveHistoryChart from './PowerCurveHistoryChart';
 import { formatHoursMinutes } from '../../utils/dataUtils';
 import { ZONE_COLOR_HEX } from '../../utils/zoneUtils';
 
@@ -23,6 +24,7 @@ const StatisticsCharts = ({
   top3Vo2Max,
   powerRecords,
   paceRecords,
+  bestPowerCurve,
   COLORS,
   athleteProfile
 }) => {
@@ -66,6 +68,20 @@ const StatisticsCharts = ({
 
   if (!weeklyData) return null;
 
+  // Pace curve: group records by sport, x = log distance, y = seconds/km
+  const paceSports = [...new Set((paceRecords || []).map(r => r.activityType || 'Run'))];
+  const paceCurveData = (() => {
+    const distances = [...new Set((paceRecords || []).map(r => r.distanceM))].sort((a, b) => a - b);
+    return distances.map(d => {
+      const point = { distance: d, distanceLabel: distanceLabel(d) };
+      paceSports.forEach(s => {
+        const rec = (paceRecords || []).find(r => r.distanceM === d && (r.activityType || 'Run') === s);
+        point[`pace_${s}`] = rec ? 1000 / rec.paceMps : null;
+      });
+      return point;
+    });
+  })();
+
   const durationLabel = (secs) => {
     const labels = { 1: '1s', 5: '5s', 15: '15s', 30: '30s', 60: '1m', 120: '2m', 180: '3m', 240: '4m', 300: '5m', 480: '8m', 600: '10m', 720: '12m', 900: '15m', 1200: '20m', 1800: '30m', 2400: '40m', 3600: '60m' };
     return labels[secs] || `${Math.round(secs / 60)}m`;
@@ -74,12 +90,15 @@ const StatisticsCharts = ({
     const labels = { 400: '400m', 1000: '1 km', 1609: '1 mi', 5000: '5 km', 10000: '10 km', 21097: 'Half marathon', 42195: 'Marathon' };
     return labels[m] || `${(m / 1000).toFixed(1)} km`;
   };
-  const formatPace = (mps) => {
-    if (!mps || mps <= 0) return '-';
-    const secPerKm = 1000 / mps;
-    const mm = Math.floor(secPerKm / 60);
-    const ss = Math.round(secPerKm % 60).toString().padStart(2, '0');
+  const formatSecPerKm = (secKm) => {
+    if (!secKm || secKm <= 0) return '-';
+    const mm = Math.floor(secKm / 60);
+    const ss = Math.round(secKm % 60).toString().padStart(2, '0');
     return `${mm}:${ss} /km`;
+  };
+  const sportColors = (sport) => {
+    const colors = { Ride: '#f97316', VirtualRide: '#8b5cf6', Run: '#3b82f6', TrailRun: '#06b6d4', VirtualRun: '#06b6d4', Swim: '#0ea5e9', NordicSki: '#10b981', VirtualSki: '#10b981', Hike: '#84cc16', Walk: '#84cc16' };
+    return colors[sport] || '#10b981';
   };
 
   // Single merged top-3 lists (indoor and outdoor compete together)
@@ -176,56 +195,82 @@ const StatisticsCharts = ({
         </div>
       )}
 
-      {/* ── Personal Records: best power per duration + best pace per distance ── */}
-      {((powerRecords || []).length > 0 || (paceRecords || []).length > 0) && (
+      {/* ── Power Curve Best All Time: records as curves ── */}
+      {((bestPowerCurve || []).length > 0 || (paceRecords || []).length > 0) && (
         <div className="card-mobile">
           <SectionHeader
-            title="Personal Records"
-            icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+            title="Power Curve Best All Time"
+            icon={<TrendingUp className="h-5 w-5 text-amber-600" />}
             expanded={isRecordsExpanded}
             onToggle={toggleRecords}
           />
           {isRecordsExpanded && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Best power per duration */}
-              {(powerRecords || []).length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-amber-700 flex items-center gap-1">
-                    <Zap className="h-4 w-4" /> Best Power
-                  </h3>
-                  <div className="space-y-1">
-                    {[...(powerRecords || [])]
-                      .sort((a, b) => a.durationS - b.durationS)
-                      .map(r => (
-                        <div key={r.id} className="flex items-center justify-between py-1.5 px-3 bg-amber-50 rounded border-l-4 border-amber-500">
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">{durationLabel(r.durationS)}</span>
-                            <span className="block text-xs text-gray-500">{r.activityDate}</span>
-                          </div>
-                          <span className="text-lg font-bold text-amber-700">{Math.round(r.watts)} W</span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
+              {(bestPowerCurve || []).length > 0 && (
+                <PowerCurveHistoryChart powerCurveHistory={bestPowerCurve} title="Best Power" />
               )}
-              {/* Best pace per distance */}
-              {(paceRecords || []).length > 0 && (
+              {paceCurveData.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-emerald-700 flex items-center gap-1">
-                    <TrendingUp className="h-4 w-4" /> Best Pace
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" /> Best Pace
                   </h3>
-                  <div className="space-y-1">
-                    {[...(paceRecords || [])]
-                      .sort((a, b) => a.distanceM - b.distanceM)
-                      .map(r => (
-                        <div key={r.id} className="flex items-center justify-between py-1.5 px-3 bg-emerald-50 rounded border-l-4 border-emerald-500">
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">{distanceLabel(r.distanceM)}</span>
-                            <span className="block text-xs text-gray-500">{r.activityDate}</span>
-                          </div>
-                          <span className="text-lg font-bold text-emerald-700">{formatPace(r.paceMps)}</span>
-                        </div>
-                      ))}
+                  <div className="h-56 sm:h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={paceCurveData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis
+                          dataKey="distance"
+                          scale="log"
+                          domain={['dataMin', 'dataMax']}
+                          tickFormatter={(v) => distanceLabel(v)}
+                          type="number"
+                          ticks={[400, 1000, 1609, 5000, 10000, 21097, 42195]}
+                          stroke="#6b7280"
+                          fontSize={10}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          reversed
+                          domain={['auto', 'auto']}
+                          tickFormatter={formatSecPerKm}
+                          stroke="#6b7280"
+                          fontSize={10}
+                          tickLine={false}
+                          width={55}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl">
+                                  <div className="font-medium mb-1">{data.distanceLabel}</div>
+                                  {payload.filter(p => p.value != null).map((p, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                                      <span style={{ color: p.color }}>{p.dataKey.replace('pace_', '')}: {formatSecPerKm(p.value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        {paceSports.map(sport => (
+                          <Line
+                            key={sport}
+                            type="monotone"
+                            dataKey={`pace_${sport}`}
+                            name={sport}
+                            stroke={sportColors(sport)}
+                            strokeWidth={2}
+                            dot={{ r: 3 }}
+                            connectNulls={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               )}

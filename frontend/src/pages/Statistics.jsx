@@ -464,13 +464,6 @@ const Statistics = () => {
                   <PowerCurveHistoryChart powerCurveHistory={powerCurveHistory} title="Power Curve for Period" />
                 </div>
               )}
-
-              {/* Power Curve Best All Time — from the local record tables */}
-              {bestPowerCurve && bestPowerCurve.length > 0 && (
-                <div className="pt-6 border-t border-gray-200">
-                  <PowerCurveHistoryChart powerCurveHistory={bestPowerCurve} title="Power Curve Best All Time" />
-                </div>
-              )}
               {loadingPowerCurve && (
                 <div className="pt-6 border-t border-gray-200">
                   <div className="flex items-center justify-center py-4">
@@ -620,6 +613,7 @@ const Statistics = () => {
           top3Vo2Max={top3Vo2Max}
           powerRecords={powerRecords}
           paceRecords={paceRecords}
+          bestPowerCurve={bestPowerCurve}
           COLORS={COLORS}
           athleteProfile={athleteProfile}
         />
