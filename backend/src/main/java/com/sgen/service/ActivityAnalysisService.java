@@ -68,6 +68,15 @@ public class ActivityAnalysisService {
     }
 
     /**
+     * Queue a batch of analysis work on the background thread. The
+     * statistics path submits unanalyzed activities here so a large
+     * first-run backlog never blocks the user's request.
+     */
+    public void submit(Runnable task) {
+        executor.submit(task);
+    }
+
+    /**
      * Streams were persisted to the mirror — queue the one-time analysis.
      * Runs on a dedicated single thread so backfill bursts stay sequential
      * and never block the request that stored the streams.

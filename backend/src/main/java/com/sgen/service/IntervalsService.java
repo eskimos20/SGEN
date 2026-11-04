@@ -454,30 +454,35 @@ public class IntervalsService {
                             () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals, cachedStreams), executorService));
                 }
                 if (!futuresById.isEmpty()) {
-                    log.info("Analyzing streams for {} unanalyzed activities (FTP/VO2)", futuresById.size());
-                    CompletableFuture.allOf(futuresById.values().toArray(new CompletableFuture[0])).join();
-                }
+                    log.info("Queuing stream analysis for {} unanalyzed activities (FTP/VO2)", futuresById.size());
+                    activityAnalysisService.submit(() -> {
+                        try {
+                            CompletableFuture.allOf(futuresById.values().toArray(new CompletableFuture[0])).join();
+                            for (var entry : futuresById.entrySet()) {
+                                try {
+                                    String actId = entry.getKey();
+                                    JsonNode activity = activityById.get(actId);
+                                    ActivityProcessingResult result = entry.getValue().get();
+                                    analyzed.add(actId);
 
-                for (var entry : futuresById.entrySet()) {
-                    try {
-                        String actId = entry.getKey();
-                        JsonNode activity = activityById.get(actId);
-                        ActivityProcessingResult result = entry.getValue().get();
-                        analyzed.add(actId);
-
-                        // Metadata comes from the activity list node — reliable
-                        // even when processActivity used cached intervals.
-                        String actName = activity.path("name").asText("");
-                        String actType = activity.path("type").asText("");
-                        String ds = activity.path("start_date_local").asText("");
-                        java.time.LocalDate actDate = ds.length() >= 10
-                                ? java.time.LocalDate.parse(ds.substring(0, 10)) : null;
-                        boolean indoor = activity.path("trainer").asBoolean(false)
-                                || actType.startsWith("Virtual");
-                        double best5 = result != null ? result.best5minAvg : 0;
-                        activityAnalysisService.recordResult(ctx.user.getId(), username, actId,
-                                actName, actType, actDate, indoor, weightKg, best5);
-                    } catch (Exception ignored) {}
+                                    // Metadata comes from the activity list node — reliable
+                                    // even when processActivity used cached intervals.
+                                    String actName = activity.path("name").asText("");
+                                    String actType = activity.path("type").asText("");
+                                    String ds = activity.path("start_date_local").asText("");
+                                    java.time.LocalDate actDate = ds.length() >= 10
+                                            ? java.time.LocalDate.parse(ds.substring(0, 10)) : null;
+                                    boolean indoor = activity.path("trainer").asBoolean(false)
+                                            || actType.startsWith("Virtual");
+                                    double best5 = result != null ? result.best5minAvg : 0;
+                                    activityAnalysisService.recordResult(ctx.user.getId(), username, actId,
+                                            actName, actType, actDate, indoor, weightKg, best5);
+                                } catch (Exception ignored) {}
+                            }
+                        } catch (Exception e) {
+                            log.error("Background FTP/VO2 analysis failed: {}", e.getMessage(), e);
+                        }
+                    });
                 }
             }
         } catch (Exception e) {
