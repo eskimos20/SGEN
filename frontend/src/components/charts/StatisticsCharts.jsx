@@ -21,6 +21,8 @@ const StatisticsCharts = ({
   weeklyData,
   top3Ftp,
   top3Vo2Max,
+  powerRecords,
+  paceRecords,
   COLORS,
   athleteProfile
 }) => {
@@ -34,6 +36,10 @@ const StatisticsCharts = ({
   });
   const [isWeeklyExpanded, setIsWeeklyExpanded] = useState(() => {
     const saved = localStorage.getItem('statistics-weeklyExpanded');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [isRecordsExpanded, setIsRecordsExpanded] = useState(() => {
+    const saved = localStorage.getItem('statistics-recordsExpanded');
     return saved !== null ? saved === 'true' : true;
   });
 
@@ -52,8 +58,29 @@ const StatisticsCharts = ({
     setIsWeeklyExpanded(next);
     localStorage.setItem('statistics-weeklyExpanded', next.toString());
   };
+  const toggleRecords = () => {
+    const next = !isRecordsExpanded;
+    setIsRecordsExpanded(next);
+    localStorage.setItem('statistics-recordsExpanded', next.toString());
+  };
 
   if (!weeklyData) return null;
+
+  const durationLabel = (secs) => {
+    const labels = { 1: '1s', 5: '5s', 15: '15s', 30: '30s', 60: '1m', 120: '2m', 180: '3m', 240: '4m', 300: '5m', 480: '8m', 600: '10m', 720: '12m', 900: '15m', 1200: '20m', 1800: '30m', 2400: '40m', 3600: '60m' };
+    return labels[secs] || `${Math.round(secs / 60)}m`;
+  };
+  const distanceLabel = (m) => {
+    const labels = { 400: '400m', 1000: '1 km', 1609: '1 mi', 5000: '5 km', 10000: '10 km', 21097: 'Half marathon', 42195: 'Marathon' };
+    return labels[m] || `${(m / 1000).toFixed(1)} km`;
+  };
+  const formatPace = (mps) => {
+    if (!mps || mps <= 0) return '-';
+    const secPerKm = 1000 / mps;
+    const mm = Math.floor(secPerKm / 60);
+    const ss = Math.round(secPerKm % 60).toString().padStart(2, '0');
+    return `${mm}:${ss} /km`;
+  };
 
   // Single merged top-3 lists (indoor and outdoor compete together)
   const ftpTop3 = [...(top3Ftp || [])].sort((a, b) => b.ftpValue - a.ftpValue);
@@ -142,6 +169,64 @@ const StatisticsCharts = ({
                     <Heart className="h-4 w-4" /> VO2Max Top 3
                   </h3>
                   {renderVo2MaxList(vo2Top3)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Personal Records: best power per duration + best pace per distance ── */}
+      {((powerRecords || []).length > 0 || (paceRecords || []).length > 0) && (
+        <div className="card-mobile">
+          <SectionHeader
+            title="Personal Records"
+            icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+            expanded={isRecordsExpanded}
+            onToggle={toggleRecords}
+          />
+          {isRecordsExpanded && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Best power per duration */}
+              {(powerRecords || []).length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-amber-700 flex items-center gap-1">
+                    <Zap className="h-4 w-4" /> Best Power
+                  </h3>
+                  <div className="space-y-1">
+                    {[...(powerRecords || [])]
+                      .sort((a, b) => a.durationS - b.durationS)
+                      .map(r => (
+                        <div key={r.id} className="flex items-center justify-between py-1.5 px-3 bg-amber-50 rounded border-l-4 border-amber-500">
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">{durationLabel(r.durationS)}</span>
+                            <span className="block text-xs text-gray-500">{r.activityDate}</span>
+                          </div>
+                          <span className="text-lg font-bold text-amber-700">{Math.round(r.watts)} W</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              {/* Best pace per distance */}
+              {(paceRecords || []).length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-emerald-700 flex items-center gap-1">
+                    <TrendingUp className="h-4 w-4" /> Best Pace
+                  </h3>
+                  <div className="space-y-1">
+                    {[...(paceRecords || [])]
+                      .sort((a, b) => a.distanceM - b.distanceM)
+                      .map(r => (
+                        <div key={r.id} className="flex items-center justify-between py-1.5 px-3 bg-emerald-50 rounded border-l-4 border-emerald-500">
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">{distanceLabel(r.distanceM)}</span>
+                            <span className="block text-xs text-gray-500">{r.activityDate}</span>
+                          </div>
+                          <span className="text-lg font-bold text-emerald-700">{formatPace(r.paceMps)}</span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
             </div>

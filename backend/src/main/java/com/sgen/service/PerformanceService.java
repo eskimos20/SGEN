@@ -22,6 +22,8 @@ public class PerformanceService {
 
     private final FtpResultRepository ftpResultRepository;
     private final Vo2MaxResultRepository vo2MaxResultRepository;
+    private final com.sgen.repository.UserPowerRecordRepository powerRecordRepository;
+    private final com.sgen.repository.UserPaceRecordRepository paceRecordRepository;
     private final UserService userService;
 
     /**
@@ -208,6 +210,24 @@ public class PerformanceService {
     public List<Vo2MaxResult> getTop3Vo2Max(String username) {
         User user = userService.getUserEntityByUsername(username);
         return vo2MaxResultRepository.findByUserOrderByRankAsc(user);
+    }
+
+    /** All-time best power per duration, sorted by duration. */
+    public List<com.sgen.entity.UserPowerRecord> getPowerRecords(Long userId) {
+        var records = powerRecordRepository.findByUserId(userId);
+        records.sort(java.util.Comparator.comparing(com.sgen.entity.UserPowerRecord::getDurationS));
+        return records;
+    }
+
+    /** All-time best pace per distance, sorted by distance. */
+    public List<com.sgen.entity.UserPaceRecord> getPaceRecords(Long userId) {
+        var records = paceRecordRepository.findByUserId(userId);
+        records.sort(java.util.Comparator.comparing(com.sgen.entity.UserPaceRecord::getDistanceM));
+        return records;
+    }
+
+    public Long getUserId(String username) {
+        return userService.getUserEntityByUsername(username).getId();
     }
 
     /**

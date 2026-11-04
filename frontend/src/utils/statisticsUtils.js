@@ -251,18 +251,21 @@ export const buildMinimalData = (data, weeklyData, getUpcomingWorkouts, includeU
 
 export const fetchPerformanceData = async () => {
   try {
-    const [ftpResponse, vo2Response] = await Promise.all([
+    const [ftpResponse, vo2Response, recordsResponse] = await Promise.all([
       api.get('/performance/ftp/top3'),
-      api.get('/performance/vo2max/top3')
+      api.get('/performance/vo2max/top3'),
+      api.get('/performance/records')
     ]);
-    
+
     return {
       top3Ftp: ftpResponse.data,
-      top3Vo2Max: vo2Response.data
+      top3Vo2Max: vo2Response.data,
+      powerRecords: recordsResponse.data?.powerRecords || [],
+      paceRecords: recordsResponse.data?.paceRecords || []
     };
   } catch (err) {
     // Silently fail - return empty data
-    return { top3Ftp: [], top3Vo2Max: [] };
+    return { top3Ftp: [], top3Vo2Max: [], powerRecords: [], paceRecords: [] };
   }
 };
 

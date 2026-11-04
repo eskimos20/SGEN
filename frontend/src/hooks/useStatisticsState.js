@@ -36,6 +36,8 @@ export const useStatisticsState = (user) => {
   const [expandedEvents, setExpandedEvents] = useState(new Set());
   const [top3Ftp, setTop3Ftp] = useState([]);
   const [top3Vo2Max, setTop3Vo2Max] = useState([]);
+  const [powerRecords, setPowerRecords] = useState([]);
+  const [paceRecords, setPaceRecords] = useState([]);
   const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   
@@ -155,6 +157,10 @@ export const useStatisticsState = (user) => {
     setTop3Ftp,
     top3Vo2Max,
     setTop3Vo2Max,
+    powerRecords,
+    setPowerRecords,
+    paceRecords,
+    setPaceRecords,
     loadingPerformance,
     setLoadingPerformance,
     activeTab,

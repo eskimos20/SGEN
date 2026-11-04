@@ -115,6 +115,10 @@ const Statistics = () => {
     setTop3Ftp,
     top3Vo2Max,
     setTop3Vo2Max,
+    powerRecords,
+    setPowerRecords,
+    paceRecords,
+    setPaceRecords,
     loadingPerformance,
     setLoadingPerformance,
     activeTab,
@@ -260,6 +264,8 @@ const Statistics = () => {
     setLoadingPerformance,
     setTop3Ftp,
     setTop3Vo2Max,
+    setPowerRecords,
+    setPaceRecords,
     setCustomPrompt,
     setAnalyzing,
     setCopied,
@@ -602,6 +608,8 @@ const Statistics = () => {
           weeklyData={weeklyData}
           top3Ftp={top3Ftp}
           top3Vo2Max={top3Vo2Max}
+          powerRecords={powerRecords}
+          paceRecords={paceRecords}
           COLORS={COLORS}
           athleteProfile={athleteProfile}
         />

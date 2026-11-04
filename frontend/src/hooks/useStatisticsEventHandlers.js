@@ -17,6 +17,8 @@ export const useStatisticsEventHandlers = ({
   setLoadingPerformance,
   setTop3Ftp,
   setTop3Vo2Max,
+  setPowerRecords,
+  setPaceRecords,
   setCustomPrompt,
   setAnalyzing,
   setCopied,
@@ -103,10 +105,12 @@ export const useStatisticsEventHandlers = ({
       const performanceData = await fetchPerformanceDataAPI();
       setTop3Ftp(performanceData.top3Ftp);
       setTop3Vo2Max(performanceData.top3Vo2Max);
+      setPowerRecords(performanceData.powerRecords);
+      setPaceRecords(performanceData.paceRecords);
     } finally {
       setLoadingPerformance(false);
     }
-  }, [setLoadingPerformance, setTop3Ftp, setTop3Vo2Max]);
+  }, [setLoadingPerformance, setTop3Ftp, setTop3Vo2Max, setPowerRecords, setPaceRecords]);
 
   // Toggle activity details
   const toggleActivityDetails = useCallback(async (activityId) => {

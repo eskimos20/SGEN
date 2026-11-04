@@ -6,6 +6,27 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Personal Records',
+    date: '2026-11-04',
+    features: [
+      {
+        icon: '🏅',
+        title: 'All-Time Best Power',
+        description: 'Your best average power for every duration from 1 second to 60 minutes — detected from your stored streams and updated automatically when you set a new record.'
+      },
+      {
+        icon: '🏃',
+        title: 'All-Time Best Pace',
+        description: 'Your fastest pace for standard distances from 400m to Marathon, shown in min/km with the date each record was set.'
+      },
+      {
+        icon: '📊',
+        title: 'Personal Records Card',
+        description: 'A new collapsible section under Top 3 VO2Max & FTP shows both record lists. Every new activity is checked against all records automatically.'
+      }
+    ]
+  },
+  {
     title: 'Performance & Reliability Update',
     date: '2026-11-04',
     features: [

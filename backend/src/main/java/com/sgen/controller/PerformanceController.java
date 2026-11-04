@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/performance")
@@ -18,6 +19,18 @@ import java.util.List;
 public class PerformanceController {
 
     private final PerformanceService performanceService;
+
+    /**
+     * All-time best power per duration + best pace per distance — the
+     * local record tables fed by activity analysis.
+     */
+    @GetMapping("/records")
+    public ResponseEntity<Map<String, Object>> getRecords(Authentication authentication) {
+        Long userId = performanceService.getUserId(authentication.getName());
+        return ResponseEntity.ok(Map.of(
+                "powerRecords", performanceService.getPowerRecords(userId),
+                "paceRecords", performanceService.getPaceRecords(userId)));
+    }
 
     @GetMapping("/ftp/top3")
     public ResponseEntity<List<FtpResult>> getTop3Ftp(Authentication authentication) {
