@@ -104,12 +104,15 @@ public class LocalAchievementDetectionService {
                        JsonNode windows, String name, String type, LocalDate date,
                        boolean indoor) {
         try {
-            if (!applies(userId, activityPayload) || windows == null) return;
+            if (windows == null) return;
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) return;
 
+            // Record tables reflect EVERY analyzed activity — they are the
+            // user's true all-time bests, independent of notification gating.
             Map<Integer, Double> powerRecords = powerRecordMap(userId);
             Map<Integer, Double> paceRecords = paceRecordMap(userId);
+            boolean createAchievements = applies(userId, activityPayload);
 
             // BEST_POWER — per duration
             JsonNode watts = windows.path("watts");
@@ -118,7 +121,7 @@ public class LocalAchievementDetectionService {
                 if (avg <= 0) continue;
                 Double record = powerRecords.get(d);
                 if (record != null && record >= avg) continue;
-                if (!existsBestPower(user, activityId, d)) {
+                if (createAchievements && !existsBestPower(user, activityId, d)) {
                     saveAchievement(user, activityId, name, type, date, indoor,
                             "BEST_POWER", "BEST_POWER", b -> {
                                 b.effortWatts((int) Math.round(avg));
@@ -126,6 +129,7 @@ public class LocalAchievementDetectionService {
                             });
                 }
                 upsertPowerRecord(userId, d, avg, activityId, date, type);
+                powerRecords.put(d, avg);
             }
 
             // BEST_PACE — per distance, only for pace-meaningful sports
@@ -137,7 +141,7 @@ public class LocalAchievementDetectionService {
                 if (mps <= 0 || !paceSport || mps > MAX_PLAUSIBLE_PACE_MPS) continue;
                 Double record = paceRecords.get(dist);
                 if (record != null && record >= mps) continue;
-                if (!existsBestPace(user, activityId, dist)) {
+                if (createAchievements && !existsBestPace(user, activityId, dist)) {
                     saveAchievement(user, activityId, name, type, date, indoor,
                             "BEST_PACE", "BEST_PACE", b -> {
                                 b.effortSeconds((int) Math.round(dist / mps));
@@ -146,7 +150,10 @@ public class LocalAchievementDetectionService {
                             });
                 }
                 upsertPaceRecord(userId, dist, mps, activityId, date, type);
+                paceRecords.put(dist, mps);
             }
+
+            if (!createAchievements) return; // thresholds notifications gated
 
             JsonNode sportSettings = mirrorService.getDoc(userId, "sportSettings");
             if (sportSettings == null) return; // thresholds unknown — skip FTP/LTHR
