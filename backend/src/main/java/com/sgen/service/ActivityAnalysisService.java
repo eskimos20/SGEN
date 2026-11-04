@@ -84,6 +84,7 @@ public class ActivityAnalysisService {
 
     void sweepAllUsers() {
         try {
+            int totalQueued = 0;
             for (Long userId : activityRepository.findDistinctUserIds()) {
                 Set<String> done = analysisRepository.findActivityIdsByUserId(userId);
                 List<String> ids = activityRepository.findActivityIdsByUserId(userId);
@@ -93,11 +94,15 @@ public class ActivityAnalysisService {
                     analyzeFromMirror(userId, activityId, false);
                     queued++;
                 }
+                totalQueued += queued;
                 if (queued > 0) {
                     String username = userRepository.findById(userId)
                             .map(User::getUsername).orElse("id " + userId);
-                    log.info("Analysis sweep queued {} activities for user \"{}\"", queued, username);
+                    log.info("Analysis sweep analyzed {} activities for user \"{}\"", queued, username);
                 }
+            }
+            if (totalQueued > 0) {
+                log.info("Analysis sweep completed: {} activities analyzed", totalQueued);
             }
         } catch (Exception e) {
             log.debug("Analysis sweep failed: {}", e.getMessage());
