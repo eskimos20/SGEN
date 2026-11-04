@@ -12,4 +12,5 @@ public interface UserPaceRecordRepository extends JpaRepository<UserPaceRecord, 
     List<UserPaceRecord> findByUserId(Long userId);
     Optional<UserPaceRecord> findByUserIdAndDistanceM(Long userId, Integer distanceM);
     void deleteByUserId(Long userId);
+    void deleteByUserIdAndActivityId(Long userId, String activityId);
 }

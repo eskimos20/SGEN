@@ -12,4 +12,5 @@ public interface UserPowerRecordRepository extends JpaRepository<UserPowerRecord
     List<UserPowerRecord> findByUserId(Long userId);
     Optional<UserPowerRecord> findByUserIdAndDurationS(Long userId, Integer durationS);
     void deleteByUserId(Long userId);
+    void deleteByUserIdAndActivityId(Long userId, String activityId);
 }

@@ -12,6 +12,7 @@ import { getSportSettingsForType, getEffectiveFtp, isIndoorActivity } from '../.
 import { formatDuration } from '../../utils/dataUtils';
 import { extractTSSFromName, calculateWorkoutMetrics, parseWorkoutName } from '../../utils/workoutUtils';
 import { workKjToKcal } from '../../utils/nutritionUtils';
+import { fetchAvailableActivityTypes } from '../../utils/fitnessService';
 
 const EventDetailModal = ({
   selectedEvent,
@@ -38,7 +39,9 @@ const EventDetailModal = ({
   const [editFeel, setEditFeel] = useState(null);
   const [editLoad, setEditLoad] = useState(null);
   const [editGearId, setEditGearId] = useState(null);
+  const [editType, setEditType] = useState('');
   const [gear, setGear] = useState([]);
+  const [activityTypes, setActivityTypes] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const contentRef = useRef(null);
   const findIntervalsRef = useRef(null);
@@ -56,6 +59,7 @@ const EventDetailModal = ({
       }
     };
     fetchGear();
+    fetchAvailableActivityTypes().then(setActivityTypes);
   }, []);
 
   // Prevent pull-to-refresh at document level when modal is open
@@ -107,6 +111,7 @@ const EventDetailModal = ({
       setEditLoad(selectedEvent.icu_training_load || null);
       // Gear is stored as an object with id field
       setEditGearId(selectedEvent.gear?.id || '');
+      setEditType(selectedEvent.type || '');
       setIsEditing(true);
     } else {
       // For custom events (SICK, HOLIDAY, etc.), open the full edit modal
@@ -128,6 +133,7 @@ const EventDetailModal = ({
       if (editFeel !== null) feedback.feel = editFeel;
       if (editLoad !== null) feedback.icu_training_load = editLoad;
       if (editDescription !== (selectedEvent.description || '')) feedback.description = editDescription;
+      if (selectedEvent.isCompleted && editType && editType !== selectedEvent.type) feedback.type = editType;
 
       // Different API endpoints for completed activities vs planned events
       if (selectedEvent.isCompleted) {
@@ -278,6 +284,26 @@ const EventDetailModal = ({
                   style={{ fontSize: '16px' }}
                 />
               </div>
+
+              {/* Activity Type — changing it triggers a re-analysis on the backend */}
+              {selectedEvent.isCompleted && activityTypes.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Activity Type</label>
+                  <select
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    style={{ fontSize: '16px' }}
+                  >
+                    {editType && !activityTypes.includes(editType) && (
+                      <option value={editType}>{editType}</option>
+                    )}
+                    {activityTypes.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* RPE */}
               <div>

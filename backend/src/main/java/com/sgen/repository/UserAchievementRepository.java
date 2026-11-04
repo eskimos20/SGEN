@@ -36,4 +36,9 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
     );
 
     void deleteByUser(User user);
+
+    /** Delete only locally detected achievements (BEST_POWER/BEST_PACE/ftp_up/lthr_up
+     *  ids) — Intervals-sourced achievements carry their own ids and are left alone. */
+    void deleteByUserAndActivityIdAndAchievementIdIn(
+            User user, String activityId, java.util.Collection<String> achievementIds);
 }

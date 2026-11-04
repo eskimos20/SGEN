@@ -197,6 +197,33 @@ public class PerformanceService {
     }
 
     /**
+     * Remove any FTP/VO2Max top-3 rows produced by one activity (e.g. after
+     * its sport type was corrected) and re-rank the user's remaining rows.
+     */
+    @Transactional
+    public void removeActivityResults(User user, String activityId) {
+        vo2MaxResultRepository.deleteByUserAndActivityId(user, activityId);
+        ftpResultRepository.deleteByUserAndActivityId(user, activityId);
+        rerank(vo2MaxResultRepository.findByUserOrderByRankAsc(user),
+                Vo2MaxResult::getVo2MaxValue, Vo2MaxResult::setRank,
+                vo2MaxResultRepository::saveAll);
+        rerank(ftpResultRepository.findByUserOrderByRankAsc(user),
+                FtpResult::getFtpValue, FtpResult::setRank,
+                ftpResultRepository::saveAll);
+    }
+
+    private <T> void rerank(List<T> rows,
+                            java.util.function.ToDoubleFunction<T> getValue,
+                            java.util.function.BiConsumer<T, Integer> setRank,
+                            java.util.function.Consumer<List<T>> saveAll) {
+        rows.sort((a, b) -> Double.compare(getValue.applyAsDouble(b), getValue.applyAsDouble(a)));
+        for (int i = 0; i < rows.size(); i++) {
+            setRank.accept(rows.get(i), i + 1);
+        }
+        saveAll.accept(rows);
+    }
+
+    /**
      * Get top 3 FTP results for user
      */
     public List<FtpResult> getTop3Ftp(String username) {

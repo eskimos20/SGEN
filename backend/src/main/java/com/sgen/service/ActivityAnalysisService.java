@@ -223,6 +223,26 @@ public class ActivityAnalysisService {
         recordResult(userId, null, activityId, name, type, date, indoor, weightKg, 0);
     }
 
+    /**
+     * Sport type changed on an activity — drop its analysis row and every
+     * result it produced (FTP/VO2 top-3, power/pace records, local
+     * achievements), then queue a fresh mirror analysis so everything is
+     * recomputed under the corrected sport's formula. For users without a
+     * mirror the deletion alone is enough — the statistics path re-analyzes
+     * on next fetch.
+     */
+    public void resetForTypeChange(Long userId, String activityId) {
+        try {
+            analysisRepository.deleteByUserIdAndActivityId(userId, activityId);
+            userRepository.findById(userId).ifPresent(user ->
+                    performanceService.removeActivityResults(user, activityId));
+            detectionService.resetActivityRecords(userId, activityId);
+            executor.submit(() -> analyzeFromMirror(userId, activityId, false));
+        } catch (Exception e) {
+            log.debug("Type-change reset failed for {}: {}", activityId, e.getMessage());
+        }
+    }
+
     private void feedTop3(Long userId, String activityId, String name, String type,
                           LocalDate date, boolean indoor, double weightKg, double best5minAvg) {
         User user = userRepository.findById(userId).orElse(null);

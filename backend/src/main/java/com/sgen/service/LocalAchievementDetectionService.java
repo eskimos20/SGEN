@@ -74,6 +74,26 @@ public class LocalAchievementDetectionService {
     }
 
     /**
+     * Drop records and locally detected achievements produced by one
+     * activity (e.g. a mistyped activity about to be re-analyzed under a
+     * corrected sport). Intervals-sourced achievements keep their own ids
+     * and are not touched; record rows holding a second-best value are
+     * lost rather than rebuilt.
+     */
+    public void resetActivityRecords(Long userId, String activityId) {
+        try {
+            powerRecordRepository.deleteByUserIdAndActivityId(userId, activityId);
+            paceRecordRepository.deleteByUserIdAndActivityId(userId, activityId);
+            userRepository.findById(userId).ifPresent(user ->
+                    achievementRepository.deleteByUserAndActivityIdAndAchievementIdIn(
+                            user, activityId,
+                            java.util.List.of("BEST_POWER", "BEST_PACE", "ftp_up", "lthr_up")));
+        } catch (Exception e) {
+            log.debug("Record/achievement reset failed for {}: {}", activityId, e.getMessage());
+        }
+    }
+
+    /**
      * Compute best-average windows for watts/heartrate at all standard
      * durations and best pace per standard distance. Stored on the
      * analysis row so records and achievements never need stream rescans.

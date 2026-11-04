@@ -1095,6 +1095,11 @@ public class IntervalsService {
                     log.debug("Mirror persist updated activity {} failed: {}", activityId, e.getMessage());
                 }
             }
+            if (updates.containsKey("type")) {
+                log.info("Activity {} type changed to {} — resetting analysis for recompute",
+                        activityId, updates.get("type"));
+                activityAnalysisService.resetForTypeChange(ctx.user.getId(), activityId);
+            }
             return result;
         } catch (Exception e) {
             log.error("Failed to update activity {}: {}", activityId, e.getMessage());

@@ -25,4 +25,6 @@ public interface ActivityAnalysisRepository extends JpaRepository<ActivityAnalys
     Set<String> findIdsWithWindowsByUserId(@Param("userId") Long userId);
 
     void deleteByUserId(Long userId);
+
+    void deleteByUserIdAndActivityId(Long userId, String activityId);
 }

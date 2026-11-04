@@ -341,6 +341,21 @@ public class StatisticsController {
         }
     }
 
+    /** Activity types accepted by Intervals.icu (CategorySummary enum). */
+    private static final java.util.Set<String> VALID_ACTIVITY_TYPES = java.util.Set.of(
+            "Ride", "Run", "Swim", "WeightTraining", "Hike", "Walk", "AlpineSki",
+            "BackcountrySki", "Badminton", "Canoeing", "Crossfit", "EBikeRide",
+            "EMountainBikeRide", "Elliptical", "Golf", "GravelRide", "TrackRide",
+            "Handcycle", "HighIntensityIntervalTraining", "Hockey", "IceSkate",
+            "InlineSkate", "Kayaking", "Kitesurf", "MountainBikeRide", "NordicSki",
+            "OpenWaterSwim", "Padel", "Pilates", "Pickleball", "Racquetball",
+            "Rugby", "RockClimbing", "RollerSki", "Rowing", "Sail", "Skateboard",
+            "Snowboard", "Snowshoe", "Soccer", "Squash", "StairStepper",
+            "StandUpPaddling", "Surfing", "TableTennis", "Tennis", "TrailRun",
+            "Transition", "Velomobile", "VirtualRide", "VirtualRow", "VirtualRun",
+            "VirtualSki", "WaterSport", "Wheelchair", "Windsurf", "Workout",
+            "Yoga", "Other");
+
     @PutMapping("/activity/{activityId}/feedback")
     public ResponseEntity<?> updateActivityFeedback(
             Authentication authentication,
@@ -353,6 +368,13 @@ public class StatisticsController {
             if (feedback.containsKey("feel")) updateData.put("feel", feedback.get("feel"));
             if (feedback.containsKey("description")) updateData.put("description", feedback.get("description"));
             if (feedback.containsKey("icu_training_load")) updateData.put("icu_training_load", feedback.get("icu_training_load"));
+            if (feedback.containsKey("type")) {
+                Object type = feedback.get("type");
+                if (!(type instanceof String) || !VALID_ACTIVITY_TYPES.contains(type)) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Invalid activity type"));
+                }
+                updateData.put("type", type);
+            }
             return ResponseEntity.ok(intervalsService.updateActivity(authentication.getName(), activityId, updateData));
         } catch (Exception e) {
             log.error("Failed to update activity feedback: {}", e.getMessage());
