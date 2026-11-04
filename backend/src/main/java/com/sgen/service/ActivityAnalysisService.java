@@ -94,7 +94,9 @@ public class ActivityAnalysisService {
                     queued++;
                 }
                 if (queued > 0) {
-                    log.info("Analysis sweep queued {} activities for user {}", queued, userId);
+                    String username = userRepository.findById(userId)
+                            .map(User::getUsername).orElse("id " + userId);
+                    log.info("Analysis sweep queued {} activities for user \"{}\"", queued, username);
                 }
             }
         } catch (Exception e) {
