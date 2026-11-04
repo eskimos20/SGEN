@@ -284,7 +284,7 @@ const StatisticsCharts = ({
                     stroke="#f97316"
                     strokeWidth={2}
                     dot={{ r: 3 }}
-                    connectNulls={false}
+                    connectNulls={true}
                   />
                   <Line
                     yAxisId="pace"
@@ -295,7 +295,7 @@ const StatisticsCharts = ({
                     strokeWidth={2}
                     strokeDasharray="6 4"
                     dot={{ r: 3 }}
-                    connectNulls={false}
+                    connectNulls={true}
                   />
                 </LineChart>
               </ResponsiveContainer>
