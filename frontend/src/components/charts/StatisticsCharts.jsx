@@ -68,20 +68,6 @@ const StatisticsCharts = ({
 
   if (!weeklyData) return null;
 
-  // Pace curve: group records by sport, x = log distance, y = seconds/km
-  const paceSports = [...new Set((paceRecords || []).map(r => r.activityType || 'Run'))];
-  const paceCurveData = (() => {
-    const distances = [...new Set((paceRecords || []).map(r => r.distanceM))].sort((a, b) => a - b);
-    return distances.map(d => {
-      const point = { distance: d, distanceLabel: distanceLabel(d) };
-      paceSports.forEach(s => {
-        const rec = (paceRecords || []).find(r => r.distanceM === d && (r.activityType || 'Run') === s);
-        point[`pace_${s}`] = rec ? 1000 / rec.paceMps : null;
-      });
-      return point;
-    });
-  })();
-
   const durationLabel = (secs) => {
     const labels = { 1: '1s', 5: '5s', 15: '15s', 30: '30s', 60: '1m', 120: '2m', 180: '3m', 240: '4m', 300: '5m', 480: '8m', 600: '10m', 720: '12m', 900: '15m', 1200: '20m', 1800: '30m', 2400: '40m', 3600: '60m' };
     return labels[secs] || `${Math.round(secs / 60)}m`;
@@ -100,6 +86,20 @@ const StatisticsCharts = ({
     const colors = { Ride: '#f97316', VirtualRide: '#8b5cf6', Run: '#3b82f6', TrailRun: '#06b6d4', VirtualRun: '#06b6d4', Swim: '#0ea5e9', NordicSki: '#10b981', VirtualSki: '#10b981', Hike: '#84cc16', Walk: '#84cc16' };
     return colors[sport] || '#10b981';
   };
+
+  // Pace curve: group records by sport, x = log distance, y = seconds/km
+  const paceSports = [...new Set((paceRecords || []).map(r => r.activityType || 'Run'))];
+  const paceCurveData = (() => {
+    const distances = [...new Set((paceRecords || []).map(r => r.distanceM))].sort((a, b) => a - b);
+    return distances.map(d => {
+      const point = { distance: d, distanceLabel: distanceLabel(d) };
+      paceSports.forEach(s => {
+        const rec = (paceRecords || []).find(r => r.distanceM === d && (r.activityType || 'Run') === s);
+        point[`pace_${s}`] = rec ? 1000 / rec.paceMps : null;
+      });
+      return point;
+    });
+  })();
 
   // Single merged top-3 lists (indoor and outdoor compete together)
   const ftpTop3 = [...(top3Ftp || [])].sort((a, b) => b.ftpValue - a.ftpValue);
@@ -205,7 +205,7 @@ const StatisticsCharts = ({
             onToggle={toggleRecords}
           />
           {isRecordsExpanded && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-8">
               {(bestPowerCurve || []).length > 0 && (
                 <PowerCurveHistoryChart powerCurveHistory={bestPowerCurve} title="Best Power" />
               )}
