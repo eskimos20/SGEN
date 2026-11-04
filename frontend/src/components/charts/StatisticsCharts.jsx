@@ -87,18 +87,50 @@ const StatisticsCharts = ({
     return colors[sport] || '#10b981';
   };
 
-  // Pace curve: group records by sport, x = log distance, y = seconds/km
-  const paceSports = [...new Set((paceRecords || []).map(r => r.activityType || 'Run'))];
-  const paceCurveData = (() => {
-    const distances = [...new Set((paceRecords || []).map(r => r.distanceM))].sort((a, b) => a - b);
-    return distances.map(d => {
-      const point = { distance: d, distanceLabel: distanceLabel(d) };
-      paceSports.forEach(s => {
-        const rec = (paceRecords || []).find(r => r.distanceM === d && (r.activityType || 'Run') === s);
-        point[`pace_${s}`] = rec ? 1000 / rec.paceMps : null;
+  // Merged all-time curve: durations (power) and distances (pace) share
+  // one log x-axis; watts on left y, seconds/km on right y (reversed).
+  const recordsChart = (() => {
+    const powerSports = new Set();
+    const durations = new Set();
+    (bestPowerCurve || []).forEach(curve => {
+      const sport = curve.sportType || 'Ride';
+      powerSports.add(sport);
+      (curve.secs || []).forEach(s => durations.add(s));
+    });
+    const paceSports = new Set();
+    const distances = new Set();
+    (paceRecords || []).forEach(r => {
+      paceSports.add(r.activityType || 'Run');
+      distances.add(r.distanceM);
+    });
+    const xs = [...new Set([...durations, ...distances])].sort((a, b) => a - b);
+    const data = xs.map(x => {
+      const point = { x, xLabel: distances.has(x) ? distanceLabel(x) : durationLabel(x) };
+      (bestPowerCurve || []).forEach(curve => {
+        const sport = curve.sportType || 'Ride';
+        const idx = (curve.secs || []).indexOf(x);
+        if (idx >= 0) point[`watts_${sport}`] = curve.values[idx];
+      });
+      (paceRecords || []).forEach(r => {
+        if (r.distanceM === x) {
+          const sport = r.activityType || 'Run';
+          point[`pace_${sport}`] = 1000 / r.paceMps;
+        }
       });
       return point;
     });
+    let wattsMax = 0, secKmMax = 0;
+    data.forEach(p => Object.entries(p).forEach(([k, v]) => {
+      if (k.startsWith('watts_') && v > wattsMax) wattsMax = v;
+      if (k.startsWith('pace_') && v > secKmMax) secKmMax = v;
+    }));
+    return {
+      data,
+      powerSports: [...powerSports],
+      paceSports: [...paceSports],
+      wattsMax: Math.ceil(wattsMax / 50) * 50 + 20,
+      secKmMax: Math.ceil(secKmMax / 30) * 30 + 15
+    };
   })();
 
   // Single merged top-3 lists (indoor and outdoor compete together)
@@ -199,81 +231,100 @@ const StatisticsCharts = ({
       {((bestPowerCurve || []).length > 0 || (paceRecords || []).length > 0) && (
         <div className="card-mobile">
           <SectionHeader
-            title="Power Curve Best All Time"
+            title="Best All Time Power/Pace Curve"
             icon={<TrendingUp className="h-5 w-5 text-amber-600" />}
             expanded={isRecordsExpanded}
             onToggle={toggleRecords}
           />
           {isRecordsExpanded && (
-            <div className="space-y-8">
-              {(bestPowerCurve || []).length > 0 && (
-                <PowerCurveHistoryChart powerCurveHistory={bestPowerCurve} title="Best Power" />
-              )}
-              {paceCurveData.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-emerald-600" /> Best Pace
-                  </h3>
-                  <div className="h-56 sm:h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={paceCurveData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis
-                          dataKey="distance"
-                          scale="log"
-                          domain={['dataMin', 'dataMax']}
-                          tickFormatter={(v) => distanceLabel(v)}
-                          type="number"
-                          ticks={[400, 1000, 1609, 5000, 10000, 21097, 42195]}
-                          stroke="#6b7280"
-                          fontSize={10}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          reversed
-                          domain={['auto', 'auto']}
-                          tickFormatter={formatSecPerKm}
-                          stroke="#6b7280"
-                          fontSize={10}
-                          tickLine={false}
-                          width={55}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
+            <div className="h-56 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={recordsChart.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="x"
+                    scale="log"
+                    domain={['dataMin', 'dataMax']}
+                    tickFormatter={(v) => recordsChart.data.find(p => p.x === v)?.xLabel || v}
+                    type="number"
+                    stroke="#6b7280"
+                    fontSize={10}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="watts"
+                    domain={[0, recordsChart.wattsMax]}
+                    tickFormatter={(v) => `${v}W`}
+                    stroke="#f97316"
+                    fontSize={10}
+                    tickLine={false}
+                    width={45}
+                  />
+                  <YAxis
+                    yAxisId="pace"
+                    orientation="right"
+                    reversed
+                    domain={[0, recordsChart.secKmMax]}
+                    tickFormatter={formatSecPerKm}
+                    stroke="#10b981"
+                    fontSize={10}
+                    tickLine={false}
+                    width={55}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl">
+                            <div className="font-medium mb-1">{data.xLabel}</div>
+                            {payload.filter(p => p.value != null).map((p, idx) => {
+                              const isPace = p.dataKey.startsWith('pace_');
+                              const sport = p.dataKey.replace('watts_', '').replace('pace_', '');
                               return (
-                                <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl">
-                                  <div className="font-medium mb-1">{data.distanceLabel}</div>
-                                  {payload.filter(p => p.value != null).map((p, idx) => (
-                                    <div key={idx} className="flex items-center gap-2">
-                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                                      <span style={{ color: p.color }}>{p.dataKey.replace('pace_', '')}: {formatSecPerKm(p.value)}</span>
-                                    </div>
-                                  ))}
+                                <div key={idx} className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                                  <span style={{ color: p.color }}>
+                                    {sport} {isPace ? 'pace' : 'power'}: {isPace ? formatSecPerKm(p.value) : `${Math.round(p.value)}W`}
+                                  </span>
                                 </div>
                               );
-                            }
-                            return null;
-                          }}
-                        />
-                        {paceSports.map(sport => (
-                          <Line
-                            key={sport}
-                            type="monotone"
-                            dataKey={`pace_${sport}`}
-                            name={sport}
-                            stroke={sportColors(sport)}
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                            connectNulls={false}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              )}
+                            })}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  {recordsChart.powerSports.map(sport => (
+                    <Line
+                      key={`w_${sport}`}
+                      yAxisId="watts"
+                      type="monotone"
+                      dataKey={`watts_${sport}`}
+                      name={`${sport} power`}
+                      stroke={sportColors(sport)}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      connectNulls={false}
+                    />
+                  ))}
+                  {recordsChart.paceSports.map(sport => (
+                    <Line
+                      key={`p_${sport}`}
+                      yAxisId="pace"
+                      type="monotone"
+                      dataKey={`pace_${sport}`}
+                      name={`${sport} pace`}
+                      stroke={sportColors(sport)}
+                      strokeWidth={2}
+                      strokeDasharray="6 4"
+                      dot={{ r: 3 }}
+                      connectNulls={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           )}
         </div>
