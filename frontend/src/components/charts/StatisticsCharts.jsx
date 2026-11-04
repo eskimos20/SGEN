@@ -87,47 +87,28 @@ const StatisticsCharts = ({
     return colors[sport] || '#10b981';
   };
 
-  // Merged all-time curve: durations (power) and distances (pace) share
-  // one log x-axis; watts on left y, seconds/km on right y (reversed).
+  // Merged all-time curve: one continuous line per metric — best power
+  // per duration (left y, watts) and best pace per distance (right y,
+  // seconds/km reversed). All run types are merged into one pace line.
   const recordsChart = (() => {
-    const powerSports = new Set();
-    const durations = new Set();
-    (bestPowerCurve || []).forEach(curve => {
-      const sport = curve.sportType || 'Ride';
-      powerSports.add(sport);
-      (curve.secs || []).forEach(s => durations.add(s));
-    });
-    const paceSports = new Set();
-    const distances = new Set();
-    (paceRecords || []).forEach(r => {
-      paceSports.add(r.activityType || 'Run');
-      distances.add(r.distanceM);
-    });
+    const durations = new Set((powerRecords || []).map(r => r.durationS));
+    const distances = new Set((paceRecords || []).map(r => r.distanceM));
     const xs = [...new Set([...durations, ...distances])].sort((a, b) => a - b);
     const data = xs.map(x => {
       const point = { x, xLabel: distances.has(x) ? distanceLabel(x) : durationLabel(x) };
-      (bestPowerCurve || []).forEach(curve => {
-        const sport = curve.sportType || 'Ride';
-        const idx = (curve.secs || []).indexOf(x);
-        if (idx >= 0) point[`watts_${sport}`] = curve.values[idx];
-      });
-      (paceRecords || []).forEach(r => {
-        if (r.distanceM === x) {
-          const sport = r.activityType || 'Run';
-          point[`pace_${sport}`] = 1000 / r.paceMps;
-        }
-      });
+      const power = (powerRecords || []).find(r => r.durationS === x);
+      if (power) point.watts = power.watts;
+      const pace = (paceRecords || []).find(r => r.distanceM === x);
+      if (pace) point.secKm = 1000 / pace.paceMps;
       return point;
     });
     let wattsMax = 0, secKmMax = 0;
-    data.forEach(p => Object.entries(p).forEach(([k, v]) => {
-      if (k.startsWith('watts_') && v > wattsMax) wattsMax = v;
-      if (k.startsWith('pace_') && v > secKmMax) secKmMax = v;
-    }));
+    data.forEach(p => {
+      if (p.watts > wattsMax) wattsMax = p.watts;
+      if (p.secKm > secKmMax) secKmMax = p.secKm;
+    });
     return {
       data,
-      powerSports: [...powerSports],
-      paceSports: [...paceSports],
       wattsMax: Math.ceil(wattsMax / 50) * 50 + 20,
       secKmMax: Math.ceil(secKmMax / 30) * 30 + 15
     };
@@ -279,13 +260,12 @@ const StatisticsCharts = ({
                           <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl">
                             <div className="font-medium mb-1">{data.xLabel}</div>
                             {payload.filter(p => p.value != null).map((p, idx) => {
-                              const isPace = p.dataKey.startsWith('pace_');
-                              const sport = p.dataKey.replace('watts_', '').replace('pace_', '');
+                              const isPace = p.dataKey === 'secKm';
                               return (
                                 <div key={idx} className="flex items-center gap-2">
                                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
                                   <span style={{ color: p.color }}>
-                                    {sport} {isPace ? 'pace' : 'power'}: {isPace ? formatSecPerKm(p.value) : `${Math.round(p.value)}W`}
+                                    {isPace ? `Best Pace: ${formatSecPerKm(p.value)}` : `Best Power: ${Math.round(p.value)}W`}
                                   </span>
                                 </div>
                               );
@@ -296,33 +276,27 @@ const StatisticsCharts = ({
                       return null;
                     }}
                   />
-                  {recordsChart.powerSports.map(sport => (
-                    <Line
-                      key={`w_${sport}`}
-                      yAxisId="watts"
-                      type="monotone"
-                      dataKey={`watts_${sport}`}
-                      name={`${sport} power`}
-                      stroke={sportColors(sport)}
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                      connectNulls={false}
-                    />
-                  ))}
-                  {recordsChart.paceSports.map(sport => (
-                    <Line
-                      key={`p_${sport}`}
-                      yAxisId="pace"
-                      type="monotone"
-                      dataKey={`pace_${sport}`}
-                      name={`${sport} pace`}
-                      stroke={sportColors(sport)}
-                      strokeWidth={2}
-                      strokeDasharray="6 4"
-                      dot={{ r: 3 }}
-                      connectNulls={false}
-                    />
-                  ))}
+                  <Line
+                    yAxisId="watts"
+                    type="monotone"
+                    dataKey="watts"
+                    name="Best Power"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    connectNulls={false}
+                  />
+                  <Line
+                    yAxisId="pace"
+                    type="monotone"
+                    dataKey="secKm"
+                    name="Best Pace"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={{ r: 3 }}
+                    connectNulls={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
