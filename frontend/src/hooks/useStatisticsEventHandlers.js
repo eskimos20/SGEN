@@ -19,6 +19,7 @@ export const useStatisticsEventHandlers = ({
   setTop3Vo2Max,
   setPowerRecords,
   setPaceRecords,
+  setBestPowerCurve,
   setCustomPrompt,
   setAnalyzing,
   setCopied,
@@ -107,10 +108,11 @@ export const useStatisticsEventHandlers = ({
       setTop3Vo2Max(performanceData.top3Vo2Max);
       setPowerRecords(performanceData.powerRecords);
       setPaceRecords(performanceData.paceRecords);
+      setBestPowerCurve(performanceData.bestPowerCurve);
     } finally {
       setLoadingPerformance(false);
     }
-  }, [setLoadingPerformance, setTop3Ftp, setTop3Vo2Max, setPowerRecords, setPaceRecords]);
+  }, [setLoadingPerformance, setTop3Ftp, setTop3Vo2Max, setPowerRecords, setPaceRecords, setBestPowerCurve]);
 
   // Toggle activity details
   const toggleActivityDetails = useCallback(async (activityId) => {

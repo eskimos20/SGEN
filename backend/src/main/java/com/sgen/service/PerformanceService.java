@@ -226,6 +226,30 @@ public class PerformanceService {
         return records;
     }
 
+    /**
+     * All-time best power shaped as Intervals-style power curves —
+     * [{sportType, secs[], values[]}] grouped by the record's sport —
+     * for the "Power Curve Best All Time" chart.
+     */
+    public List<Map<String, Object>> getBestPowerCurves(Long userId) {
+        Map<String, java.util.List<com.sgen.entity.UserPowerRecord>> byType = new java.util.LinkedHashMap<>();
+        for (var r : powerRecordRepository.findByUserId(userId)) {
+            String type = (r.getActivityType() == null || r.getActivityType().isBlank())
+                    ? "Ride" : r.getActivityType();
+            byType.computeIfAbsent(type, k -> new java.util.ArrayList<>()).add(r);
+        }
+        List<Map<String, Object>> curves = new java.util.ArrayList<>();
+        for (var entry : byType.entrySet()) {
+            var sorted = entry.getValue().stream()
+                    .sorted(java.util.Comparator.comparing(com.sgen.entity.UserPowerRecord::getDurationS))
+                    .toList();
+            List<Integer> secs = sorted.stream().map(com.sgen.entity.UserPowerRecord::getDurationS).toList();
+            List<Double> values = sorted.stream().map(com.sgen.entity.UserPowerRecord::getWatts).toList();
+            curves.add(Map.of("sportType", entry.getKey(), "secs", secs, "values", values));
+        }
+        return curves;
+    }
+
     public Long getUserId(String username) {
         return userService.getUserEntityByUsername(username).getId();
     }

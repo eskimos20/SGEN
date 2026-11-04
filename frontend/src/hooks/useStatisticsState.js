@@ -38,6 +38,7 @@ export const useStatisticsState = (user) => {
   const [top3Vo2Max, setTop3Vo2Max] = useState([]);
   const [powerRecords, setPowerRecords] = useState([]);
   const [paceRecords, setPaceRecords] = useState([]);
+  const [bestPowerCurve, setBestPowerCurve] = useState([]);
   const [loadingPerformance, setLoadingPerformance] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   
@@ -161,6 +162,8 @@ export const useStatisticsState = (user) => {
     setPowerRecords,
     paceRecords,
     setPaceRecords,
+    bestPowerCurve,
+    setBestPowerCurve,
     loadingPerformance,
     setLoadingPerformance,
     activeTab,

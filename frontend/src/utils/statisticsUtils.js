@@ -261,11 +261,12 @@ export const fetchPerformanceData = async () => {
       top3Ftp: ftpResponse.data,
       top3Vo2Max: vo2Response.data,
       powerRecords: recordsResponse.data?.powerRecords || [],
-      paceRecords: recordsResponse.data?.paceRecords || []
+      paceRecords: recordsResponse.data?.paceRecords || [],
+      bestPowerCurve: recordsResponse.data?.bestPowerCurve || []
     };
   } catch (err) {
     // Silently fail - return empty data
-    return { top3Ftp: [], top3Vo2Max: [], powerRecords: [], paceRecords: [] };
+    return { top3Ftp: [], top3Vo2Max: [], powerRecords: [], paceRecords: [], bestPowerCurve: [] };
   }
 };
 

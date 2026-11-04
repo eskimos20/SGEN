@@ -19,7 +19,7 @@ const SPORT_LABELS = {
   'VirtualSki': 'Virtual Ski'
 };
 
-const PowerCurveHistoryChart = ({ powerCurveHistory }) => {
+const PowerCurveHistoryChart = ({ powerCurveHistory, title }) => {
   // Process curves by sport type
   const curvesBySport = useMemo(() => {
     if (!powerCurveHistory || !Array.isArray(powerCurveHistory) || powerCurveHistory.length === 0) {
@@ -145,7 +145,7 @@ const PowerCurveHistoryChart = ({ powerCurveHistory }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-orange-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Power Curve History</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{title || 'Power Curve History'}</h3>
         </div>
       </div>
 

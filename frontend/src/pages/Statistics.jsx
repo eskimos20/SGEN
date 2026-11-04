@@ -119,6 +119,8 @@ const Statistics = () => {
     setPowerRecords,
     paceRecords,
     setPaceRecords,
+    bestPowerCurve,
+    setBestPowerCurve,
     loadingPerformance,
     setLoadingPerformance,
     activeTab,
@@ -266,6 +268,7 @@ const Statistics = () => {
     setTop3Vo2Max,
     setPowerRecords,
     setPaceRecords,
+    setBestPowerCurve,
     setCustomPrompt,
     setAnalyzing,
     setCopied,
@@ -455,10 +458,17 @@ const Statistics = () => {
                 <div className="py-5 text-center text-sm text-gray-500">No fitness or wellness data for this period.</div>
               )}
               
-              {/* Power Curve History */}
+              {/* Power Curve for the searched period */}
               {!loadingPowerCurve && powerCurveHistory && (
                 <div className="pt-6 border-t border-gray-200">
-                  <PowerCurveHistoryChart powerCurveHistory={powerCurveHistory} />
+                  <PowerCurveHistoryChart powerCurveHistory={powerCurveHistory} title="Power Curve for Period" />
+                </div>
+              )}
+
+              {/* Power Curve Best All Time — from the local record tables */}
+              {bestPowerCurve && bestPowerCurve.length > 0 && (
+                <div className="pt-6 border-t border-gray-200">
+                  <PowerCurveHistoryChart powerCurveHistory={bestPowerCurve} title="Power Curve Best All Time" />
                 </div>
               )}
               {loadingPowerCurve && (

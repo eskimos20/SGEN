@@ -125,7 +125,7 @@ public class LocalAchievementDetectionService {
                                 b.effortSeconds(d);
                             });
                 }
-                upsertPowerRecord(userId, d, avg, activityId, date);
+                upsertPowerRecord(userId, d, avg, activityId, date, type);
             }
 
             // BEST_PACE — per distance, only for pace-meaningful sports
@@ -145,7 +145,7 @@ public class LocalAchievementDetectionService {
                                 b.effortPace(mps);
                             });
                 }
-                upsertPaceRecord(userId, dist, mps, activityId, date);
+                upsertPaceRecord(userId, dist, mps, activityId, date, type);
             }
 
             JsonNode sportSettings = mirrorService.getDoc(userId, "sportSettings");
@@ -210,22 +210,24 @@ public class LocalAchievementDetectionService {
     }
 
     private void upsertPowerRecord(Long userId, int duration, double watts,
-                                   String activityId, LocalDate date) {
+                                   String activityId, LocalDate date, String activityType) {
         var row = powerRecordRepository.findByUserIdAndDurationS(userId, duration)
                 .orElseGet(() -> UserPowerRecord.builder().userId(userId).durationS(duration).build());
         row.setWatts(watts);
         row.setActivityId(activityId);
         row.setActivityDate(date);
+        row.setActivityType(activityType);
         powerRecordRepository.save(row);
     }
 
     private void upsertPaceRecord(Long userId, int distance, double pace,
-                                  String activityId, LocalDate date) {
+                                  String activityId, LocalDate date, String activityType) {
         var row = paceRecordRepository.findByUserIdAndDistanceM(userId, distance)
                 .orElseGet(() -> UserPaceRecord.builder().userId(userId).distanceM(distance).build());
         row.setPaceMps(pace);
         row.setActivityId(activityId);
         row.setActivityDate(date);
+        row.setActivityType(activityType);
         paceRecordRepository.save(row);
     }
 

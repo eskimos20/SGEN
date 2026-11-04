@@ -29,7 +29,8 @@ public class PerformanceController {
         Long userId = performanceService.getUserId(authentication.getName());
         return ResponseEntity.ok(Map.of(
                 "powerRecords", performanceService.getPowerRecords(userId),
-                "paceRecords", performanceService.getPaceRecords(userId)));
+                "paceRecords", performanceService.getPaceRecords(userId),
+                "bestPowerCurve", performanceService.getBestPowerCurves(userId)));
     }
 
     @GetMapping("/ftp/top3")

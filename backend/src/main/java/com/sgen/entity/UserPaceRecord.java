@@ -34,6 +34,9 @@ public class UserPaceRecord {
     @Column(name = "activity_id", nullable = false, length = 64)
     private String activityId;
 
+    @Column(name = "activity_type", length = 64)
+    private String activityType;
+
     @Column(name = "activity_date")
     private LocalDate activityDate;
 
