@@ -94,6 +94,20 @@ public class LocalAchievementDetectionService {
     }
 
     /**
+     * Activity deleted — drop every record and achievement it produced,
+     * including Intervals-sourced achievement rows.
+     */
+    public void purgeActivityRecords(Long userId, String activityId) {
+        resetActivityRecords(userId, activityId);
+        try {
+            userRepository.findById(userId).ifPresent(user ->
+                    achievementRepository.deleteByUserAndActivityId(user, activityId));
+        } catch (Exception e) {
+            log.debug("Achievement purge failed for {}: {}", activityId, e.getMessage());
+        }
+    }
+
+    /**
      * Compute best-average windows for watts/heartrate at all standard
      * durations and best pace per standard distance. Stored on the
      * analysis row so records and achievements never need stream rescans.

@@ -1117,10 +1117,19 @@ public class IntervalsService {
             Long uid = ctx.user.getId();
             if (garminClientFactory.isConnected(uid)) {
                 intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId)
-                        .ifPresent(intervalsActivityRepository::delete);
+                        .ifPresent(act -> {
+                            if (act.getStartDateLocal() != null) {
+                                intervalsMirrorService.deleteIntervalsDailyLoad(
+                                        uid, act.getStartDateLocal().toLocalDate());
+                            }
+                            intervalsActivityRepository.delete(act);
+                        });
                 intervalsStreamsRepository.findByUserIdAndActivityId(uid, activityId)
                         .ifPresent(intervalsStreamsRepository::delete);
             }
+            // Drop analysis + every result the activity produced (FTP/VO2
+            // top-3, records, achievements) — they are not rebuilt.
+            activityAnalysisService.purgeForDeletedActivity(uid, activityId);
         } catch (Exception e) {
             log.error("Failed to delete activity {}: {}", activityId, e.getMessage());
             throw new RuntimeException("Failed to delete activity: " + e.getMessage());

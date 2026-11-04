@@ -243,6 +243,32 @@ public class ActivityAnalysisService {
         }
     }
 
+    /**
+     * A mirrored activity was removed (pruned after upstream deletion) —
+     * purge everything it produced. Queued on the analysis thread so
+     * purge bursts stay sequential.
+     */
+    @EventListener
+    public void onActivityRemoved(com.sgen.service.garmin.ActivityRemovedEvent event) {
+        executor.submit(() -> purgeForDeletedActivity(event.getUserId(), event.getActivityId()));
+    }
+
+    /**
+     * Activity deleted — remove its analysis row and every result it
+     * produced (FTP/VO2 top-3, power/pace records, achievements) so no
+     * stale values linger in the statistics lists.
+     */
+    public void purgeForDeletedActivity(Long userId, String activityId) {
+        try {
+            analysisRepository.deleteByUserIdAndActivityId(userId, activityId);
+            userRepository.findById(userId).ifPresent(user ->
+                    performanceService.removeActivityResults(user, activityId));
+            detectionService.purgeActivityRecords(userId, activityId);
+        } catch (Exception e) {
+            log.debug("Delete cleanup failed for {}: {}", activityId, e.getMessage());
+        }
+    }
+
     private void feedTop3(Long userId, String activityId, String name, String type,
                           LocalDate date, boolean indoor, double weightKg, double best5minAvg) {
         User user = userRepository.findById(userId).orElse(null);

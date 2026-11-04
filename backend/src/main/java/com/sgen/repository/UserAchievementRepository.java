@@ -37,6 +37,10 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
 
     void deleteByUser(User user);
 
+    /** Delete every achievement row tied to one activity — used when the
+     *  activity itself is deleted. */
+    void deleteByUserAndActivityId(User user, String activityId);
+
     /** Delete only locally detected achievements (BEST_POWER/BEST_PACE/ftp_up/lthr_up
      *  ids) — Intervals-sourced achievements carry their own ids and are left alone. */
     void deleteByUserAndActivityIdAndAchievementIdIn(

@@ -306,6 +306,7 @@ public class IntervalsMirrorService {
                 if (source == null || PROTECTED_SOURCES.contains(source)) continue;
                 activityRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
                 streamsRepository.deleteByUserIdAndActivityId(userId, row.getActivityId());
+                eventPublisher.publishEvent(new ActivityRemovedEvent(userId, row.getActivityId()));
                 if (row.getStartDateLocal() != null) {
                     dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(
                             userId, row.getStartDateLocal().toLocalDate(), "INTERVALS");
@@ -314,6 +315,16 @@ public class IntervalsMirrorService {
             }
         } catch (Exception e) {
             log.debug("Mirror activity prune failed: {}", e.getMessage());
+        }
+    }
+
+    /** Drop the INTERVALS daily-load row for a date — recordIntervalsLoads
+     *  rebuilds it from the surviving activities on next fetch. */
+    public void deleteIntervalsDailyLoad(Long userId, java.time.LocalDate date) {
+        try {
+            dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(userId, date, "INTERVALS");
+        } catch (Exception e) {
+            log.debug("Daily-load delete failed for {} on {}: {}", userId, date, e.getMessage());
         }
     }
 
