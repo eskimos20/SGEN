@@ -19,5 +19,10 @@ public interface ActivityAnalysisRepository extends JpaRepository<ActivityAnalys
     @Query("SELECT a.activityId FROM ActivityAnalysis a WHERE a.userId = :userId")
     Set<String> findActivityIdsByUserId(@Param("userId") Long userId);
 
+    /** Ids fully processed — windows computed. Rows analyzed before the
+     *  best-windows column existed are absent here and get re-processed. */
+    @Query("SELECT a.activityId FROM ActivityAnalysis a WHERE a.userId = :userId AND a.bestWindowsJson IS NOT NULL")
+    Set<String> findIdsWithWindowsByUserId(@Param("userId") Long userId);
+
     void deleteByUserId(Long userId);
 }

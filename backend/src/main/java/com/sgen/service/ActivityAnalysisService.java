@@ -89,7 +89,7 @@ public class ActivityAnalysisService {
         try {
             int totalQueued = 0;
             for (Long userId : activityRepository.findDistinctUserIds()) {
-                Set<String> done = analysisRepository.findActivityIdsByUserId(userId);
+                Set<String> done = analysisRepository.findIdsWithWindowsByUserId(userId);
                 List<String> ids = activityRepository.findActivityIdsByUserIdOrderByDate(userId);
                 int queued = 0;
                 for (String activityId : ids) {
