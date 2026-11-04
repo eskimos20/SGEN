@@ -45,10 +45,10 @@ public class LocalAchievementDetectionService {
             1, 5, 15, 30, 60, 120, 180, 240, 300, 480, 600, 720, 900, 1200, 1800, 2400, 3600};
     static final int[] PACE_DISTANCES = {400, 1000, 1609, 5000, 10000, 21097, 42195};
 
-    /** Sports where pace is the meaningful record metric (power belongs to cycling). */
+    /** Pace records only make sense for running — walks, hikes, swims and
+     *  skis produce meaningless or glitch-prone pace data. */
     private static final java.util.Set<String> PACE_SPORTS = java.util.Set.of(
-            "Run", "TrailRun", "Walk", "Hike", "Swim", "NordicSki", "AlpineSki",
-            "Row", "RowErg", "Kayaking", "Canoe", "SkiErg", "Snowboard");
+            "Run", "TrailRun", "VirtualRun");
     /** Physical sanity bound — above ~10 m/s no human pace is plausible. */
     private static final double MAX_PLAUSIBLE_PACE_MPS = 10.0;
 
