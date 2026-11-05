@@ -151,6 +151,7 @@ public class IntervalsEventService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteEvent(String username, int eventId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
