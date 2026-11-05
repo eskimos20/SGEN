@@ -6,6 +6,7 @@ import { Download, Bot, Copy, Loader2, CheckCircle, Activity, Zap, Clock, Trendi
 import FitnessChart from '../components/charts/FitnessChart';
 import TrainingTotalsPanel from '../components/charts/TrainingTotalsPanel';
 import PowerCurveHistoryChart from '../components/charts/PowerCurveHistoryChart';
+import BestAllTimeCurveChart from '../components/charts/BestAllTimeCurveChart';
 import ChatWindow from '../components/shared/ChatWindow';
 import StatisticsCharts from '../components/charts/StatisticsCharts';
 import AthleteProfile from '../components/athlete/AthleteProfile';
@@ -352,10 +353,12 @@ const Statistics = () => {
   // Track if performance data has been fetched to prevent race conditions
   const hasFetchedPerformance = useRef(false);
 
-  // Fetch performance data when data is loaded and we're on overview tab
+  // Fetch performance data once per overview visit — records/top-3 are
+  // period-independent, so no date-range search is required.
   useEffect(() => {
-    if (activeTab === 'overview' && data && !hasFetchedPerformance.current) {
-      if (top3Ftp.length === 0 && top3Vo2Max.length === 0) {
+    if (activeTab === 'overview' && !hasFetchedPerformance.current) {
+      if (top3Ftp.length === 0 && top3Vo2Max.length === 0
+          && powerRecords.length === 0 && paceRecords.length === 0) {
         hasFetchedPerformance.current = true;
         fetchPerformanceData();
       }
@@ -364,7 +367,7 @@ const Statistics = () => {
     if (activeTab !== 'overview') {
       hasFetchedPerformance.current = false;
     }
-  }, [activeTab, data, top3Ftp.length, top3Vo2Max.length, fetchPerformanceData]);
+  }, [activeTab, data, top3Ftp.length, top3Vo2Max.length, powerRecords.length, paceRecords.length, fetchPerformanceData]);
 
   const stats = activityStats;
 
@@ -386,6 +389,11 @@ const Statistics = () => {
           fetchAthleteProfileData();
         }}
       />
+
+      {/* Best All Time records curve — shown on load when record data exists */}
+      {((powerRecords || []).length > 0 || (paceRecords || []).length > 0) && (
+        <BestAllTimeCurveChart powerRecords={powerRecords} paceRecords={paceRecords} />
+      )}
 
       {/* Fitness & Form period summary and charts */}
       {hasIntervalsConfig && (
@@ -611,9 +619,6 @@ const Statistics = () => {
           weeklyData={weeklyData}
           top3Ftp={top3Ftp}
           top3Vo2Max={top3Vo2Max}
-          powerRecords={powerRecords}
-          paceRecords={paceRecords}
-          bestPowerCurve={bestPowerCurve}
           COLORS={COLORS}
           athleteProfile={athleteProfile}
         />
