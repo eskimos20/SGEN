@@ -493,6 +493,7 @@ public class IntervalsService {
         try {
             Long uid = ctx.user.getId();
             JsonNode acts = (JsonNode) allData.get("activities");
+            recordTrailingLoadDays(uid, ctx, oldest, newest);
             fitnessModelService.recordIntervalsLoads(uid, acts);
             var wellnessMirror = objectMapper.createArrayNode();
             for (var m : intervalsMirrorService.findWellnessPayloads(uid,
@@ -510,6 +511,54 @@ public class IntervalsService {
         allData.put("dateRange", Map.of("oldest", oldest, "newest", newest));
         allData.put("athleteId", athleteId);
         return allData;
+    }
+
+    /** Trailing days the local fitness model always keeps current — the
+     *  requested stats window may end before today, but Intervals counts
+     *  today's load continuously, so the local EMA must too. */
+    private static final int TRAILING_LOAD_DAYS = 14;
+
+    /**
+     * Feed the last TRAILING_LOAD_DAYS of activities into the local daily-load
+     * table whenever the requested stats window does not fully cover them.
+     * Mirror rows serve Garmin-connected users; others get one extra API call.
+     */
+    private void recordTrailingLoadDays(Long uid, ApiContext ctx, String oldest, String newest) {
+        try {
+            java.time.LocalDate tail = java.time.LocalDate.now().minusDays(TRAILING_LOAD_DAYS);
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.LocalDate from = java.time.LocalDate.parse(oldest);
+            java.time.LocalDate to = java.time.LocalDate.parse(newest);
+            if (!from.isAfter(tail) && !to.isBefore(today)) return; // window already covers the tail
+
+            ArrayNode recent = objectMapper.createArrayNode();
+            if (garminClientFactory.isConnected(uid)) {
+                for (var row : intervalsActivityRepository
+                        .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(
+                                uid, tail.atStartOfDay(), today.plusDays(1).atStartOfDay())) {
+                    try {
+                        recent.add(objectMapper.readTree(row.getPayloadJson()));
+                    } catch (Exception e) {
+                        log.debug("Mirror activity parse for trailing loads: {}", e.getMessage());
+                    }
+                }
+            } else {
+                rateLimiter.acquire();
+                String json = ctx.client.get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                                .queryParam("oldest", tail.toString())
+                                .queryParam("newest", today.toString())
+                                .build(ctx.user.getIntervalsAthleteId()))
+                        .retrieve().bodyToMono(String.class).block();
+                JsonNode arr = objectMapper.readTree(json);
+                if (arr != null && arr.isArray()) recent.addAll((ArrayNode) arr);
+            }
+            if (!recent.isEmpty()) {
+                fitnessModelService.recordIntervalsLoads(uid, recent);
+            }
+        } catch (Exception e) {
+            log.debug("Trailing load days recording failed: {}", e.getMessage());
+        }
     }
 
     // -------------------------------------------------------------------------
