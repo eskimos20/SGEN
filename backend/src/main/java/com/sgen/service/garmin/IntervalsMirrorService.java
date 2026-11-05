@@ -337,6 +337,7 @@ public class IntervalsMirrorService {
     public void deleteIntervalsDailyLoad(Long userId, java.time.LocalDate date) {
         try {
             dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(userId, date, "INTERVALS");
+            fitnessModelService.markForRecompute(userId);
         } catch (Exception e) {
             log.debug("Daily-load delete failed for {} on {}: {}", userId, date, e.getMessage());
         }

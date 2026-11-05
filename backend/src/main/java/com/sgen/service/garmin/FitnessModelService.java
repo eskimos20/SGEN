@@ -32,6 +32,51 @@ public class FitnessModelService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /**
+     * Debounced EMA recompute: daily-load writes flag the user here and a
+     * single background thread recomputes each dirty user at most once per
+     * interval — bulk imports (hundreds of activities) never pay a
+     * 400-day recompute per row.
+     */
+    private final java.util.Set<Long> pendingRecompute = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.concurrent.ScheduledExecutorService recomputeScheduler =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "fitness-recompute");
+                t.setDaemon(true);
+                return t;
+            });
+
+    @jakarta.annotation.PostConstruct
+    void startRecomputeFlusher() {
+        recomputeScheduler.scheduleWithFixedDelay(
+                this::flushPendingRecomputes, 15, 15, java.util.concurrent.TimeUnit.SECONDS);
+        // Catch-up: recompute every user with daily loads once at startup,
+        // so rows written before this mechanism existed take effect.
+        recomputeScheduler.schedule(() -> {
+            try {
+                pendingRecompute.addAll(dailyLoadRepository.findDistinctUserIds());
+            } catch (Exception e) {
+                log.debug("Recompute catch-up failed: {}", e.getMessage());
+            }
+        }, 30, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private void flushPendingRecomputes() {
+        for (Long uid : pendingRecompute) {
+            if (!pendingRecompute.remove(uid)) continue;
+            try {
+                recompute(uid);
+            } catch (Exception e) {
+                log.debug("Recompute failed for user {}: {}", uid, e.getMessage());
+            }
+        }
+    }
+
+    /** Flag a user's fitness series for recompute within ~15s. */
+    public void markForRecompute(Long userId) {
+        if (userId != null) pendingRecompute.add(userId);
+    }
+
+    /**
      * Rebuild GARMIN-sourced daily loads from stored garmin_activities.
      * Local Garmin data is authoritative — counts every stored activity;
      * Intervals copies are filtered at record-time in recordIntervalsLoads.
@@ -114,9 +159,9 @@ public class FitnessModelService {
      * the mirror — every ingest path (stats fetch, backfill, event sync,
      * details view) keeps daily loads current without depending on which
      * date window the user happens to view. Intervals copies of locally
-     * stored Garmin activities are excluded (GARMIN wins). The EMA
-     * series is intentionally not recomputed here — it runs on the next
-     * fetch/backfill — to keep activity imports cheap.
+     * stored Garmin activities are excluded (GARMIN wins). The user is
+     * flagged for a debounced EMA recompute — the series updates within
+     * ~15s regardless of which page the user views.
      */
     @Transactional
     public void recordIntervalsLoadForDate(Long userId, java.time.LocalDate date) {
@@ -153,6 +198,7 @@ public class FitnessModelService {
             row.setTrainingLoad(sum);
             row.setActivityCount(count);
             dailyLoadRepository.save(row);
+            pendingRecompute.add(userId);
         } catch (Exception e) {
             log.debug("Daily-load recompute for {} on {} failed: {}", userId, date, e.getMessage());
         }

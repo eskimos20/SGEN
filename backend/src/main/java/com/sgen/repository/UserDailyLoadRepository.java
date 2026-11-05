@@ -18,4 +18,7 @@ public interface UserDailyLoadRepository extends JpaRepository<UserDailyLoad, Lo
     void deleteByUserIdAndLoadDateAndSource(Long userId, LocalDate loadDate, String source);
     @Query("SELECT COALESCE(SUM(l.activityCount),0) FROM UserDailyLoad l WHERE l.userId = :uid AND l.source = :src")
     Long sumActivityCount(@Param("uid") Long userId, @Param("src") String source);
+
+    @Query("SELECT DISTINCT l.userId FROM UserDailyLoad l")
+    java.util.Set<Long> findDistinctUserIds();
 }
