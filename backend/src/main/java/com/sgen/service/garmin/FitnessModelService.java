@@ -261,10 +261,13 @@ public class FitnessModelService {
             ctl = seed.getCtl();
             atl = seed.getAtl();
         }
+        // Intervals.icu convention: exact exponential decay, not linear 1/tau
+        double ctlFactor = 1 - Math.exp(-1.0 / 42);
+        double atlFactor = 1 - Math.exp(-1.0 / 7);
         for (LocalDate d = first; !d.isAfter(LocalDate.now()); d = d.plusDays(1)) {
             double load = total.getOrDefault(d, 0.0);
-            ctl += (load - ctl) / 42.0;
-            atl += (load - atl) / 7.0;
+            ctl += (load - ctl) * ctlFactor;
+            atl += (load - atl) * atlFactor;
             double tsb = ctl - atl;
             Double ramp = null;
             UserFitness prev7 = fitnessRepository.findByUserIdAndFitnessDate(userId, d.minusDays(7)).orElse(null);

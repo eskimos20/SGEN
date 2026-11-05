@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Merges local Garmin data into the Intervals.icu response shapes so the
@@ -31,6 +32,7 @@ public class GarminMergeService {
     private final GarminActivityRepository activityRepository;
     private final GarminWellnessRepository wellnessRepository;
     private final UserFitnessRepository fitnessRepository;
+    private final UserDailyLoadRepository dailyLoadRepository;
     private final GarminWellnessViewMapper wellnessViewMapper;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
@@ -176,10 +178,18 @@ public class GarminMergeService {
             });
             wellnessViewMapper.toIntervalsFields(row).forEach(target::put);
         }
+        // Days carrying GARMIN-source load — Intervals cannot see that
+        // work, so only those days (plus days lacking an Intervals ctl
+        // entirely) get the locally computed values. Days whose load
+        // Intervals already counted keep Intervals' own ctl/atl so the
+        // app matches intervals.icu exactly.
+        Set<LocalDate> garminLoadDays = dailyLoadRepository.findByUserIdAndSource(userId, "GARMIN")
+                .stream().map(UserDailyLoad::getLoadDate).collect(Collectors.toSet());
         int fitnessDays = 0;
         for (UserFitness f : fitness) {
             Map<String, Object> target = byDate.get(f.getFitnessDate().toString());
             if (target == null) continue;
+            if (target.get("ctl") != null && !garminLoadDays.contains(f.getFitnessDate())) continue;
             target.put("ctl", round1(f.getCtl()));
             target.put("atl", round1(f.getAtl()));
             target.put("rampRate", f.getRampRate() != null ? f.getRampRate() : 0);

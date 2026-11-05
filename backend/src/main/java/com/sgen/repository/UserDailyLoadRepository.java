@@ -21,4 +21,6 @@ public interface UserDailyLoadRepository extends JpaRepository<UserDailyLoad, Lo
 
     @Query("SELECT DISTINCT l.userId FROM UserDailyLoad l")
     java.util.Set<Long> findDistinctUserIds();
+
+    List<UserDailyLoad> findByUserIdAndSource(Long userId, String source);
 }
