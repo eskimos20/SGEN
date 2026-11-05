@@ -78,6 +78,7 @@ public class IntervalsMirrorService {
             var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
                     .orElseGet(() -> IntervalsActivityStreams.builder().userId(userId).activityId(activityId).build());
             if (streams != null) {
+                sanitizePayloadPii(streams);
                 row.setStreamsJson(objectMapper.writeValueAsString(streams));
                 // Precompute per-activity curves at persist time so curve history
                 // merges tiny precomputed objects instead of re-parsing streams.
@@ -88,7 +89,10 @@ public class IntervalsMirrorService {
                     if (!curves.isEmpty()) row.setCurvesJson(objectMapper.writeValueAsString(curves));
                 }
             }
-            if (intervals != null) row.setIntervalsJson(objectMapper.writeValueAsString(intervals));
+            if (intervals != null) {
+                sanitizePayloadPii(intervals);
+                row.setIntervalsJson(objectMapper.writeValueAsString(intervals));
+            }
             streamsRepository.save(row);
             if (streams != null && !streams.isEmpty()) {
                 eventPublisher.publishEvent(new StreamsPersistedEvent(userId, activityId));
@@ -119,6 +123,7 @@ public class IntervalsMirrorService {
             String id = w.path("id").asText("");
             if (id.length() < 10) return;
             java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
+            sanitizePayloadPii(w);
             var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
                     .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
             if (row.getPayloadJson() != null && w.isObject()) {
@@ -176,8 +181,8 @@ public class IntervalsMirrorService {
         try {
             var row = athleteMirrorRepository.findByUserId(userId)
                     .orElseGet(() -> com.sgen.entity.IntervalsAthleteMirror.builder().userId(userId).build());
-            if (athleteJson != null) row.setAthleteJson(athleteJson);
-            if (sportSettingsJson != null) row.setSportSettingsJson(sportSettingsJson);
+            if (athleteJson != null) row.setAthleteJson(sanitizeJsonString(athleteJson));
+            if (sportSettingsJson != null) row.setSportSettingsJson(sanitizeJsonString(sportSettingsJson));
             athleteMirrorRepository.save(row);
         } catch (Exception e) {
             log.debug("Mirror persist athlete failed: {}", e.getMessage());
@@ -201,6 +206,7 @@ public class IntervalsMirrorService {
                 merged = objectMapper.createObjectNode();
             }
             ObjectNode upd = objectMapper.valueToTree(update);
+            sanitizePayloadPii(upd);
             merged.setAll(upd);
             row.setPayloadJson(objectMapper.writeValueAsString(merged));
             wellnessRepository.save(row);
@@ -277,6 +283,7 @@ public class IntervalsMirrorService {
             if (merged.hasNonNull("moving_time")) row.setMovingTimeS(merged.get("moving_time").asInt());
             row.setTrainingLoad(merged.path("icu_training_load").asDouble(0));
             if (merged.hasNonNull("type")) row.setActivityType(merged.get("type").asText());
+            sanitizePayloadPii(merged);
             row.setPayloadJson(objectMapper.writeValueAsString(merged));
             activityRepository.save(row);
         } catch (Exception e) {
@@ -356,6 +363,7 @@ public class IntervalsMirrorService {
                 String ds = ev.path("start_date_local").asText("");
                 if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
                 row.setCategory(ev.path("category").asText(null));
+                sanitizePayloadPii(ev);
                 row.setPayloadJson(objectMapper.writeValueAsString(ev));
                 eventRepository.save(row);
             } catch (Exception e) {
@@ -371,6 +379,7 @@ public class IntervalsMirrorService {
             var row = documentRepository.findByUserIdAndDocKey(userId, docKey)
                     .orElseGet(() -> com.sgen.entity.IntervalsDocument.builder()
                             .userId(userId).docKey(docKey).build());
+            sanitizePayloadPii(doc);
             row.setPayloadJson(objectMapper.writeValueAsString(doc));
             documentRepository.save(row);
         } catch (Exception e) {
@@ -385,6 +394,52 @@ public class IntervalsMirrorService {
             return row != null ? objectMapper.readTree(row.getPayloadJson()) : null;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Intervals embeds the athlete's email in activity `external_id`
+     * (e.g. "user@example.com_123456.fit") and possibly elsewhere. The mirror
+     * stores payloads for local serving only — personal identifiers are
+     * masked before persisting so the DB never retains them.
+     */
+    private static final java.util.regex.Pattern EMAIL_PATTERN =
+            java.util.regex.Pattern.compile("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+
+    private String sanitizeJsonString(String json) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            sanitizePayloadPii(node);
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    private void sanitizePayloadPii(com.fasterxml.jackson.databind.JsonNode node) {
+        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
+            var fields = obj.fields();
+            while (fields.hasNext()) {
+                var e = fields.next();
+                JsonNode v = e.getValue();
+                if (v.isTextual()) {
+                    var m = EMAIL_PATTERN.matcher(v.asText());
+                    if (m.find()) obj.put(e.getKey(), m.replaceAll("[redacted-email]"));
+                } else {
+                    sanitizePayloadPii(v);
+                }
+            }
+        } else if (node instanceof com.fasterxml.jackson.databind.node.ArrayNode arr) {
+            for (int i = 0; i < arr.size(); i++) {
+                JsonNode v = arr.get(i);
+                if (v.isTextual()) {
+                    var m = EMAIL_PATTERN.matcher(v.asText());
+                    if (m.find()) arr.set(i, com.fasterxml.jackson.databind.node.TextNode.valueOf(
+                            m.replaceAll("[redacted-email]")));
+                } else {
+                    sanitizePayloadPii(v);
+                }
+            }
         }
     }
 
