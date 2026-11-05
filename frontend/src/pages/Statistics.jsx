@@ -390,11 +390,6 @@ const Statistics = () => {
         }}
       />
 
-      {/* Best All Time records curve — shown on load when record data exists */}
-      {((powerRecords || []).length > 0 || (paceRecords || []).length > 0) && (
-        <BestAllTimeCurveChart powerRecords={powerRecords} paceRecords={paceRecords} />
-      )}
-
       {/* Fitness & Form period summary and charts */}
       {hasIntervalsConfig && (
         <TrainingTotalsPanel
@@ -478,6 +473,13 @@ const Statistics = () => {
                     <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
                     <span className="ml-2 text-sm text-gray-500">Loading power curve data...</span>
                   </div>
+                </div>
+              )}
+
+              {/* Best All Time records curve — all-time, independent of search */}
+              {((powerRecords || []).length > 0 || (paceRecords || []).length > 0) && (
+                <div className="pt-6 border-t border-gray-200">
+                  <BestAllTimeCurveChart powerRecords={powerRecords} paceRecords={paceRecords} />
                 </div>
               )}
             </div>

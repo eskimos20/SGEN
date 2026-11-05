@@ -57,7 +57,7 @@ const BestAllTimeCurveChart = ({ powerRecords, paceRecords }) => {
   })();
 
   return (
-    <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
+    <div>
       <div
         className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity mb-4"
         onClick={toggle}
