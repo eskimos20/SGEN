@@ -28,6 +28,8 @@ public class FitnessModelService {
     private final GarminActivityRepository garminActivityRepository;
     private final GarminMergeService garminMergeService;
     private final UserRepository userRepository;
+    private final IntervalsActivityRepository intervalsActivityRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /**
      * Rebuild GARMIN-sourced daily loads from stored garmin_activities.
@@ -104,6 +106,56 @@ public class FitnessModelService {
             dailyLoadRepository.save(row);
         });
         recompute(userId);
+    }
+
+    /**
+     * Recompute one day's INTERVALS-sourced daily load from all mirror
+     * activities on that date. Called whenever an activity is written to
+     * the mirror — every ingest path (stats fetch, backfill, event sync,
+     * details view) keeps daily loads current without depending on which
+     * date window the user happens to view. Intervals copies of locally
+     * stored Garmin activities are excluded (GARMIN wins). The EMA
+     * series is intentionally not recomputed here — it runs on the next
+     * fetch/backfill — to keep activity imports cheap.
+     */
+    @Transactional
+    public void recordIntervalsLoadForDate(Long userId, java.time.LocalDate date) {
+        try {
+            List<GarminActivity> localGarmin = garminActivityRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
+                            userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0),
+                            java.time.LocalDateTime.now().plusDays(1));
+            double sum = 0;
+            int count = 0;
+            for (var row : intervalsActivityRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(
+                            userId, date.atStartOfDay(), date.plusDays(1).atStartOfDay())) {
+                try {
+                    JsonNode a = objectMapper.readTree(row.getPayloadJson());
+                    double load = a.path("icu_training_load").asDouble(0);
+                    if (load <= 0) continue;
+                    if (!localGarmin.isEmpty() && garminMergeService.isDuplicateOfLocal(localGarmin, a)) continue;
+                    sum += load;
+                    count++;
+                } catch (Exception e) {
+                    log.debug("Mirror payload parse for daily load: {}", e.getMessage());
+                }
+            }
+            UserDailyLoad row = dailyLoadRepository
+                    .findByUserIdAndLoadDateAndSource(userId, date, "INTERVALS").orElse(null);
+            if (count == 0) {
+                if (row != null) dailyLoadRepository.delete(row);
+                return;
+            }
+            if (row == null) {
+                row = UserDailyLoad.builder().userId(userId).loadDate(date).source("INTERVALS").build();
+            }
+            row.setTrainingLoad(sum);
+            row.setActivityCount(count);
+            dailyLoadRepository.save(row);
+        } catch (Exception e) {
+            log.debug("Daily-load recompute for {} on {} failed: {}", userId, date, e.getMessage());
+        }
     }
 
     /**

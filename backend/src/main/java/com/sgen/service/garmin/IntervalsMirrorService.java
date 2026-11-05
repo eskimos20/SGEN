@@ -36,6 +36,7 @@ public class IntervalsMirrorService {
     private final com.sgen.repository.IntervalsAthleteMirrorRepository athleteMirrorRepository;
     private final ObjectMapper objectMapper;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final FitnessModelService fitnessModelService;
 
     public boolean hasActivities(Long userId) {
         return activityRepository.countByUserId(userId) > 0;
@@ -287,6 +288,11 @@ public class IntervalsMirrorService {
             sanitizePayloadPii(merged);
             row.setPayloadJson(objectMapper.writeValueAsString(merged));
             activityRepository.save(row);
+            // Any ingest path updates that day's INTERVALS daily load —
+            // the fitness model reads it on the next recompute.
+            if (row.getStartDateLocal() != null) {
+                fitnessModelService.recordIntervalsLoadForDate(userId, row.getStartDateLocal().toLocalDate());
+            }
         } catch (Exception e) {
             log.debug("Mirror merge activity failed: {}", e.getMessage());
         }
