@@ -78,6 +78,7 @@ public class IntervalsMirrorService {
             var row = streamsRepository.findByUserIdAndActivityId(userId, activityId)
                     .orElseGet(() -> IntervalsActivityStreams.builder().userId(userId).activityId(activityId).build());
             if (streams != null) {
+                GpsTrackTrimmer.trimStreamsArray(streams);
                 sanitizePayloadPii(streams);
                 row.setStreamsJson(objectMapper.writeValueAsString(streams));
                 // Precompute per-activity curves at persist time so curve history

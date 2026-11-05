@@ -565,6 +565,7 @@ public class IntervalsService {
                     streamsMap.put(field, streamsNodeRef[0].get(field));
                 });
                 log.debug("Streams object format for {} with fields: {}", activityId, availableStreams);
+                com.sgen.service.garmin.GpsTrackTrimmer.trimNormalized(streamsNodeRef[0]);
             } else if (streamsNodeRef[0].isArray()) {
                 // Array format: [{"type": "velocity", "data": [...]}, ...]
                 log.debug("Streams array format for {} with {} elements", activityId, streamsNodeRef[0].size());
@@ -586,6 +587,7 @@ public class IntervalsService {
                     streamsWrapper.set(entry.getKey(), entry.getValue());
                 }
                 // Replace the array with our wrapper object for easier processing
+                com.sgen.service.garmin.GpsTrackTrimmer.trimNormalized(streamsWrapper);
                 details.put("streams", streamsWrapper);
                 streamsNodeRef[0] = streamsWrapper;
             }
@@ -620,7 +622,12 @@ public class IntervalsService {
                     .uri("/api/v1/activity/{id}/map", activityId)
                     .retrieve().bodyToMono(String.class).block();
             if (mapJson != null && !mapJson.isEmpty()) {
-                details.put("mapData", objectMapper.readTree(mapJson));
+                JsonNode mapData = objectMapper.readTree(mapJson);
+                if (mapData instanceof com.fasterxml.jackson.databind.node.ObjectNode mo
+                        && mo.get("latlngs") != null) {
+                    com.sgen.service.garmin.GpsTrackTrimmer.trimLatlngs(mo.get("latlngs"));
+                }
+                details.put("mapData", mapData);
             }
         } catch (Exception e) {
             log.debug("No map data available for activity {}: {}", activityId, e.getMessage());
@@ -691,6 +698,7 @@ public class IntervalsService {
             }
             ObjectNode normalized = normalizeStreams(streams);
             if (normalized != null) {
+                com.sgen.service.garmin.GpsTrackTrimmer.trimNormalized(normalized);
                 details.put("streams", normalized);
                 details.put("powerCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("watts")));
                 details.put("hrCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("heartrate")));
@@ -702,7 +710,12 @@ public class IntervalsService {
                             .uri("/api/v1/activity/{id}/map", activityId)
                             .retrieve().bodyToMono(String.class).block();
                     if (mapJson != null && !mapJson.isEmpty()) {
-                        details.put("mapData", objectMapper.readTree(mapJson));
+                        JsonNode mapData = objectMapper.readTree(mapJson);
+                        if (mapData instanceof com.fasterxml.jackson.databind.node.ObjectNode mo
+                                && mo.get("latlngs") != null) {
+                            com.sgen.service.garmin.GpsTrackTrimmer.trimLatlngs(mo.get("latlngs"));
+                        }
+                        details.put("mapData", mapData);
                     }
                 } catch (Exception e) {
                     log.debug("Map fetch for {} failed: {}", activityId, e.getMessage());

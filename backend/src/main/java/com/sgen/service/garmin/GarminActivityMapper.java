@@ -167,6 +167,7 @@ public class GarminActivityMapper {
     }
 
     private void saveStreams(Long activityId, ObjectNode streams, int sampleCount) {
+        GpsTrackTrimmer.trimNormalized(streams);
         GarminActivityStreams entity = streamsRepository.findById(activityId)
                 .orElse(GarminActivityStreams.builder().activityId(activityId).build());
         entity.setStreamsJson(streams.toString());

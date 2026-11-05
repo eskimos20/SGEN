@@ -111,11 +111,16 @@ const ActivityMap = ({ mapData, className = "h-64" }) => {
   }
 
   return (
-    <div 
-      ref={mapRef} 
-      className={`${className} rounded-lg overflow-hidden w-full`}
-      style={{ minHeight: '200px' }}
-    />
+    <div>
+      <div
+        ref={mapRef}
+        className={`${className} rounded-lg overflow-hidden w-full`}
+        style={{ minHeight: '200px' }}
+      />
+      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 text-center">
+        Start and finish points are hidden for privacy.
+      </p>
+    </div>
   );
 };
 

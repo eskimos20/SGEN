@@ -84,6 +84,9 @@ public class GarminActivityViewService {
     private ObjectNode mapData(JsonNode streams) {
         ObjectNode map = objectMapper.createObjectNode();
         // Frontend reads mapData.latlngs (same key as the Intervals /map payload).
+        // Trim again at serve time — time-based, so already-trimmed stored
+        // streams are unaffected (same window, already-null points stay null).
+        GpsTrackTrimmer.trimNormalized(streams);
         if (streams.has("latlng")) map.set("latlngs", streams.get("latlng"));
         return map;
     }
