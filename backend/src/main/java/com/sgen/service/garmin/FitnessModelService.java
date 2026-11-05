@@ -49,15 +49,6 @@ public class FitnessModelService {
     void startRecomputeFlusher() {
         recomputeScheduler.scheduleWithFixedDelay(
                 this::flushPendingRecomputes, 15, 15, java.util.concurrent.TimeUnit.SECONDS);
-        // Catch-up: recompute every user with daily loads once at startup,
-        // so rows written before this mechanism existed take effect.
-        recomputeScheduler.schedule(() -> {
-            try {
-                pendingRecompute.addAll(dailyLoadRepository.findDistinctUserIds());
-            } catch (Exception e) {
-                log.debug("Recompute catch-up failed: {}", e.getMessage());
-            }
-        }, 30, java.util.concurrent.TimeUnit.SECONDS);
     }
 
     private void flushPendingRecomputes() {

@@ -529,11 +529,7 @@ public class IntervalsService {
             java.time.LocalDate today = java.time.LocalDate.now();
             java.time.LocalDate from = java.time.LocalDate.parse(oldest);
             java.time.LocalDate to = java.time.LocalDate.parse(newest);
-            if (!from.isAfter(tail) && !to.isBefore(today)) {
-                log.info("Trailing loads: window {}..{} already covers {}..{} — skipping extra feed",
-                        oldest, newest, tail, today);
-                return;
-            }
+            if (!from.isAfter(tail) && !to.isBefore(today)) return; // window already covers the tail
 
             ArrayNode recent = objectMapper.createArrayNode();
             if (garminClientFactory.isConnected(uid)) {
@@ -557,8 +553,6 @@ public class IntervalsService {
                 JsonNode arr = objectMapper.readTree(json);
                 if (arr != null && arr.isArray()) recent.addAll((ArrayNode) arr);
             }
-            log.info("Trailing loads: {} activities fed to fitness model for user {} (garminConnected={})",
-                    recent.size(), uid, garminClientFactory.isConnected(uid));
             if (!recent.isEmpty()) {
                 fitnessModelService.recordIntervalsLoads(uid, recent);
             }
