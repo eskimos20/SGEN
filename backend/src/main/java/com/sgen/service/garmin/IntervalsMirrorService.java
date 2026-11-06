@@ -106,28 +106,48 @@ public class IntervalsMirrorService {
 
     /** Persist every row of an Intervals wellness array (id = ISO date). */
     public void saveWellness(Long userId, JsonNode wellness) {
-        if (wellness == null || !wellness.isArray()) return;
+        if (wellness == null || !wellness.isArray() || wellness.isEmpty()) return;
+        var existing = existingWellness(userId, wellness);
         for (JsonNode w : wellness) {
-            saveWellnessNode(userId, w);
+            saveWellnessNode(userId, w, existing);
         }
     }
 
     /** Persist wellness rows already converted to Maps (CalendarController path). */
     public void saveWellnessRows(Long userId, java.util.List<java.util.Map<String, Object>> rows) {
-        if (rows == null) return;
-        for (var row : rows) {
-            saveWellnessNode(userId, objectMapper.valueToTree(row));
+        if (rows == null || rows.isEmpty()) return;
+        JsonNode batch = objectMapper.valueToTree(rows);
+        var existing = existingWellness(userId, batch);
+        for (JsonNode w : batch) {
+            saveWellnessNode(userId, w, existing);
         }
     }
 
-    private void saveWellnessNode(Long userId, JsonNode w) {
+    /** One query for all rows the batch may already have stored. */
+    private java.util.Map<java.time.LocalDate, IntervalsWellness> existingWellness(Long userId, JsonNode wellnessArray) {
+        var dates = new java.util.ArrayList<java.time.LocalDate>();
+        for (JsonNode w : wellnessArray) {
+            String id = w.path("id").asText("");
+            if (id.length() >= 10) dates.add(java.time.LocalDate.parse(id.substring(0, 10)));
+        }
+        var map = new java.util.HashMap<java.time.LocalDate, IntervalsWellness>();
+        if (!dates.isEmpty()) {
+            for (var r : wellnessRepository.findByUserIdAndWellnessDateIn(userId, dates)) {
+                map.put(r.getWellnessDate(), r);
+            }
+        }
+        return map;
+    }
+
+    private void saveWellnessNode(Long userId, JsonNode w,
+                                  java.util.Map<java.time.LocalDate, IntervalsWellness> existing) {
         try {
             String id = w.path("id").asText("");
             if (id.length() < 10) return;
             java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
             sanitizePayloadPii(w);
-            var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
-                    .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
+            var row = existing.getOrDefault(date,
+                    IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
             // Merge so a stripped response can't wipe stored fields.
             row.setPayloadJson(objectMapper.writeValueAsString(
                     mergeJson(row.getPayloadJson(), w)));
@@ -360,13 +380,24 @@ public class IntervalsMirrorService {
 
     /** Persist every event in an Intervals events array. */
     public void saveEvents(Long userId, JsonNode events) {
-        if (events == null || !events.isArray()) return;
+        if (events == null || !events.isArray() || events.isEmpty()) return;
+        var ids = new java.util.ArrayList<String>();
+        for (JsonNode ev : events) {
+            String id = ev.path("id").asText("");
+            if (!id.isBlank()) ids.add(id);
+        }
+        var existing = new java.util.HashMap<String, IntervalsEvent>();
+        if (!ids.isEmpty()) {
+            for (var r : eventRepository.findByUserIdAndEventIdIn(userId, ids)) {
+                existing.put(r.getEventId(), r);
+            }
+        }
         for (JsonNode ev : events) {
             try {
                 String id = ev.path("id").asText("");
                 if (id.isBlank()) continue;
-                var row = eventRepository.findByUserIdAndEventId(userId, id)
-                        .orElseGet(() -> IntervalsEvent.builder().userId(userId).eventId(id).build());
+                var row = existing.getOrDefault(id,
+                        IntervalsEvent.builder().userId(userId).eventId(id).build());
                 String ds = ev.path("start_date_local").asText("");
                 if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
                 row.setCategory(ev.path("category").asText(null));

@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface IntervalsWellnessRepository extends JpaRepository<IntervalsWellness, Long> {
     Optional<IntervalsWellness> findByUserIdAndWellnessDate(Long userId, LocalDate wellnessDate);
+    List<IntervalsWellness> findByUserIdAndWellnessDateIn(Long userId, List<LocalDate> wellnessDates);
     List<IntervalsWellness> findByUserIdAndWellnessDateBetweenOrderByWellnessDateAsc(
             Long userId, LocalDate from, LocalDate to);
     void deleteByUserId(Long userId);

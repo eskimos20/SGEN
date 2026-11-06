@@ -11,6 +11,7 @@ import java.util.Optional;
 @Repository
 public interface IntervalsEventRepository extends JpaRepository<IntervalsEvent, Long> {
     Optional<IntervalsEvent> findByUserIdAndEventId(Long userId, String eventId);
+    List<IntervalsEvent> findByUserIdAndEventIdIn(Long userId, List<String> eventIds);
     List<IntervalsEvent> findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
             Long userId, LocalDateTime from, LocalDateTime to);
     void deleteByUserId(Long userId);
