@@ -193,12 +193,11 @@ or use exported shell variables:
 │   ├── Profile.jsx             # User profile and settings
 │   ├── Login.jsx               # Authentication
 │   └── ChangePassword.jsx      # Password change (first login)
-├── components/       # Reusable UI components
 │   ├── admin/        # Admin-specific components
-│   │   ├── UsersTab.jsx        # User management
-│   │   └── DebugTab.jsx        # Debug information
-│   ├── calendar/     # Calendar-specific components
-│   ├── shared/       # Shared layout components
+│   ├── calendar/     # Calendar components (incl. PlannedEventStats)
+│   ├── charts/       # Chart components (FitnessChart, curves)
+│   ├── profile/      # Profile cards (incl. ZwiftConfigCard)
+│   ├── shared/       # Shared layout components (incl. ActivityTypeFtpSelector)
 │   │   └── Layout.jsx          # Main app layout with navigation
 │   └── ...
 ├── services/         # Business logic services
@@ -206,9 +205,13 @@ or use exported shell variables:
 │   └── statisticsService.js    # Statistics operations
 └── utils/            # Shared utility functions
     ├── calendarUtils.js        # Calendar date utilities
+    ├── cycleUtils.js           # Deload/progression cycle math
+    ├── dataUtils.js            # Date/duration formatters
+    ├── healthMetrics.js        # HRV/sleep category metrics
     ├── athleteUtils.js         # Athlete calculations
     ├── workoutUtils.js         # Workout metrics (TSS, IF, NP)
     ├── statisticsDataUtils.js  # Statistics data processing
+    ├── usePersistentPreference.js # Persisted UI preferences
     └── zoneUtils.js            # Power/HR zone utilities
 ```
 
@@ -224,6 +227,7 @@ or use exported shell variables:
 │   ├── DownloadController.java    # APK download endpoint
 │   ├── GearController.java        # Gear management
 │   ├── GearMaintenanceController.java  # Maintenance tracking
+│   ├── IntervalsControllerSupport.java # Shared response wrapper
 │   ├── PerformanceController.java # Performance analytics
 │   ├── StatisticsController.java  # Statistics, calendar & AI endpoints
 │   ├── SystemController.java     # System monitoring (admin)
@@ -234,25 +238,49 @@ or use exported shell variables:
 ├── service/          # Business logic
 │   ├── AIUsageService.java        # AI usage tracking & pricing
 │   ├── AchievementNotificationService.java  # Achievement notifications
-│   ├── AchievementService.java    # Achievement system
 │   ├── AppSettingsService.java    # Application settings
 │   ├── BikeFitAnalysisService.java # BikeFit AI analysis
 │   ├── BikeFitService.java         # BikeFit processing
 │   ├── CalendarEventService.java   # Calendar operations
 │   ├── CustomWorkoutService.java   # Custom workout management
 │   ├── GearMaintenanceService.java # Gear maintenance tracking
-│   ├── IntervalsService.java       # Intervals.icu API integration
+│   ├── IntervalsService.java       # Intervals.icu orchestrator (fetchAllData)
+│   ├── IntervalsActivityFeedService.java  # Activity list + stream hydration
+│   ├── IntervalsActivityDetailService.java # Single-activity detail view
+│   ├── IntervalsActivityOpsService.java   # Update/delete/upload/intervals
+│   ├── IntervalsActivityAnalysisService.java # Analysis pipeline & window math
+│   ├── IntervalsIntervalService.java      # Interval ops & best-efforts
+│   ├── IntervalsAthleteService.java       # Athlete profile/settings
+│   ├── IntervalsStatsService.java         # Curves, totals, preferences
+│   ├── IntervalsImageService.java         # Map/chart PNG cache
+│   ├── IntervalsEventService.java         # Calendar events
+│   ├── IntervalsWellnessService.java      # Wellness data
+│   ├── IntervalsGearService.java          # Gear/equipment
+│   ├── IntervalsApiClient.java            # Rate-limited GET client
+│   ├── IntervalsClientFactory.java        # Per-user WebClient builder
+│   ├── IntervalsMirrorService.java        # DB mirror persistence (garmin/)
+│   ├── IntervalsBackfillService.java      # Mirror backfill import (garmin/)
+│   ├── LocalAchievementDetectionService.java # Local power/pace detection
 │   ├── OpenAIService.java          # OpenAI API integration
 │   ├── PerformanceService.java     # Performance analytics
 │   ├── SmhiForecastService.java    # SMHI weather forecasts
 │   ├── SmhiStationService.java     # SMHI station search
+│   ├── UserLookupService.java      # Username lookup (shared)
 │   ├── UserService.java            # User management
 │   ├── WeatherService.java         # Weather data management
 │   ├── WorkoutLibraryService.java  # Workout library (cycling)
-│   └── ZwoParser.java              # ZWO file parser
+│   ├── ZwoParser.java              # ZWO file parser
+│   └── garmin/                     # Garmin push, OAuth, mirror, mappers
+├── util/             # Shared utilities
+│   ├── IntervalEnrichment.java     # Interval stream enrichment
+│   ├── IntervalsApiRateLimiter.java # Intervals API rate limiting
+│   ├── JsonPayloads.java           # Payload ↔ ArrayNode conversion
+│   ├── PaceMath.java               # Pace curve math
+│   └── StreamWindows.java          # Sliding-window calculations
 ├── config/           # Configuration classes
 │   ├── SecurityConfig.java         # Spring Security config
 │   ├── SpaWebConfig.java          # SPA routing support
+│   ├── WebConfig.java              # Shared RestTemplate/ObjectMapper
 │   └── DataInitializer.java       # Default data initialization
 ├── entity/           # JPA entities
 │   ├── User.java                   # User entity
