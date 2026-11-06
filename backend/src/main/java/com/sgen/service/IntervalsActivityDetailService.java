@@ -35,6 +35,7 @@ public class IntervalsActivityDetailService {
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
     private final IntervalsActivityAnalysisService analysisService;
+    private final IntervalsIntervalService intervalsIntervalService;
 
     public Map<String, Object> getActivityDetails(String username, String activityId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -116,7 +117,7 @@ public class IntervalsActivityDetailService {
         if (activityNodeForIntervals != null && activityNodeForIntervals.has("icu_intervals")) {
             JsonNode intervals = activityNodeForIntervals.get("icu_intervals");
             com.sgen.util.IntervalEnrichment.enrich(intervals, (JsonNode) details.get("streams"));
-            details.put("intervalSummary", analysisService.extractIntervalSummary(intervals));
+            details.put("intervalSummary", intervalsIntervalService.extractIntervalSummary(intervals));
             Map<String, Object> intervalsWrapper = new HashMap<>();
             intervalsWrapper.put("icu_intervals", intervals);
             details.put("intervals", intervalsWrapper);
@@ -228,7 +229,7 @@ public class IntervalsActivityDetailService {
             if (intervals != null) {
                 com.sgen.util.IntervalEnrichment.enrich(intervals, normalized);
                 activity.set("icu_intervals", intervals);
-                details.put("intervalSummary", analysisService.extractIntervalSummary(intervals));
+                details.put("intervalSummary", intervalsIntervalService.extractIntervalSummary(intervals));
                 details.put("intervals", Map.of("icu_intervals", intervals));
             }
             addPaceCurve(activityId, details, normalized);

@@ -47,6 +47,7 @@ public class IntervalsService {
     private final PerformanceService performanceService;
     private final IntervalsClientFactory clientFactory;
     private final IntervalsActivityAnalysisService analysisService;
+    private final IntervalsIntervalService intervalsIntervalService;
     private final ActivityAnalysisService activityAnalysisService;
     private final GarminMergeService garminMergeService;
     private final FitnessModelService fitnessModelService;
@@ -415,19 +416,19 @@ public class IntervalsService {
     }
 
     public JsonNode fetchActivityBestEfforts(String username, String activityId) {
-        return analysisService.fetchActivityBestEfforts(username, activityId);
+        return intervalsIntervalService.fetchActivityBestEfforts(username, activityId);
     }
 
     public JsonNode findBestEfforts(String username, String activityId, String stream,
                                     Integer duration, Integer count, Float minValue,
                                     Boolean excludeIntervals) {
-        return analysisService.findBestEfforts(username, activityId, stream, duration, count, minValue, excludeIntervals);
+        return intervalsIntervalService.findBestEfforts(username, activityId, stream, duration, count, minValue, excludeIntervals);
     }
 
     public List<Map<String, Object>> computeIntervalsFromStreams(String username, String activityId,
                                                                   String stream, Integer duration, Integer count,
                                                                   Integer skipSeconds, Integer cooldownSeconds) {
-        return analysisService.computeIntervalsFromStreams(username, activityId, stream, duration, count, skipSeconds, cooldownSeconds);
+        return intervalsIntervalService.computeIntervalsFromStreams(username, activityId, stream, duration, count, skipSeconds, cooldownSeconds);
     }
 
     public JsonNode updateActivityIntervals(String username, String activityId,
@@ -437,7 +438,7 @@ public class IntervalsService {
     }
 
     public Map<String, Object> extractIntervalSummary(JsonNode icuIntervals) {
-        return analysisService.extractIntervalSummary(icuIntervals);
+        return intervalsIntervalService.extractIntervalSummary(icuIntervals);
     }
 
     public JsonNode uploadActivity(String username, MultipartFile file, String name, String description) {

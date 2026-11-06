@@ -38,6 +38,7 @@ public class IntervalsActivityOpsService {
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
     private final ActivityAnalysisService activityAnalysisService;
     private final IntervalsActivityAnalysisService analysisService;
+    private final IntervalsIntervalService intervalsIntervalService;
     private final IntervalsActivityDetailService activityDetailService;
 
     public Map<String, Object> updateActivity(String username, String activityId, Map<String, Object> updates) {
@@ -102,19 +103,19 @@ public class IntervalsActivityOpsService {
     // -------------------------------------------------------------------------
 
     public JsonNode fetchActivityBestEfforts(String username, String activityId) {
-        return analysisService.fetchActivityBestEfforts(username, activityId);
+        return intervalsIntervalService.fetchActivityBestEfforts(username, activityId);
     }
 
     public JsonNode findBestEfforts(String username, String activityId, String stream,
                                     Integer duration, Integer count, Float minValue,
                                     Boolean excludeIntervals) {
-        return analysisService.findBestEfforts(username, activityId, stream, duration, count, minValue, excludeIntervals);
+        return intervalsIntervalService.findBestEfforts(username, activityId, stream, duration, count, minValue, excludeIntervals);
     }
 
     public List<Map<String, Object>> computeIntervalsFromStreams(String username, String activityId,
                                                                   String stream, Integer duration, Integer count,
                                                                   Integer skipSeconds, Integer cooldownSeconds) {
-        return analysisService.computeIntervalsFromStreams(username, activityId, stream, duration, count, skipSeconds, cooldownSeconds);
+        return intervalsIntervalService.computeIntervalsFromStreams(username, activityId, stream, duration, count, skipSeconds, cooldownSeconds);
     }
 
     public JsonNode updateActivityIntervals(String username, String activityId,
@@ -124,7 +125,7 @@ public class IntervalsActivityOpsService {
             Map<String, Object> details = activityDetailService.getActivityDetails(username, activityId);
             JsonNode activityNode = (JsonNode) details.get("activity");
             JsonNode streamsNode = (JsonNode) details.get("streams");
-            JsonNode result = analysisService.updateActivityIntervals(username, activityId, intervals, searchDuration, activityNode, streamsNode);
+            JsonNode result = intervalsIntervalService.updateActivityIntervals(username, activityId, intervals, searchDuration, activityNode, streamsNode);
             // Enrich the returned intervals with start/end HR and HRR so the values
             // are available immediately without refetching activity details.
             if (result != null) {
@@ -141,7 +142,7 @@ public class IntervalsActivityOpsService {
     }
 
     public Map<String, Object> extractIntervalSummary(JsonNode icuIntervals) {
-        return analysisService.extractIntervalSummary(icuIntervals);
+        return intervalsIntervalService.extractIntervalSummary(icuIntervals);
     }
 
     // -------------------------------------------------------------------------
