@@ -293,75 +293,19 @@ public class IntervalsService {
             }
         }, executorService);
 
-        // Athlete profile
-        CompletableFuture<JsonNode> athleteFuture = CompletableFuture.supplyAsync(() -> {
-            if (garminConnected && intervalsMirrorService.athleteMirrorFresh(ctx.user.getId(), 24)) {
-                String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "athlete");
-                if (cached != null) {
-                    try {
-                        log.info("SOURCE=DB user {} athlete profile served from local mirror", username);
-                        return objectMapper.readTree(cached);
-                    } catch (Exception ignored) {}
-                }
-            }
-            log.info("SOURCE=INTERVALS user {} fetching athlete profile", username);
-            try {
-                rateLimiter.acquire();
-                String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
-                        .retrieve().bodyToMono(String.class).block();
-                if (garminConnected && athleteJson != null) {
-                    intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), athleteJson, null);
-                }
-                return objectMapper.readTree(athleteJson);
-            } catch (Exception e) {
-                log.error("Failed to fetch athlete profile: {}", e.getMessage(), e);
-                if (garminConnected) {
-                    String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "athlete");
-                    if (cached != null) {
-                        try {
-                            log.info("SOURCE=DB user {} stale athlete profile served from local mirror", username);
-                            return objectMapper.readTree(cached);
-                        } catch (Exception ignored) {}
-                    }
-                }
-                return null;
-            }
-        }, executorService);
+        // Athlete profile + sport settings — same DB-first / API / persist shape
+        CompletableFuture<JsonNode> athleteFuture = CompletableFuture.supplyAsync(
+                () -> fetchMirroredDoc(ctx, garminConnected, "athlete", "/api/v1/athlete/{id}",
+                        (uid, json) -> intervalsMirrorService.saveAthleteProfile(uid, json, null),
+                        "athlete profile"),
+                executorService);
 
-        // Sport settings
-        CompletableFuture<JsonNode> sportSettingsFuture = CompletableFuture.supplyAsync(() -> {
-            if (garminConnected && intervalsMirrorService.athleteMirrorFresh(ctx.user.getId(), 24)) {
-                String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "sport-settings");
-                if (cached != null) {
-                    try {
-                        log.info("SOURCE=DB user {} sport settings served from local mirror", username);
-                        return objectMapper.readTree(cached);
-                    } catch (Exception ignored) {}
-                }
-            }
-            log.info("SOURCE=INTERVALS user {} fetching sport settings", username);
-            try {
-                rateLimiter.acquire();
-                String sportSettingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
-                        .retrieve().bodyToMono(String.class).block();
-                if (garminConnected && sportSettingsJson != null) {
-                    intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), null, sportSettingsJson);
-                }
-                return objectMapper.readTree(sportSettingsJson);
-            } catch (Exception e) {
-                log.error("Failed to fetch sport settings: {}", e.getMessage(), e);
-                if (garminConnected) {
-                    String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "sport-settings");
-                    if (cached != null) {
-                        try {
-                            log.info("SOURCE=DB user {} stale sport settings served from local mirror", username);
-                            return objectMapper.readTree(cached);
-                        } catch (Exception ignored) {}
-                    }
-                }
-                return null;
-            }
-        }, executorService);
+        CompletableFuture<JsonNode> sportSettingsFuture = CompletableFuture.supplyAsync(
+                () -> fetchMirroredDoc(ctx, garminConnected, "sport-settings",
+                        "/api/v1/athlete/{id}/sport-settings",
+                        (uid, json) -> intervalsMirrorService.saveAthleteProfile(uid, null, json),
+                        "sport settings"),
+                executorService);
 
         // Events
         CompletableFuture<JsonNode> eventsFuture = CompletableFuture.supplyAsync(() -> {
@@ -519,6 +463,48 @@ public class IntervalsService {
      *  requested stats window may end before today, but Intervals counts
      *  today's load continuously, so the local EMA must too. */
     private static final int TRAILING_LOAD_DAYS = 14;
+
+    /**
+     * Fetch an athlete-related document (profile or sport settings) with the
+     * shared mirror policy: fresh mirror &lt; 24h → DB, else API → persist for
+     * Garmin-connected users, falling back to the stale mirror on API failure.
+     */
+    private JsonNode fetchMirroredDoc(ApiContext ctx, boolean garminConnected, String docKey,
+                                      String apiPath, java.util.function.BiConsumer<Long, String> persist,
+                                      String label) {
+        Long uid = ctx.user.getId();
+        String username = ctx.user.getUsername();
+        if (garminConnected && intervalsMirrorService.athleteMirrorFresh(uid, 24)) {
+            String cached = intervalsMirrorService.findAthleteJson(uid, docKey);
+            if (cached != null) {
+                try {
+                    log.info("SOURCE=DB user {} {} served from local mirror", username, label);
+                    return objectMapper.readTree(cached);
+                } catch (Exception ignored) {}
+            }
+        }
+        log.info("SOURCE=INTERVALS user {} fetching {}", username, label);
+        try {
+            rateLimiter.acquire();
+            String json = ctx.client.get()
+                    .uri(apiPath, ctx.user.getIntervalsAthleteId())
+                    .retrieve().bodyToMono(String.class).block();
+            if (garminConnected && json != null) persist.accept(uid, json);
+            return objectMapper.readTree(json);
+        } catch (Exception e) {
+            log.error("Failed to fetch {}: {}", label, e.getMessage(), e);
+            if (garminConnected) {
+                String cached = intervalsMirrorService.findAthleteJson(uid, docKey);
+                if (cached != null) {
+                    try {
+                        log.info("SOURCE=DB user {} stale {} served from local mirror", username, label);
+                        return objectMapper.readTree(cached);
+                    } catch (Exception ignored) {}
+                }
+            }
+            return null;
+        }
+    }
 
     /**
      * Feed the last TRAILING_LOAD_DAYS of activities into the local daily-load
