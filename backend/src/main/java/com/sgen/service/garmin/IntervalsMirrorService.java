@@ -128,14 +128,9 @@ public class IntervalsMirrorService {
             sanitizePayloadPii(w);
             var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
                     .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
-            if (row.getPayloadJson() != null && w.isObject()) {
-                // Merge so a stripped response can't wipe stored fields.
-                ObjectNode merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
-                merged.setAll((ObjectNode) w);
-                row.setPayloadJson(objectMapper.writeValueAsString(merged));
-            } else {
-                row.setPayloadJson(objectMapper.writeValueAsString(w));
-            }
+            // Merge so a stripped response can't wipe stored fields.
+            row.setPayloadJson(objectMapper.writeValueAsString(
+                    mergeJson(row.getPayloadJson(), w)));
             projectWellnessFields(row, w);
             wellnessRepository.save(row);
         } catch (Exception e) {
@@ -191,6 +186,22 @@ public class IntervalsMirrorService {
         }
     }
 
+    /**
+     * Shallow-merge an update object into the stored payload JSON — stored
+     * fields survive when the incoming payload omits them (stripped shells).
+     * Returns the merged object; creates a new object when nothing is stored.
+     */
+    private ObjectNode mergeJson(String storedPayload, JsonNode update) throws Exception {
+        if (!update.isObject()) {
+            return objectMapper.valueToTree(update);
+        }
+        ObjectNode merged = storedPayload != null
+                ? (ObjectNode) objectMapper.readTree(storedPayload)
+                : objectMapper.createObjectNode();
+        merged.setAll((ObjectNode) update);
+        return merged;
+    }
+
     /** Persist a wellness-bulk update into the mirror payload (field-level merge). */
     public void mergeWellnessUpdate(Long userId, java.util.Map<String, Object> update) {
         try {
@@ -201,16 +212,10 @@ public class IntervalsMirrorService {
             java.time.LocalDate date = java.time.LocalDate.parse(id.substring(0, 10));
             var row = wellnessRepository.findByUserIdAndWellnessDate(userId, date)
                     .orElseGet(() -> IntervalsWellness.builder().userId(userId).wellnessDate(date).build());
-            ObjectNode merged;
-            if (row.getPayloadJson() != null) {
-                merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
-            } else {
-                merged = objectMapper.createObjectNode();
-            }
             ObjectNode upd = objectMapper.valueToTree(update);
             sanitizePayloadPii(upd);
-            merged.setAll(upd);
-            row.setPayloadJson(objectMapper.writeValueAsString(merged));
+            row.setPayloadJson(objectMapper.writeValueAsString(
+                    mergeJson(row.getPayloadJson(), upd)));
             wellnessRepository.save(row);
         } catch (Exception e) {
             log.debug("Mirror wellness update merge failed: {}", e.getMessage());
@@ -273,13 +278,7 @@ public class IntervalsMirrorService {
             if (id.isBlank() || isRestrictedShell(a)) return;
             var row = activityRepository.findByUserIdAndActivityId(userId, id)
                     .orElseGet(() -> IntervalsActivity.builder().userId(userId).activityId(id).build());
-            ObjectNode merged;
-            if (row.getPayloadJson() != null) {
-                merged = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
-                merged.setAll((ObjectNode) a);
-            } else {
-                merged = (ObjectNode) a;
-            }
+            ObjectNode merged = mergeJson(row.getPayloadJson(), a);
             String ds = merged.path("start_date_local").asText("");
             if (ds.length() >= 19) row.setStartDateLocal(java.time.LocalDateTime.parse(ds.substring(0, 19)));
             if (merged.hasNonNull("moving_time")) row.setMovingTimeS(merged.get("moving_time").asInt());
