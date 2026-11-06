@@ -127,7 +127,19 @@ public class IntervalsActivityDetailService {
             details.put("powerCurve",
                     intervalsApi.getJson(client, "/api/v1/activity/{id}/power-curve", activityId));
         } catch (Exception e) {
-            log.warn("Failed to fetch power curve for {}: {}", activityId, e.getMessage());
+            // The API only precomputes curves for power sports — for other
+            // activity types (SkiErg, rowing, ...) the watts stream still has
+            // the data, so compute the curve locally from the fetched streams.
+            JsonNode streamsNode = (JsonNode) details.get("streams");
+            JsonNode watts = streamsNode != null && streamsNode.isObject()
+                    ? streamsNode.get("watts") : null;
+            if (watts != null && watts.isArray() && watts.size() > 0) {
+                details.put("powerCurve",
+                        com.sgen.service.garmin.CurveCalculator.curve(watts));
+                log.debug("Power curve for {} computed from watts stream (API had no precomputed curve)", activityId);
+            } else {
+                log.warn("Failed to fetch power curve for {}: {}", activityId, e.getMessage());
+            }
         }
 
         // Fetch map data (latlngs for the map)
