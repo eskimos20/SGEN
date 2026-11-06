@@ -48,6 +48,7 @@ public class StatisticsController {
     private final CalendarEventService calendarEventService;
     private final UserVersionService userVersionService;
     private final AchievementNotificationService achievementNotificationService;
+    private final IntervalsControllerSupport support;
     private final PaceCurveService paceCurveService;
 
     /**
@@ -134,15 +135,9 @@ public class StatisticsController {
             @RequestParam String oldest,
             @RequestParam String newest,
             @RequestParam(required = false, defaultValue = "Ride") String type) {
-        try {
-            JsonNode powerCurveHistory = intervalsService.getPowerCurveHistory(
-                    authentication.getName(), oldest, newest, type);
-            return ResponseEntity.ok(powerCurveHistory);
-        } catch (Exception e) {
-            log.error("Failed to fetch power curve history: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(objectMapper.createObjectNode()
-                    .put("error", e.getMessage()));
-        }
+        return support.respondJson(() -> intervalsService.getPowerCurveHistory(
+                authentication.getName(), oldest, newest, type),
+                "Failed to fetch power curve history");
     }
 
     @GetMapping("/training-totals")
@@ -150,15 +145,9 @@ public class StatisticsController {
             Authentication authentication,
             @RequestParam String oldest,
             @RequestParam String newest) {
-        try {
-            JsonNode activities = intervalsService.getTrainingTotalsActivities(
-                    authentication.getName(), oldest, newest);
-            return ResponseEntity.ok(activities);
-        } catch (Exception e) {
-            log.error("Failed to fetch training totals: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(objectMapper.createObjectNode()
-                    .put("error", e.getMessage()));
-        }
+        return support.respondJson(() -> intervalsService.getTrainingTotalsActivities(
+                authentication.getName(), oldest, newest),
+                "Failed to fetch training totals");
     }
 
     @GetMapping("/openai-status")
@@ -177,33 +166,30 @@ public class StatisticsController {
     public ResponseEntity<Map<String, String>> analyzeWithAI(
             Authentication authentication,
             @RequestBody Map<String, Object> request) {
-        try {
-            String prompt = (String) request.get("prompt");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> requestData = (Map<String, Object>) request.get("data");
-            @SuppressWarnings("unchecked")
-            List<Map<String, String>> conversationHistory = (List<Map<String, String>>) request.get("conversationHistory");
-            String data = objectMapper.writeValueAsString(requestData);
-            String analysis = openAIService.analyzeWithAI(authentication.getName(), prompt, data, conversationHistory);
-            return ResponseEntity.ok(Map.of("analysis", analysis));
-        } catch (Exception e) {
-            log.error("AI analysis request failed: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> {
+            try {
+                String prompt = (String) request.get("prompt");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> requestData = (Map<String, Object>) request.get("data");
+                @SuppressWarnings("unchecked")
+                List<Map<String, String>> conversationHistory = (List<Map<String, String>>) request.get("conversationHistory");
+                String data = objectMapper.writeValueAsString(requestData);
+                String analysis = openAIService.analyzeWithAI(authentication.getName(), prompt, data, conversationHistory);
+                return Map.of("analysis", analysis);
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+                throw new IllegalStateException("Failed to serialize request data", e);
+            }
+        }, "AI analysis request failed");
     }
 
     @GetMapping("/activity/{activityId}/best-efforts")
     public ResponseEntity<?> getActivityBestEfforts(
             Authentication authentication,
             @PathVariable String activityId) {
-        try {
+        return support.respond(() -> {
             var bestEfforts = intervalsService.fetchActivityBestEfforts(authentication.getName(), activityId);
-            if (bestEfforts == null) return ResponseEntity.ok(Map.of("bestEfforts", new Object[]{}));
-            return ResponseEntity.ok(bestEfforts);
-        } catch (Exception e) {
-            log.error("Failed to fetch best efforts: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return bestEfforts == null ? Map.of("bestEfforts", new Object[]{}) : bestEfforts;
+        }, "Failed to fetch best efforts");
     }
 
     @GetMapping("/activity/{activityId}/find-best-efforts")
@@ -215,15 +201,11 @@ public class StatisticsController {
             @RequestParam(required = false, defaultValue = "8") Integer count,
             @RequestParam(required = false) Float minValue,
             @RequestParam(required = false) Boolean excludeIntervals) {
-        try {
+        return support.respond(() -> {
             var efforts = intervalsService.findBestEfforts(
                     authentication.getName(), activityId, stream, duration, count, minValue, excludeIntervals);
-            if (efforts == null) return ResponseEntity.ok(Map.of("efforts", new Object[]{}));
-            return ResponseEntity.ok(efforts);
-        } catch (Exception e) {
-            log.error("Failed to find best efforts: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return efforts == null ? Map.of("efforts", new Object[]{}) : efforts;
+        }, "Failed to find best efforts");
     }
 
     @GetMapping("/activity/{activityId}/compute-intervals")
@@ -235,14 +217,9 @@ public class StatisticsController {
             @RequestParam(required = false, defaultValue = "4") Integer count,
             @RequestParam(required = false) Integer skipSeconds,
             @RequestParam(required = false) Integer cooldownSeconds) {
-        try {
-            var efforts = intervalsService.computeIntervalsFromStreams(
-                    authentication.getName(), activityId, stream, duration, count, skipSeconds, cooldownSeconds);
-            return ResponseEntity.ok(Map.of("efforts", efforts));
-        } catch (Exception e) {
-            log.error("Failed to compute intervals: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> Map.of("efforts", intervalsService.computeIntervalsFromStreams(
+                authentication.getName(), activityId, stream, duration, count, skipSeconds, cooldownSeconds)),
+                "Failed to compute intervals");
     }
 
     @PutMapping("/activity/{activityId}/intervals")
@@ -251,27 +228,19 @@ public class StatisticsController {
             @PathVariable String activityId,
             @RequestBody List<Map<String, Object>> intervals,
             @RequestParam(required = false) Integer searchDuration) {
-        try {
-            var result = intervalsService.updateActivityIntervals(
-                    authentication.getName(), activityId, intervals, searchDuration);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Failed to update intervals: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> intervalsService.updateActivityIntervals(
+                authentication.getName(), activityId, intervals, searchDuration),
+                "Failed to update intervals");
     }
 
     @DeleteMapping("/activity/{activityId}")
     public ResponseEntity<?> deleteActivity(
             Authentication authentication,
             @PathVariable String activityId) {
-        try {
+        return support.respond(() -> {
             intervalsService.deleteActivity(authentication.getName(), activityId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Activity deleted successfully"));
-        } catch (Exception e) {
-            log.error("Failed to delete activity {}: {}", activityId, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return Map.of("success", true, "message", "Activity deleted successfully");
+        }, "Failed to delete activity " + activityId);
     }
 
     @PostMapping(value = "/upload-activity", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -280,13 +249,8 @@ public class StatisticsController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "description", required = false) String description) {
-        try {
-            var result = intervalsService.uploadActivity(authentication.getName(), file, name, description);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Failed to upload activity: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> intervalsService.uploadActivity(
+                authentication.getName(), file, name, description), "Failed to upload activity");
     }
 
     @GetMapping("/training-preferences")
@@ -303,42 +267,30 @@ public class StatisticsController {
     public ResponseEntity<?> saveTrainingPreferences(
             Authentication authentication,
             @RequestBody Map<String, Object> preferences) {
-        try {
+        return support.respond(() -> {
             intervalsService.saveTrainingPreferences(authentication.getName(), preferences);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Preferences saved successfully"));
-        } catch (Exception e) {
-            log.error("Failed to save training preferences: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return Map.of("success", true, "message", "Preferences saved successfully");
+        }, "Failed to save training preferences");
     }
 
     @GetMapping("/ai-usage")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAIUsageStatistics() {
-        try {
-            return ResponseEntity.ok(aiUsageService.getUsageSummary());
-        } catch (Exception e) {
-            log.error("Failed to fetch AI usage statistics: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(aiUsageService::getUsageSummary, "Failed to fetch AI usage statistics");
     }
 
     @GetMapping("/my-ai-usage")
     public ResponseEntity<?> getMyAIUsage(
             Authentication authentication,
             @RequestParam(defaultValue = "10.50") double usdToSekRate) {
-        try {
+        return support.respond(() -> {
             Map<String, Object> usage = aiUsageService.getUserMonthlyUsage(authentication.getName(), usdToSekRate);
-            // Add user's current model to response
             var user = userService.getCurrentUser(authentication.getName());
             if (user.getOpenaiModel() != null) {
                 usage.put("currentModel", user.getOpenaiModel());
             }
-            return ResponseEntity.ok(usage);
-        } catch (Exception e) {
-            log.error("Failed to fetch user AI usage: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return usage;
+        }, "Failed to fetch user AI usage");
     }
 
     /** Activity types accepted by Intervals.icu (CategorySummary enum). */
@@ -435,84 +387,48 @@ public class StatisticsController {
     public ResponseEntity<?> acceptAchievement(
             Authentication authentication,
             @PathVariable Long achievementId) {
-        try {
+        return support.respond(() -> {
             achievementNotificationService.acceptAchievement(authentication.getName(), achievementId);
-            return ResponseEntity.ok(Map.of("success", true));
-        } catch (Exception e) {
-            log.error("Failed to accept achievement {} for {}: {}", achievementId, authentication.getName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return Map.of("success", true);
+        }, "Failed to accept achievement " + achievementId);
     }
 
     @PostMapping("/achievement/{achievementId}/dismiss")
     public ResponseEntity<?> dismissAchievement(
             Authentication authentication,
             @PathVariable Long achievementId) {
-        try {
+        return support.respond(() -> {
             achievementNotificationService.dismissAchievement(authentication.getName(), achievementId);
-            return ResponseEntity.ok(Map.of("success", true));
-        } catch (Exception e) {
-            log.error("Failed to dismiss achievement {} for {}: {}", achievementId, authentication.getName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return Map.of("success", true);
+        }, "Failed to dismiss achievement " + achievementId);
     }
 
     @PostMapping("/achievement/by-activity/accept")
     public ResponseEntity<?> acceptAchievementByActivity(
             Authentication authentication,
             @RequestBody Map<String, Object> body) {
-        try {
-            String activityId = (String) body.get("activityId");
-            String achievementType = (String) body.get("achievementType");
-            Integer newFtpValue = body.get("newFtpValue") != null ? ((Number) body.get("newFtpValue")).intValue() : null;
-            Integer oldFtpValue = body.get("oldFtpValue") != null ? ((Number) body.get("oldFtpValue")).intValue() : null;
-            Integer effortWatts = body.get("effortWatts") != null ? ((Number) body.get("effortWatts")).intValue() : null;
-            Integer effortSeconds = body.get("effortSeconds") != null ? ((Number) body.get("effortSeconds")).intValue() : null;
-            Integer newLthrValue = body.get("newLthrValue") != null ? ((Number) body.get("newLthrValue")).intValue() : null;
-            Integer oldLthrValue = body.get("oldLthrValue") != null ? ((Number) body.get("oldLthrValue")).intValue() : null;
-            String activityName = (String) body.get("activityName");
-            String sportType = (String) body.get("sportType");
-            java.time.LocalDate achievementDate = body.get("achievementDate") != null
-                    ? java.time.LocalDate.parse((String) body.get("achievementDate")) : null;
-            Boolean indoor = body.get("indoor") != null ? (Boolean) body.get("indoor") : null;
+        AchievementBody b = parseAchievementBody(body);
+        return support.respond(() -> {
             achievementNotificationService.acceptAchievementByActivity(
-                    authentication.getName(), activityId, achievementType,
-                    newFtpValue, oldFtpValue, effortWatts, effortSeconds,
-                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate, indoor);
-            return ResponseEntity.ok(Map.of("success", true));
-        } catch (Exception e) {
-            log.error("Failed to accept achievement by activity for {}: {}", authentication.getName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+                        authentication.getName(), b.activityId, b.achievementType,
+                        b.newFtpValue, b.oldFtpValue, b.effortWatts, b.effortSeconds,
+                        b.newLthrValue, b.oldLthrValue, b.activityName, b.sportType, b.achievementDate, b.indoor);
+                return Map.of("success", true);
+            }, "Failed to accept achievement by activity");
     }
 
     @PostMapping("/achievement/by-activity/dismiss")
     public ResponseEntity<?> dismissAchievementByActivity(
             Authentication authentication,
             @RequestBody Map<String, Object> body) {
-        try {
-            String activityId = (String) body.get("activityId");
-            String achievementType = (String) body.get("achievementType");
-            Integer newFtpValue = body.get("newFtpValue") != null ? ((Number) body.get("newFtpValue")).intValue() : null;
-            Integer oldFtpValue = body.get("oldFtpValue") != null ? ((Number) body.get("oldFtpValue")).intValue() : null;
-            Integer effortWatts = body.get("effortWatts") != null ? ((Number) body.get("effortWatts")).intValue() : null;
-            Integer effortSeconds = body.get("effortSeconds") != null ? ((Number) body.get("effortSeconds")).intValue() : null;
-            Integer newLthrValue = body.get("newLthrValue") != null ? ((Number) body.get("newLthrValue")).intValue() : null;
-            Integer oldLthrValue = body.get("oldLthrValue") != null ? ((Number) body.get("oldLthrValue")).intValue() : null;
-            String activityName = (String) body.get("activityName");
-            String sportType = (String) body.get("sportType");
-            java.time.LocalDate achievementDate = body.get("achievementDate") != null
-                    ? java.time.LocalDate.parse((String) body.get("achievementDate")) : null;
-            Boolean indoor = body.get("indoor") != null ? (Boolean) body.get("indoor") : null;
+        AchievementBody b = parseAchievementBody(body);
+        return support.respond(() -> {
             achievementNotificationService.dismissAchievementByActivity(
-                    authentication.getName(), activityId, achievementType,
-                    newFtpValue, oldFtpValue, effortWatts, effortSeconds,
-                    newLthrValue, oldLthrValue, activityName, sportType, achievementDate, indoor);
-            return ResponseEntity.ok(Map.of("success", true));
-        } catch (Exception e) {
-            log.error("Failed to dismiss achievement by activity for {}: {}", authentication.getName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+                        authentication.getName(), b.activityId, b.achievementType,
+                        b.newFtpValue, b.oldFtpValue, b.effortWatts, b.effortSeconds,
+                        b.newLthrValue, b.oldLthrValue, b.activityName, b.sportType, b.achievementDate, b.indoor);
+                return Map.of("success", true);
+            }, "Failed to dismiss achievement by activity");
     }
 
     @GetMapping("/achievements")
@@ -520,31 +436,21 @@ public class StatisticsController {
             Authentication authentication,
             @RequestParam String startDate,
             @RequestParam String endDate) {
-        try {
-            java.time.LocalDate start = java.time.LocalDate.parse(startDate);
-            java.time.LocalDate end = java.time.LocalDate.parse(endDate);
-            return ResponseEntity.ok(achievementNotificationService.getAllAchievementsByDateRange(
-                    authentication.getName(), start, end));
-        } catch (Exception e) {
-            log.error("Failed to get achievements for {}: {}", authentication.getName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> achievementNotificationService.getAllAchievementsByDateRange(
+                authentication.getName(), java.time.LocalDate.parse(startDate), java.time.LocalDate.parse(endDate)),
+                "Failed to get achievements");
     }
 
     @GetMapping("/activity/{activityId}/pace-curve")
     public ResponseEntity<?> getActivityPaceCurve(
             Authentication authentication,
             @PathVariable String activityId) {
-        try {
+        return support.respond(() -> {
             var result = paceCurveService.calculateActivityPaceCurve(authentication.getName(), activityId);
-            if (result == null) {
-                return ResponseEntity.ok(Map.of("message", "No pace data available for this activity"));
-            }
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Failed to get pace curve for activity {}: {}", activityId, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+            return result == null
+                    ? Map.of("message", "No pace data available for this activity")
+                    : result;
+        }, "Failed to get pace curve");
     }
 
     @GetMapping("/pace-curve-history")
@@ -552,12 +458,32 @@ public class StatisticsController {
             Authentication authentication,
             @RequestParam String oldest,
             @RequestParam String newest) {
-        try {
-            var results = paceCurveService.getPaceCurveHistory(authentication.getName(), oldest, newest);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Failed to get pace curve history: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return support.respond(() -> paceCurveService.getPaceCurveHistory(
+                authentication.getName(), oldest, newest), "Failed to get pace curve history");
+    }
+
+    /** Parsed achievement-by-activity request body shared by accept/dismiss. */
+    private record AchievementBody(String activityId, String achievementType,
+                                   Integer newFtpValue, Integer oldFtpValue,
+                                   Integer effortWatts, Integer effortSeconds,
+                                   Integer newLthrValue, Integer oldLthrValue,
+                                   String activityName, String sportType,
+                                   java.time.LocalDate achievementDate, Boolean indoor) {}
+
+    private AchievementBody parseAchievementBody(Map<String, Object> body) {
+        return new AchievementBody(
+                (String) body.get("activityId"),
+                (String) body.get("achievementType"),
+                body.get("newFtpValue") != null ? ((Number) body.get("newFtpValue")).intValue() : null,
+                body.get("oldFtpValue") != null ? ((Number) body.get("oldFtpValue")).intValue() : null,
+                body.get("effortWatts") != null ? ((Number) body.get("effortWatts")).intValue() : null,
+                body.get("effortSeconds") != null ? ((Number) body.get("effortSeconds")).intValue() : null,
+                body.get("newLthrValue") != null ? ((Number) body.get("newLthrValue")).intValue() : null,
+                body.get("oldLthrValue") != null ? ((Number) body.get("oldLthrValue")).intValue() : null,
+                (String) body.get("activityName"),
+                (String) body.get("sportType"),
+                body.get("achievementDate") != null
+                        ? java.time.LocalDate.parse((String) body.get("achievementDate")) : null,
+                body.get("indoor") != null ? (Boolean) body.get("indoor") : null);
     }
 }
