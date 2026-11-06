@@ -124,7 +124,7 @@ const TrainingTotalsPanel = ({
   onOldestChange,
   onNewestChange,
 }) => {
-  const totals = useMemo(() => buildTrainingTotals(activities, periodDays), [activities, periodDays]);
+  const totals = useMemo(() => buildTrainingTotals(activities, periodDays, oldest, newest), [activities, periodDays, oldest, newest]);
   const { distribution, zones } = totals;
   const [savedExpanded, setSavedExpanded] = usePersistentPreference('statistics-trainingTotalsExpanded', 'true');
   const isExpanded = savedExpanded === 'true';

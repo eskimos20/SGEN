@@ -60,7 +60,22 @@ export const classifyTrainingDistribution = (zones) => {
   return { label, s1, s2, s3, total, shares, polarizationIndex };
 };
 
-export const buildTrainingTotals = (activities = [], periodDays = 30) => {
+// Number of calendar weeks (Mon–Sun) the [from,to] range touches —
+// a 32-day span can cover parts of 5 different weeks, like Intervals.icu.
+const calendarWeeks = (from, to) => {
+  if (!from || !to) return 0;
+  const start = new Date(from);
+  const end = new Date(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0;
+  const weekStart = (d) => {
+    const w = new Date(d);
+    w.setDate(w.getDate() - ((w.getDay() + 6) % 7)); // ISO week starts Monday
+    return w.getTime();
+  };
+  return Math.round((weekStart(end) - weekStart(start)) / (7 * 86400000)) + 1;
+};
+
+export const buildTrainingTotals = (activities = [], periodDays = 30, from = '', to = '') => {
   const powerZones = emptyZones();
   const hrZones = emptyZones();
   const paceZones = emptyZones();
@@ -114,7 +129,7 @@ export const buildTrainingTotals = (activities = [], periodDays = 30) => {
   return {
     ...totals,
     activities: activities.length,
-    weeks: Math.floor(periodDays / 7),
+    weeks: calendarWeeks(from, to) || Math.floor(periodDays / 7),
     days: periodDays,
     activeDays: activeDays.size,
     sports: Array.from(sports.values()).sort((a, b) => b.time - a.time),
