@@ -55,7 +55,7 @@ public class PaceCurveService {
             
             // Check if it's a running activity
             String type = activityNode.path("type").asText("");
-            if (!isRunningActivity(type)) {
+            if (!com.sgen.util.PaceMath.isRunningActivity(type)) {
                 return null;
             }
             
@@ -120,7 +120,7 @@ public class PaceCurveService {
                 String activityId = activity.path("id").asText();
                 String type = activity.path("type").asText("");
                 
-                if (isRunningActivity(type)) {
+                if (com.sgen.util.PaceMath.isRunningActivity(type)) {
                     PaceCurveResult curve = calculateActivityPaceCurve(username, activityId);
                     if (curve != null && !curve.getPaceData().isEmpty()) {
                         results.add(curve);
@@ -143,61 +143,17 @@ public class PaceCurveService {
      * Calculate pace (m/s) for each duration checkpoint using velocity data
      */
     private Map<Integer, Double> calculatePaceFromStreams(JsonNode streamsNode) {
-        Map<Integer, Double> paceData = new LinkedHashMap<>();
-        
-        if (streamsNode == null || !streamsNode.has("velocity_smooth")) {
-            return paceData;
-        }
-        
+        if (streamsNode == null || !streamsNode.has("velocity_smooth")) return new LinkedHashMap<>();
         JsonNode velocityNode = streamsNode.get("velocity_smooth");
         if (velocityNode == null || !velocityNode.isArray() || velocityNode.size() == 0) {
-            return paceData;
+            return new LinkedHashMap<>();
         }
-        
-        // Convert velocity data to array
-        int dataPoints = velocityNode.size();
-        double[] velocities = new double[dataPoints];
-        for (int i = 0; i < dataPoints; i++) {
-            velocities[i] = velocityNode.get(i).asDouble(0);
-        }
-        
-        // Calculate best pace for each duration
-        for (int duration : PACE_CURVE_DURATIONS) {
-            if (duration > dataPoints) {
-                continue; // Not enough data for this duration
-            }
-            
-            double bestAvgVelocity = 0;
-            
-            // Sliding window to find best average velocity for this duration
-            for (int start = 0; start <= dataPoints - duration; start++) {
-                double sum = 0;
-                for (int i = start; i < start + duration; i++) {
-                    sum += velocities[i];
-                }
-                double avg = sum / duration;
-                if (avg > bestAvgVelocity) {
-                    bestAvgVelocity = avg;
-                }
-            }
-            
-            if (bestAvgVelocity > 0) {
-                paceData.put(duration, bestAvgVelocity);
-            }
-        }
-        
-        return paceData;
+        return com.sgen.util.PaceMath.bestVelocityWindows(velocityNode, PACE_CURVE_DURATIONS);
     }
 
     /**
      * Check if activity type is a running activity
      */
-    private boolean isRunningActivity(String type) {
-        if (type == null) return false;
-        String lower = type.toLowerCase();
-        return lower.contains("run") || lower.contains("trail") || lower.contains("hike") || 
-               lower.equals("virtualrun");
-    }
 
     /**
      * Convert velocity (m/s) to pace string (min:sec/km or min:sec/mile)

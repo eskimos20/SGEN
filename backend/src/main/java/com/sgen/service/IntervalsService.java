@@ -601,7 +601,7 @@ public class IntervalsService {
             JsonNode activityNode = (JsonNode) details.get("activity");
             if (activityNode == null || streamsNode == null) return;
             String type = activityNode.path("type").asText("");
-            if (!isRunningActivity(type)) return;
+            if (!com.sgen.util.PaceMath.isRunningActivity(type)) return;
             if (!(streamsNode.has("velocity_smooth") || streamsNode.has("distance")
                     || streamsNode.has("watts") || streamsNode.has("pace"))) return;
             Map<Integer, Double> paceCurve = calculatePaceFromStreams(streamsNode);
@@ -624,135 +624,31 @@ public class IntervalsService {
     /**
      * Check if activity type is a running activity
      */
-    private boolean isRunningActivity(String type) {
-        if (type == null) return false;
-        String lower = type.toLowerCase();
-        return lower.contains("run") || lower.contains("trail") || lower.contains("hike") || 
-               lower.equals("virtualrun");
-    }
-
-    /**
-     * Enrich interval objects using activity streams:
-     * - start_hr: heart rate at the interval start index.
-     * - hrr: heart rate recovery after a WORK interval, measured as the drop in
-     *        average HR from the end of the work interval to ~60 seconds into
-     *        the following RECOVERY/REST interval.
-     * Requires streams with heart rate (heartrate) and time channels, in either
-     * array or object format.
-     */
 
 
-    /**
-     * Extract a double-valued stream from either array or object format.
-     */
-
-    /**
-     * Calculate pace (m/s) for each duration checkpoint using velocity data.
-     * Falls back to calculating from distance stream if velocity_smooth is not available.
-     */
     private Map<Integer, Double> calculatePaceFromStreams(JsonNode streamsNode) {
-        Map<Integer, Double> paceData = new LinkedHashMap<>();
-        
-        if (streamsNode == null) {
-            return paceData;
-        }
-        
-        // Standard durations for pace curve (in seconds)
         int[] durations = {30, 60, 120, 300, 600, 1200, 1800, 3600, 7200, 10800};
-        
-        // Try velocity_smooth first
-        if (streamsNode.has("velocity_smooth")) {
-            JsonNode velocityNode = streamsNode.get("velocity_smooth");
-            if (velocityNode != null && velocityNode.isArray() && velocityNode.size() > 0) {
-                return calculatePaceFromVelocity(velocityNode, durations);
-            }
+        if (streamsNode == null) return new LinkedHashMap<>();
+        if (streamsNode.has("velocity_smooth")
+                && streamsNode.get("velocity_smooth").isArray()
+                && streamsNode.get("velocity_smooth").size() > 0) {
+            return com.sgen.util.PaceMath.bestVelocityWindows(streamsNode.get("velocity_smooth"), durations);
         }
-        
-        // Fallback: calculate from distance stream
-        if (streamsNode.has("distance")) {
-            JsonNode distanceNode = streamsNode.get("distance");
-            if (distanceNode != null && distanceNode.isArray() && distanceNode.size() > 0) {
-                return calculatePaceFromDistance(distanceNode, durations);
-            }
+        if (streamsNode.has("distance")
+                && streamsNode.get("distance").isArray()
+                && streamsNode.get("distance").size() > 0) {
+            return com.sgen.util.PaceMath.bestVelocityFromDistance(streamsNode.get("distance"), durations);
         }
-        
-        return paceData;
+        return new LinkedHashMap<>();
     }
     
     /**
      * Calculate pace from velocity_smooth stream
      */
-    private Map<Integer, Double> calculatePaceFromVelocity(JsonNode velocityNode, int[] durations) {
-        Map<Integer, Double> paceData = new LinkedHashMap<>();
-        int dataPoints = velocityNode.size();
-        double[] velocities = new double[dataPoints];
-        for (int i = 0; i < dataPoints; i++) {
-            velocities[i] = velocityNode.get(i).asDouble(0);
-        }
-        
-        for (int duration : durations) {
-            if (duration > dataPoints) {
-                continue;
-            }
-            
-            double bestAvgVelocity = 0;
-            
-            for (int start = 0; start <= dataPoints - duration; start++) {
-                double sum = 0;
-                for (int i = start; i < start + duration; i++) {
-                    sum += velocities[i];
-                }
-                double avg = sum / duration;
-                if (avg > bestAvgVelocity) {
-                    bestAvgVelocity = avg;
-                }
-            }
-            
-            if (bestAvgVelocity > 0) {
-                paceData.put(duration, bestAvgVelocity);
-            }
-        }
-        
-        return paceData;
-    }
     
     /**
      * Calculate pace from distance stream (fallback when velocity is not available)
      */
-    private Map<Integer, Double> calculatePaceFromDistance(JsonNode distanceNode, int[] durations) {
-        Map<Integer, Double> paceData = new LinkedHashMap<>();
-        int dataPoints = distanceNode.size();
-        
-        // Convert distance to velocity (derivative of distance = velocity)
-        double[] distances = new double[dataPoints];
-        for (int i = 0; i < dataPoints; i++) {
-            distances[i] = distanceNode.get(i).asDouble(0);
-        }
-        
-        for (int duration : durations) {
-            if (duration > dataPoints) {
-                continue;
-            }
-            
-            double bestAvgVelocity = 0;
-            
-            // Sliding window - calculate velocity from distance difference
-            for (int start = 0; start <= dataPoints - duration; start++) {
-                double distanceDiff = distances[start + duration - 1] - distances[start];
-                double avgVelocity = distanceDiff / duration; // m/s
-                
-                if (avgVelocity > bestAvgVelocity) {
-                    bestAvgVelocity = avgVelocity;
-                }
-            }
-            
-            if (bestAvgVelocity > 0) {
-                paceData.put(duration, bestAvgVelocity);
-            }
-        }
-        
-        return paceData;
-    }
 
     public byte[] getActivityMapImage(String username, String activityId) {
         return intervalsImageService.getActivityMapImage(username, activityId);
