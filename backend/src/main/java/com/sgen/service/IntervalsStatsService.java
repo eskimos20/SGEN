@@ -179,13 +179,7 @@ public class IntervalsStatsService {
     private List<String> fetchSportsWithFtp(WebClient client, String athleteId) {
         List<String> sportsWithFtp = new ArrayList<>();
         try {
-            String sportSettingsJson = client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", athleteId)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
+            JsonNode sportSettings = intervalsApi.getJson(client, "/api/v1/athlete/{id}/sport-settings", athleteId);
             for (JsonNode setting : sportSettings) {
                 // Check if this sport has FTP configured (> 0), or only indoor FTP
                 JsonNode ftpNode = setting.get("ftp");
@@ -278,17 +272,11 @@ public class IntervalsStatsService {
             // Format: r.YYYY-MM-DD.YYYY-MM-DD for date range
             String dateRangeCurve = "r." + oldest + "." + newest;
 
-            String responseJson = client.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/api/v1/athlete/{id}/power-curves.json")
-                            .queryParam("curves", dateRangeCurve)
-                            .queryParam("type", type)
-                            .build(athleteId))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            return objectMapper.readTree(responseJson);
+            return intervalsApi.getJson(client, uriBuilder -> uriBuilder
+                    .path("/api/v1/athlete/{id}/power-curves.json")
+                    .queryParam("curves", dateRangeCurve)
+                    .queryParam("type", type)
+                    .build(athleteId));
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch power curve for type " + type + ": " + e.getMessage(), e);
         }
