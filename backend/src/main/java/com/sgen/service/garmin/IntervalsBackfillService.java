@@ -7,7 +7,6 @@ import com.sgen.service.IntervalsClientFactory.ApiContext;
 import com.sgen.repository.GarminActivityRepository;
 import com.sgen.repository.UserDailyLoadRepository;
 import com.sgen.service.UserService;
-import com.sgen.util.IntervalsApiRateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,10 +32,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class IntervalsBackfillService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final IntervalsClientFactory clientFactory;
     private final FitnessModelService fitnessModelService;
     private final UserService userService;
-    private final IntervalsApiRateLimiter rateLimiter;
     private final ObjectMapper objectMapper;
     private final UserDailyLoadRepository dailyLoadRepository;
     private final GarminActivityRepository garminActivityRepository;
@@ -94,14 +93,10 @@ public class IntervalsBackfillService {
     private void fetchAndPersistStreams(ApiContext ctx, Long userId, String activityId) {
         if (activityId.isBlank()) return;
         try {
-            rateLimiter.acquire();
-            String streamsJson = ctx.client.get().uri("/api/v1/activity/{id}/streams", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String streamsJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/streams", activityId);
             String intervalsJson = null;
             try {
-                rateLimiter.acquire();
-                intervalsJson = ctx.client.get().uri("/api/v1/activity/{id}/intervals", activityId)
-                        .retrieve().bodyToMono(String.class).block();
+                intervalsJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/intervals", activityId);
             } catch (Exception e) { log.debug("No intervals for {}: {}", activityId, e.getMessage()); }
             mirrorService.saveStreams(userId, activityId,
                     streamsJson != null ? objectMapper.readTree(streamsJson) : null,
@@ -115,13 +110,10 @@ public class IntervalsBackfillService {
     private void fetchAndPersistEvents(ApiContext ctx, Long userId,
                                        java.time.LocalDate oldest, java.time.LocalDate newest) {
         try {
-            rateLimiter.acquire();
-            String eventsJson = ctx.client.get()
-                    .uri(u -> u.path("/api/v1/athlete/{id}/events")
+            String eventsJson = intervalsApi.getString(ctx.client, u -> u.path("/api/v1/athlete/{id}/events")
                             .queryParam("oldest", oldest)
                             .queryParam("newest", newest)
-                            .build(ctx.user.getIntervalsAthleteId()))
-                    .retrieve().bodyToMono(String.class).block();
+                            .build(ctx.user.getIntervalsAthleteId()));
             if (eventsJson == null) return;
             mirrorService.saveEvents(userId, objectMapper.readTree(eventsJson));
         } catch (Exception e) {
@@ -133,13 +125,10 @@ public class IntervalsBackfillService {
     private void fetchAndPersistWellness(ApiContext ctx, Long userId,
                                          java.time.LocalDate oldest, java.time.LocalDate newest) {
         try {
-            rateLimiter.acquire();
-            String wellnessJson = ctx.client.get()
-                    .uri(u -> u.path("/api/v1/athlete/{id}/wellness")
+            String wellnessJson = intervalsApi.getString(ctx.client, u -> u.path("/api/v1/athlete/{id}/wellness")
                             .queryParam("oldest", oldest)
                             .queryParam("newest", newest)
-                            .build(ctx.user.getIntervalsAthleteId()))
-                    .retrieve().bodyToMono(String.class).block();
+                            .build(ctx.user.getIntervalsAthleteId()));
             if (wellnessJson == null) return;
             mirrorService.saveWellness(userId, objectMapper.readTree(wellnessJson));
         } catch (Exception e) {
@@ -164,12 +153,8 @@ public class IntervalsBackfillService {
             WebClient client = ctx.client;
 
             try {
-                rateLimiter.acquire();
-                String athleteJson = client.get().uri("/api/v1/athlete/{id}", athleteId)
-                        .retrieve().bodyToMono(String.class).block();
-                rateLimiter.acquire();
-                String settingsJson = client.get().uri("/api/v1/athlete/{id}/sport-settings", athleteId)
-                        .retrieve().bodyToMono(String.class).block();
+                String athleteJson = intervalsApi.getString(client, "/api/v1/athlete/{id}", athleteId);
+                String settingsJson = intervalsApi.getString(client, "/api/v1/athlete/{id}/sport-settings", athleteId);
                 mirrorService.saveAthleteProfile(ctx.user.getId(), athleteJson, settingsJson);
             } catch (Exception e) {
                 log.debug("Backfill athlete profile failed: {}", e.getMessage());
@@ -181,13 +166,10 @@ public class IntervalsBackfillService {
                 LocalDate oldest = newest.minusYears(1).plusDays(1);
                 final LocalDate fNewest = newest;
                 try {
-                    rateLimiter.acquire();
-                    String json = client.get()
-                            .uri(b -> b.path("/api/v1/athlete/{id}/activities")
+                    String json = intervalsApi.getString(client, b -> b.path("/api/v1/athlete/{id}/activities")
                                     .queryParam("oldest", oldest)
                                     .queryParam("newest", fNewest)
-                                    .build(athleteId))
-                            .retrieve().bodyToMono(String.class).block();
+                                    .build(athleteId));
                     JsonNode acts = objectMapper.readTree(json);
                     if (!acts.isArray() || acts.isEmpty()) break;
                     fitnessModelService.recordIntervalsLoads(ctx.user.getId(), acts, false);

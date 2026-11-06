@@ -3,7 +3,6 @@ package com.sgen.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.service.IntervalsClientFactory.ApiContext;
-import com.sgen.util.IntervalsApiRateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,10 +18,10 @@ import java.util.*;
 @Slf4j
 public class PaceCurveService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final ObjectMapper objectMapper;
     private final IntervalsClientFactory clientFactory;
     private final UserService userService;
-    private final IntervalsApiRateLimiter rateLimiter;
 
     /**
      * Standard duration checkpoints for pace curves (in seconds)
@@ -49,12 +48,9 @@ public class PaceCurveService {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         
         try {
-            rateLimiter.acquire();
             
             // Get activity details
-            String activityJson = ctx.client.get()
-                    .uri("/api/v1/activity/{id}", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String activityJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}", activityId);
             JsonNode activityNode = objectMapper.readTree(activityJson);
             
             // Check if it's a running activity
@@ -64,10 +60,7 @@ public class PaceCurveService {
             }
             
             // Get streams
-            rateLimiter.acquire();
-            String streamsJson = ctx.client.get()
-                    .uri("/api/v1/activity/{id}/streams", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String streamsJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/streams", activityId);
             JsonNode streamsNode = objectMapper.readTree(streamsJson);
             
             // Calculate pace curve
@@ -108,16 +101,13 @@ public class PaceCurveService {
         List<PaceCurveResult> results = new ArrayList<>();
         
         try {
-            rateLimiter.acquire();
             
             // Get running activities in date range
-            String activitiesJson = ctx.client.get()
-                    .uri(uriBuilder -> uriBuilder
+            String activitiesJson = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{id}/activities")
                             .queryParam("oldest", oldest)
                             .queryParam("newest", newest)
-                            .build(ctx.user.getIntervalsAthleteId()))
-                    .retrieve().bodyToMono(String.class).block();
+                            .build(ctx.user.getIntervalsAthleteId()));
             
             JsonNode activitiesNode = objectMapper.readTree(activitiesJson);
             

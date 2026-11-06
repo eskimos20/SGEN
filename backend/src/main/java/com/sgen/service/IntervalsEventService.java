@@ -15,6 +15,7 @@ import java.util.Map;
 @Slf4j
 public class IntervalsEventService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
@@ -31,10 +32,8 @@ public class IntervalsEventService {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
             try {
-                String json = ctx.client.get()
-                        .uri("/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
-                                ctx.user.getIntervalsAthleteId(), oldest, newest)
-                        .retrieve().bodyToMono(String.class).block();
+                String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
+                                ctx.user.getIntervalsAthleteId(), oldest, newest);
                 JsonNode fetched = objectMapper.readTree(json);
                 if (fetched != null && fetched.isArray()) {
                     var keepIds = new java.util.HashSet<String>();
@@ -55,10 +54,8 @@ public class IntervalsEventService {
             return arr;
         }
         try {
-            String json = ctx.client.get()
-                    .uri("/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
-                            ctx.user.getIntervalsAthleteId(), oldest, newest)
-                    .retrieve().bodyToMono(String.class).block();
+            String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
+                            ctx.user.getIntervalsAthleteId(), oldest, newest);
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch calendar events: {}", e.getMessage(), e);
@@ -74,13 +71,11 @@ public class IntervalsEventService {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
             try {
-                String json = ctx.client.get()
-                        .uri(uriBuilder -> uriBuilder
+                String json = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
                                 .path("/api/v1/athlete/{id}/activities")
                                 .queryParam("oldest", oldest)
                                 .queryParam("newest", newest)
-                                .build(ctx.user.getIntervalsAthleteId()))
-                        .retrieve().bodyToMono(String.class).block();
+                                .build(ctx.user.getIntervalsAthleteId()));
                 JsonNode fetched = objectMapper.readTree(json);
                 if (fetched != null && fetched.isArray()) {
                     var keepIds = new java.util.HashSet<String>();
@@ -103,13 +98,11 @@ public class IntervalsEventService {
             return arr;
         }
         try {
-            String json = ctx.client.get()
-                    .uri(uriBuilder -> uriBuilder
+            String json = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{id}/activities")
                             .queryParam("oldest", oldest)
                             .queryParam("newest", newest)
-                            .build(ctx.user.getIntervalsAthleteId()))
-                    .retrieve().bodyToMono(String.class).block();
+                            .build(ctx.user.getIntervalsAthleteId()));
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch calendar activities: {}", e.getMessage());
@@ -120,10 +113,8 @@ public class IntervalsEventService {
     public JsonNode fetchEvent(String username, int eventId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String json = ctx.client.get()
-                    .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
-                            ctx.user.getIntervalsAthleteId(), eventId)
-                    .retrieve().bodyToMono(String.class).block();
+            String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events/{eventId}",
+                            ctx.user.getIntervalsAthleteId(), eventId);
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch event {}: {}", eventId, e.getMessage());

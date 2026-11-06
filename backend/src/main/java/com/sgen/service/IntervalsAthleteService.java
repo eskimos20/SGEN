@@ -21,6 +21,7 @@ import java.util.Set;
 @Slf4j
 public class IntervalsAthleteService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
@@ -39,9 +40,7 @@ public class IntervalsAthleteService {
         Map<String, Object> profile = new HashMap<>();
 
         try {
-            String athleteJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}", athleteId)
-                    .retrieve().bodyToMono(String.class).block();
+            String athleteJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}", athleteId);
             profile.put("athlete", objectMapper.readTree(athleteJson));
         } catch (Exception e) {
             profile.put("athleteError", e.getMessage());
@@ -53,9 +52,7 @@ public class IntervalsAthleteService {
         // authoritative sync toggles (per OpenAPI spec).
 
         try {
-            String sportSettingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", athleteId)
-                    .retrieve().bodyToMono(String.class).block();
+            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", athleteId);
             profile.put("sportSettings", objectMapper.readTree(sportSettingsJson));
         } catch (Exception e) {
             profile.put("sportSettingsError", e.getMessage());
@@ -218,10 +215,8 @@ public class IntervalsAthleteService {
     public JsonNode getMatchingActivitiesForSportSettings(String username, int sportId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String responseJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{athleteId}/sport-settings/{id}/matching-activities",
-                            ctx.user.getIntervalsAthleteId(), sportId)
-                    .retrieve().bodyToMono(String.class).block();
+            String responseJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/sport-settings/{id}/matching-activities",
+                            ctx.user.getIntervalsAthleteId(), sportId);
             return objectMapper.readTree(responseJson);
         } catch (Exception e) {
             log.error("Failed to get matching activities for sport settings {}: {}", sportId, e.getMessage());
@@ -249,9 +244,7 @@ public class IntervalsAthleteService {
     public void updateSportSettingsFtp(String username, String sportType, Integer newFtp) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String sportSettingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
             JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
             for (JsonNode setting : sportSettings) {
                 JsonNode types = setting.get("types");
@@ -279,9 +272,7 @@ public class IntervalsAthleteService {
     public void updateSportSettingsIndoorFtp(String username, String sportType, Integer newFtp) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String sportSettingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
             JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
             for (JsonNode setting : sportSettings) {
                 JsonNode types = setting.get("types");
@@ -309,9 +300,7 @@ public class IntervalsAthleteService {
     public void updateSportSettingsLthr(String username, String sportType, Integer newLthr) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String sportSettingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
             JsonNode sportSettings = objectMapper.readTree(sportSettingsJson);
             for (JsonNode setting : sportSettings) {
                 JsonNode types = setting.get("types");
@@ -343,9 +332,7 @@ public class IntervalsAthleteService {
     public JsonNode getSportSettings(String username) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String sportSettingsJson = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
             return objectMapper.readTree(sportSettingsJson);
         } catch (Exception e) {
             log.error("Failed to fetch sport settings for {}: {}", username, e.getMessage());

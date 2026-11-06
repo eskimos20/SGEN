@@ -17,6 +17,7 @@ import java.util.Map;
 @Slf4j
 public class IntervalsGearService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
@@ -25,9 +26,7 @@ public class IntervalsGearService {
     public JsonNode fetchGear(String username) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String json = ctx.client.get()
-                    .uri("/api/v1/athlete/{id}/gear", ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/gear", ctx.user.getIntervalsAthleteId());
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch gear: {}", e.getMessage());
@@ -87,9 +86,7 @@ public class IntervalsGearService {
     public JsonNode updateActivityGear(String username, String activityId, String gearId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            String currentJson = ctx.client.get()
-                    .uri("/api/v1/activity/{id}", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String currentJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}", activityId);
             JsonNode activityNode = objectMapper.readTree(currentJson);
 
             log.info("Original activity type: {}, source: {}",

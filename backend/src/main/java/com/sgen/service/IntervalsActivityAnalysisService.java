@@ -25,6 +25,7 @@ import java.util.Map;
 @Slf4j
 public class IntervalsActivityAnalysisService {
 
+    private final com.sgen.service.IntervalsApiClient intervalsApi;
     private final ObjectMapper objectMapper;
     private final IntervalsApiRateLimiter rateLimiter;
     private final AppSettingsService appSettingsService;
@@ -52,10 +53,7 @@ public class IntervalsActivityAnalysisService {
             }
         }
         try {
-            rateLimiter.acquire();
-            String json = ctx.client.get()
-                    .uri("/api/v1/activity/{id}/best-efforts", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String json = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/best-efforts", activityId);
             if (garminConnected && json != null) {
                 intervalsMirrorService.saveBestEfforts(uid, activityId, json);
             }
@@ -71,11 +69,9 @@ public class IntervalsActivityAnalysisService {
                                     Boolean excludeIntervals) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            rateLimiter.acquire();
             log.info("Finding best efforts for activity {} - stream: {}, duration: {}s, count: {}",
                     activityId, stream, duration, count);
-            String json = ctx.client.get()
-                    .uri(uriBuilder -> {
+            String json = intervalsApi.getString(ctx.client, uriBuilder -> {
                         uriBuilder.path("/api/v1/activity/{id}/best-efforts");
                         if (stream != null) uriBuilder.queryParam("stream", stream);
                         if (duration != null) uriBuilder.queryParam("duration", duration);
@@ -83,8 +79,7 @@ public class IntervalsActivityAnalysisService {
                         if (minValue != null) uriBuilder.queryParam("minValue", minValue);
                         if (excludeIntervals != null) uriBuilder.queryParam("excludeIntervals", excludeIntervals);
                         return uriBuilder.build(activityId);
-                    })
-                    .retrieve().bodyToMono(String.class).block();
+                    });
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to find best efforts for activity {}: {}", activityId, e.getMessage());
@@ -155,13 +150,10 @@ public class IntervalsActivityAnalysisService {
             if (cachedIntervals != null && cachedIntervals.isArray() && cachedIntervals.size() > 0) {
                 intervals = cachedIntervals;
             } else {
-                rateLimiter.acquire();
-                String activityJson = client.get()
-                        .uri(uriBuilder -> uriBuilder
+                String activityJson = intervalsApi.getString(client, uriBuilder -> uriBuilder
                                 .path("/api/v1/activity/{id}")
                                 .queryParam("intervals", "true")
-                                .build(activityId))
-                        .retrieve().bodyToMono(String.class).block();
+                                .build(activityId));
                 activityDetails = objectMapper.readTree(activityJson);
                 intervals = activityDetails.path("icu_intervals");
                 if (intervals == null || !intervals.isArray() || intervals.size() == 0) return null;
@@ -173,10 +165,7 @@ public class IntervalsActivityAnalysisService {
                             || (cachedStreams.isObject() && cachedStreams.size() > 0))) {
                 streams = cachedStreams;
             } else {
-                rateLimiter.acquire();
-                String streamsJson = client.get()
-                        .uri("/api/v1/activity/{id}/streams", activityId)
-                        .retrieve().bodyToMono(String.class).block();
+                String streamsJson = intervalsApi.getString(client, "/api/v1/activity/{id}/streams", activityId);
                 streams = objectMapper.readTree(streamsJson);
             }
 
@@ -251,7 +240,6 @@ public class IntervalsActivityAnalysisService {
                                                                   Integer skipSeconds, Integer cooldownSeconds) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            rateLimiter.acquire();
             log.info("Computing intervals from streams for activity {} - stream: {}, duration: {}s, count: {}, skipSeconds: {}",
                     activityId, streamType, duration, count, skipSeconds);
 
@@ -266,9 +254,7 @@ public class IntervalsActivityAnalysisService {
                 }
             }
             if (streams == null) {
-                String streamsJson = ctx.client.get()
-                        .uri("/api/v1/activity/{id}/streams", activityId)
-                        .retrieve().bodyToMono(String.class).block();
+                String streamsJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/streams", activityId);
                 streams = objectMapper.readTree(streamsJson);
                 if (garminConnected) {
                     intervalsMirrorService.saveStreams(uid, activityId, streams, null);
