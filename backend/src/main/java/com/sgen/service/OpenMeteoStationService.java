@@ -3,8 +3,8 @@ package com.sgen.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.dto.WeatherStationInfo;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class OpenMeteoStationService {
 
@@ -21,13 +22,6 @@ public class OpenMeteoStationService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public OpenMeteoStationService() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000);
-        factory.setReadTimeout(30000);
-        this.restTemplate = new RestTemplate(factory);
-        this.objectMapper = new ObjectMapper();
-    }
 
     public List<WeatherStationInfo> searchStations(String query) {
         try {

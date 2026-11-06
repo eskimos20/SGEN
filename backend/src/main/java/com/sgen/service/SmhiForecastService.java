@@ -3,8 +3,8 @@ package com.sgen.service;
 import com.sgen.dto.WeatherForecastResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class SmhiForecastService {
 
@@ -23,13 +24,6 @@ public class SmhiForecastService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public SmhiForecastService() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000);
-        factory.setReadTimeout(30000);
-        this.restTemplate = new RestTemplate(factory);
-        this.objectMapper = new ObjectMapper();
-    }
 
     public List<WeatherForecastResponse> getWeatherForecast(Double latitude, Double longitude,
                                                              String cityName, String countryName) {

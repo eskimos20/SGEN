@@ -3,8 +3,8 @@ package com.sgen.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sgen.dto.WeatherForecastResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -17,6 +17,7 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class OpenMeteoForecastService {
 
@@ -25,13 +26,6 @@ public class OpenMeteoForecastService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public OpenMeteoForecastService() {
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000);
-        factory.setReadTimeout(30000);
-        this.restTemplate = new RestTemplate(factory);
-        this.objectMapper = new ObjectMapper();
-    }
 
     public List<WeatherForecastResponse> getWeatherForecast(Double latitude, Double longitude,
                                                             String cityName, String countryName) {
