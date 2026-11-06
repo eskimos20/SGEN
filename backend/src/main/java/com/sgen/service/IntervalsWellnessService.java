@@ -22,6 +22,7 @@ public class IntervalsWellnessService {
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final IntervalsService intervalsService;
+    private final IntervalsStatsService statsService;
 
     public List<Map<String, Object>> fetchWellnessData(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -75,7 +76,7 @@ public class IntervalsWellnessService {
         // Garmin-connected: compute from mirrored heartrate streams — no API call.
         if (garminClientFactory.isConnected(ctx.user.getId())
                 && intervalsMirrorService.hasActivities(ctx.user.getId())) {
-            JsonNode local = intervalsService.localCurveHistory(
+            JsonNode local = statsService.localCurveHistory(
                     ctx.user.getId(), username, oldest, newest, "all", "heartrate");
             var wrapper = objectMapper.createObjectNode();
             wrapper.set("hrCurves", local);
