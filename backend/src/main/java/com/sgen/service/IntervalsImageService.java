@@ -27,6 +27,7 @@ public class IntervalsImageService {
     private final IntervalsClientFactory clientFactory;
     private final GarminClientFactory garminClientFactory;
     private final IntervalsMirrorService intervalsMirrorService;
+    private final IntervalsApiClient intervalsApi;
 
     public byte[] getImage(String username, String activityId, String kind) {
         String path = PATHS.get(kind);
@@ -42,9 +43,7 @@ public class IntervalsImageService {
             }
         }
         try {
-            byte[] png = ctx.client.get()
-                    .uri(path, activityId)
-                    .retrieve().bodyToMono(byte[].class).block();
+            byte[] png = intervalsApi.getBytes(ctx.client, path, activityId);
             if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, kind, png);
             return png;
         } catch (Exception e) {

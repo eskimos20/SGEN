@@ -34,7 +34,7 @@ public class IntervalsStatsService {
     private final UserService userService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final IntervalsClientFactory clientFactory;
-    private final IntervalsApiRateLimiter rateLimiter;
+    private final IntervalsApiClient intervalsApi;
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
     private final IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
@@ -139,17 +139,12 @@ public class IntervalsStatsService {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
             try {
-                rateLimiter.acquire();
-                String responseJson = ctx.client.get()
-                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                JsonNode fetched = intervalsApi.getJson(ctx.client,
+                        uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
                                 .queryParam("oldest", oldest)
                                 .queryParam("newest", newest)
                                 .queryParam("fields", fields)
-                                .build(ctx.user.getIntervalsAthleteId()))
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
-                JsonNode fetched = objectMapper.readTree(responseJson);
+                                .build(ctx.user.getIntervalsAthleteId()));
                 if (fetched != null && fetched.isArray()) {
                     var keepIds = new java.util.HashSet<String>();
                     for (JsonNode a : fetched) {
@@ -169,17 +164,12 @@ public class IntervalsStatsService {
             return arr;
         }
         try {
-            rateLimiter.acquire();
-            String responseJson = ctx.client.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+            return intervalsApi.getJson(ctx.client,
+                    uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
                             .queryParam("oldest", oldest)
                             .queryParam("newest", newest)
                             .queryParam("fields", fields)
-                            .build(ctx.user.getIntervalsAthleteId()))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            return objectMapper.readTree(responseJson);
+                            .build(ctx.user.getIntervalsAthleteId()));
         } catch (Exception e) {
             log.error("Failed to fetch training totals for user {}: {}", username, e.getMessage());
             throw new RuntimeException("Failed to fetch training totals: " + e.getMessage(), e);

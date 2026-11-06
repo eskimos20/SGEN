@@ -45,7 +45,6 @@ public class IntervalsService {
     private final UserService userService;
     private final ObjectMapper objectMapper;
     private final PerformanceService performanceService;
-    private final IntervalsApiRateLimiter rateLimiter;
     private final IntervalsClientFactory clientFactory;
     private final IntervalsActivityAnalysisService analysisService;
     private final ActivityAnalysisService activityAnalysisService;
@@ -58,6 +57,7 @@ public class IntervalsService {
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final IntervalsImageService intervalsImageService;
     private final IntervalsStatsService statsService;
+    private final IntervalsApiClient intervalsApi;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -183,17 +183,12 @@ public class IntervalsService {
                     if (str == null || ints == null || (ints.isArray() && ints.isEmpty())) {
                         try {
                             if (str == null) {
-                                rateLimiter.acquire();
-                                str = objectMapper.readTree(client.get()
-                                        .uri("/api/v1/activity/{id}/streams", id)
-                                        .retrieve().bodyToMono(String.class).block());
+                                str = intervalsApi.getJson(client, "/api/v1/activity/{id}/streams", id);
                             }
                             if (ints == null) {
-                                rateLimiter.acquire();
-                                JsonNode det = objectMapper.readTree(client.get()
-                                        .uri(b -> b.path("/api/v1/activity/{id}")
-                                                .queryParam("intervals", "true").build(id))
-                                        .retrieve().bodyToMono(String.class).block());
+                                JsonNode det = intervalsApi.getJson(client,
+                                        b -> b.path("/api/v1/activity/{id}")
+                                                .queryParam("intervals", "true").build(id));
                                 if (det.has("icu_intervals")) ints = det.get("icu_intervals");
                                 if (det.has("icu_max_watts") && !n.has("icu_max_watts")
                                         && n instanceof ObjectNode on) {
@@ -214,13 +209,10 @@ public class IntervalsService {
                 return arr;
             }
             try {
-                rateLimiter.acquire();
-                String activitiesJson = client.get()
-                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                JsonNode activitiesNode = intervalsApi.getJson(client,
+                        uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
                                 .queryParam("oldest", oldest).queryParam("newest", newest)
-                                .build(athleteId))
-                        .retrieve().bodyToMono(String.class).block();
-                JsonNode activitiesNode = objectMapper.readTree(activitiesJson);
+                                .build(athleteId));
 
                 if (activitiesNode.isArray()) {
                     log.info("SOURCE=INTERVALS user {} fetched {} activities from Intervals API", username, activitiesNode.size());
@@ -235,19 +227,13 @@ public class IntervalsService {
                         final String currentActivityId = activityId;
                         intervalFutures.add(CompletableFuture.runAsync(() -> {
                             try {
-                                rateLimiter.acquire();
-                                String detailJson = client.get()
-                                        .uri(uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
-                                                .queryParam("intervals", "true").build(currentActivityId))
-                                        .retrieve().bodyToMono(String.class).block();
-                                JsonNode details = objectMapper.readTree(detailJson);
+                                JsonNode details = intervalsApi.getJson(client,
+                                        uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
+                                                .queryParam("intervals", "true").build(currentActivityId));
                                 JsonNode streams = null;
                                 try {
-                                    rateLimiter.acquire();
-                                    String streamsJson = client.get()
-                                            .uri("/api/v1/activity/{id}/streams", currentActivityId)
-                                            .retrieve().bodyToMono(String.class).block();
-                                    streams = objectMapper.readTree(streamsJson);
+                                    streams = intervalsApi.getJson(client,
+                                            "/api/v1/activity/{id}/streams", currentActivityId);
                                     streamsMap.put(currentActivityId, streams);
                                 } catch (Exception e) {
                                     log.debug("Failed to fetch streams for activity {}: {}", currentActivityId, e.getMessage());
@@ -313,13 +299,10 @@ public class IntervalsService {
                 // edited or deleted later (Garmin sync, other sources) reach
                 // the mirror — same pattern as the activities mirror sync.
                 try {
-                    rateLimiter.acquire();
-                    String eventsJson = client.get()
-                            .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
+                    JsonNode fetched = intervalsApi.getJson(client,
+                            uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
                                     .queryParam("oldest", oldest).queryParam("newest", newest)
-                                    .build(athleteId))
-                            .retrieve().bodyToMono(String.class).block();
-                    JsonNode fetched = objectMapper.readTree(eventsJson);
+                                    .build(athleteId));
                     if (fetched != null && fetched.isArray()) {
                         var keepIds = new java.util.HashSet<String>();
                         fetched.forEach(e -> keepIds.add(e.path("id").asText()));
@@ -337,13 +320,10 @@ public class IntervalsService {
                 return arr;
             }
             try {
-                rateLimiter.acquire();
-                String eventsJson = client.get()
-                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
+                return intervalsApi.getJson(client,
+                        uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
                                 .queryParam("oldest", oldest).queryParam("newest", newest)
-                                .build(athleteId))
-                        .retrieve().bodyToMono(String.class).block();
-                return objectMapper.readTree(eventsJson);
+                                .build(athleteId));
             } catch (Exception e) {
                 log.error("Failed to fetch events: {}", e.getMessage(), e);
                 return null;
@@ -479,10 +459,7 @@ public class IntervalsService {
         }
         log.info("SOURCE=INTERVALS user {} fetching {}", username, label);
         try {
-            rateLimiter.acquire();
-            String json = ctx.client.get()
-                    .uri(apiPath, ctx.user.getIntervalsAthleteId())
-                    .retrieve().bodyToMono(String.class).block();
+            String json = intervalsApi.getString(ctx.client, apiPath, ctx.user.getIntervalsAthleteId());
             if (garminConnected && json != null) persist.accept(uid, json);
             return objectMapper.readTree(json);
         } catch (Exception e) {
@@ -525,14 +502,11 @@ public class IntervalsService {
                     }
                 }
             } else {
-                rateLimiter.acquire();
-                String json = ctx.client.get()
-                        .uri(uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                JsonNode arr = intervalsApi.getJson(ctx.client,
+                        uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
                                 .queryParam("oldest", tail.toString())
                                 .queryParam("newest", today.toString())
-                                .build(ctx.user.getIntervalsAthleteId()))
-                        .retrieve().bodyToMono(String.class).block();
-                JsonNode arr = objectMapper.readTree(json);
+                                .build(ctx.user.getIntervalsAthleteId()));
                 if (arr != null && arr.isArray()) recent.addAll((ArrayNode) arr);
             }
             if (!recent.isEmpty()) {
@@ -708,17 +682,12 @@ public class IntervalsService {
                 if (intsMissing) intervals = null;
                 try {
                     if (streams == null) {
-                        rateLimiter.acquire();
-                        streams = objectMapper.readTree(client.get()
-                                .uri("/api/v1/activity/{id}/streams", activityId)
-                                .retrieve().bodyToMono(String.class).block());
+                        streams = intervalsApi.getJson(client, "/api/v1/activity/{id}/streams", activityId);
                     }
                     if (intervals == null) {
-                        rateLimiter.acquire();
-                        JsonNode det = objectMapper.readTree(client.get()
-                                .uri(b -> b.path("/api/v1/activity/{id}")
-                                        .queryParam("intervals", "true").build(activityId))
-                                .retrieve().bodyToMono(String.class).block());
+                        JsonNode det = intervalsApi.getJson(client,
+                                b -> b.path("/api/v1/activity/{id}")
+                                        .queryParam("intervals", "true").build(activityId));
                         if (det.has("icu_intervals")) intervals = det.get("icu_intervals");
                     }
                     intervalsMirrorService.saveStreams(uid, activityId, streams, intervals);
