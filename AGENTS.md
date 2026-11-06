@@ -21,6 +21,13 @@
 
 ## Architecture notes (Garmin flow)
 
+- `IntervalsService` is a thin orchestrator. Domain work lives in:
+  `IntervalsActivityFeedService` (activity list + hydration),
+  `IntervalsActivityDetailService` (single-activity view),
+  `IntervalsActivityOpsService` (update/delete/upload/interval ops),
+  `IntervalsStatsService` (curves, training totals, preferences),
+  `IntervalsImageService` (map/chart PNGs), `IntervalsMirrorService`
+  (mirror persistence), `IntervalsApiClient` (all rate-limited GETs).
 - With an active Garmin connection, `IntervalsService.fetchAllData` serves
   activities/events **only** from the local mirror tables
   (`intervals_activity`, `intervals_event`) — `SOURCE=DB` in logs.
