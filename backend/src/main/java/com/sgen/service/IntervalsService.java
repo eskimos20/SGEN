@@ -145,11 +145,8 @@ public class IntervalsService {
                 var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
                 var rows = intervalsActivityRepository
                         .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(ctx.user.getId(), from, to);
-                var arr = objectMapper.createArrayNode();
-                for (var r : rows) {
-                    try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
-                    catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
-                }
+                var arr = com.sgen.util.JsonPayloads.toPayloadArray(
+                        rows, r -> r.getPayloadJson(), objectMapper);
                 Long uid = ctx.user.getId();
                 log.info("SOURCE=DB user {} activities served from local mirror: {}", ctx.user.getUsername(), arr.size());
                 // Hydrate streams/icu_intervals from the mirror — only needed when
@@ -335,11 +332,8 @@ public class IntervalsService {
                 log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
                 var rows = intervalsEventRepository
                         .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
-                var arr = objectMapper.createArrayNode();
-                for (var r : rows) {
-                    try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
-                    catch (Exception e) { log.debug("mirror event parse {}", e.getMessage()); }
-                }
+                var arr = com.sgen.util.JsonPayloads.toPayloadArray(
+                        rows, r -> r.getPayloadJson(), objectMapper);
                 return arr;
             }
             try {

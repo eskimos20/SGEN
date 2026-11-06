@@ -163,11 +163,8 @@ public class IntervalsStatsService {
             }
             var rows = intervalsActivityRepository
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
-            var arr = objectMapper.createArrayNode();
-            for (var r : rows) {
-                try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
-                catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
-            }
+            var arr = com.sgen.util.JsonPayloads.toPayloadArray(
+                    rows, r -> r.getPayloadJson(), objectMapper);
             log.info("SOURCE=DB user {} training totals served from local mirror: {}", username, arr.size());
             return arr;
         }
