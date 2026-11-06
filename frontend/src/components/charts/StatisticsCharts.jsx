@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { usePersistentPreference } from '../../hooks/usePersistentPreference';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Zap, Heart, BarChart2, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import PowerCurveHistoryChart from './PowerCurveHistoryChart';
@@ -25,34 +26,17 @@ const StatisticsCharts = ({
   COLORS,
   athleteProfile
 }) => {
-  const [isPerformanceExpanded, setIsPerformanceExpanded] = useState(() => {
-    const saved = localStorage.getItem('statistics-performanceExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
-  const [isZonesExpanded, setIsZonesExpanded] = useState(() => {
-    const saved = localStorage.getItem('statistics-zonesExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
-  const [isWeeklyExpanded, setIsWeeklyExpanded] = useState(() => {
-    const saved = localStorage.getItem('statistics-weeklyExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
+  const [performanceExpanded, setPerformanceExpanded] = usePersistentPreference('statistics-performanceExpanded', 'true');
+  const [zonesExpanded, setZonesExpanded] = usePersistentPreference('statistics-zonesExpanded', 'true');
+  const [weeklyExpanded, setWeeklyExpanded] = usePersistentPreference('statistics-weeklyExpanded', 'true');
 
-  const togglePerformance = () => {
-    const next = !isPerformanceExpanded;
-    setIsPerformanceExpanded(next);
-    localStorage.setItem('statistics-performanceExpanded', next.toString());
-  };
-  const toggleZones = () => {
-    const next = !isZonesExpanded;
-    setIsZonesExpanded(next);
-    localStorage.setItem('statistics-zonesExpanded', next.toString());
-  };
-  const toggleWeekly = () => {
-    const next = !isWeeklyExpanded;
-    setIsWeeklyExpanded(next);
-    localStorage.setItem('statistics-weeklyExpanded', next.toString());
-  };
+  const isPerformanceExpanded = performanceExpanded === 'true';
+  const isZonesExpanded = zonesExpanded === 'true';
+  const isWeeklyExpanded = weeklyExpanded === 'true';
+
+  const togglePerformance = () => setPerformanceExpanded(isPerformanceExpanded ? 'false' : 'true');
+  const toggleZones = () => setZonesExpanded(isZonesExpanded ? 'false' : 'true');
+  const toggleWeekly = () => setWeeklyExpanded(isWeeklyExpanded ? 'false' : 'true');
 
   if (!weeklyData) return null;
 
