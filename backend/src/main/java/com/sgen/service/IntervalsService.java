@@ -56,6 +56,7 @@ public class IntervalsService {
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
     private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
+    private final IntervalsImageService intervalsImageService;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -1094,47 +1095,11 @@ public class IntervalsService {
     }
 
     public byte[] getActivityMapImage(String username, String activityId) {
-        ApiContext ctx = getValidatedContext(username);
-        Long uid = ctx.user.getId();
-        boolean garminConnected = garminClientFactory.isConnected(uid);
-        if (garminConnected) {
-            byte[] cached = intervalsMirrorService.findImage(uid, activityId, "map");
-            if (cached != null && cached.length > 0) {
-                log.info("SOURCE=DB user {} map.png served from local mirror: {}", username, activityId);
-                return cached;
-            }
-        }
-        try {
-            byte[] png = ctx.client.get()
-                    .uri("/api/v1/activity/{id}/map.png", activityId)
-                    .retrieve().bodyToMono(byte[].class).block();
-            if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, "map", png);
-            return png;
-        } catch (Exception e) {
-            return null;
-        }
+        return intervalsImageService.getActivityMapImage(username, activityId);
     }
 
     public byte[] getActivityChartImage(String username, String activityId) {
-        ApiContext ctx = getValidatedContext(username);
-        Long uid = ctx.user.getId();
-        boolean garminConnected = garminClientFactory.isConnected(uid);
-        if (garminConnected) {
-            byte[] cached = intervalsMirrorService.findImage(uid, activityId, "chart");
-            if (cached != null && cached.length > 0) {
-                log.info("SOURCE=DB user {} power.png served from local mirror: {}", username, activityId);
-                return cached;
-            }
-        }
-        try {
-            byte[] png = ctx.client.get()
-                    .uri("/api/v1/activity/{id}/power.png", activityId)
-                    .retrieve().bodyToMono(byte[].class).block();
-            if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, "chart", png);
-            return png;
-        } catch (Exception e) {
-            return null;
-        }
+        return intervalsImageService.getActivityChartImage(username, activityId);
     }
 
     // -------------------------------------------------------------------------
