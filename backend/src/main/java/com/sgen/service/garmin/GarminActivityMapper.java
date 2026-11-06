@@ -30,6 +30,7 @@ import java.util.Optional;
 public class GarminActivityMapper {
 
     private final com.sgen.repository.UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final GarminConnectionRepository connectionRepository;
     private final GarminActivityRepository activityRepository;
     private final GarminActivityStreamsRepository streamsRepository;
@@ -269,7 +270,4 @@ public class GarminActivityMapper {
         return n.has(f) && !n.get(f).isNull() ? n.get(f).asDouble() : null;
     }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }

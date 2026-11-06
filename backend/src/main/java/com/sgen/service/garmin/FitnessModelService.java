@@ -28,6 +28,7 @@ public class FitnessModelService {
     private final GarminActivityRepository garminActivityRepository;
     private final GarminMergeService garminMergeService;
     private final UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final IntervalsActivityRepository intervalsActivityRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
@@ -276,7 +277,4 @@ public class FitnessModelService {
         }
     }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }

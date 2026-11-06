@@ -28,13 +28,14 @@ public class GarminActivityViewService {
     private final GarminMergeService mergeService;
     private final ZoneTimeCalculator zoneTimeCalculator;
     private final UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final ObjectMapper objectMapper;
 
     public Map<String, Object> getDetails(Long userId, Long id) {
         GarminActivity act = activityRepository.findById(id)
                 .filter(a -> a.getUserId().equals(userId))
                 .orElseThrow(() -> new IllegalArgumentException("Activity not found"));
-        log.info("SOURCE=DB serving activity {} for user {} from local Garmin DB (no Intervals call)", id, nameOf(userId));
+        log.info("SOURCE=DB serving activity {} for user {} from local Garmin DB (no Intervals call)", id, userLookupService.usernameOf(userId));
         Map<String, Object> details = new HashMap<>();
         details.put("activity", mergeService.toIntervalsActivityJson(act));
 
@@ -91,7 +92,4 @@ public class GarminActivityViewService {
         return map;
     }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }

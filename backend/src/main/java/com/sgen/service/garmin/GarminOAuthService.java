@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GarminOAuthService {
 
     private final com.sgen.repository.UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final GarminConnectionRepository connectionRepository;
     private final GarminCryptoService cryptoService;
     private final ObjectMapper objectMapper;
@@ -287,7 +288,4 @@ public class GarminOAuthService {
         return connectionRepository.findAll();
     }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }

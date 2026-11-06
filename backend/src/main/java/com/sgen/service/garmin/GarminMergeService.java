@@ -35,6 +35,7 @@ public class GarminMergeService {
     private final UserDailyLoadRepository dailyLoadRepository;
     private final GarminWellnessViewMapper wellnessViewMapper;
     private final UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -197,14 +198,11 @@ public class GarminMergeService {
         }
         if (!rows.isEmpty() || fitnessDays > 0) {
             log.info("Wellness merge for user {}: {} Garmin wellness rows merged, {} days served with local CTL/ATL",
-                    nameOf(userId), rows.size(), fitnessDays);
+                    userLookupService.usernameOf(userId), rows.size(), fitnessDays);
         }
         return new ArrayList<>(byDate.values());
     }
 
     private double round1(double v) { return Math.round(v * 10.0) / 10.0; }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }

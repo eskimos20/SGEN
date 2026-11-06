@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GarminDataCleanupService {
 
     private final com.sgen.repository.UserRepository userRepository;
+    private final com.sgen.service.UserLookupService userLookupService;
     private final GarminActivityRepository activityRepository;
     private final GarminActivityStreamsRepository activityStreamsRepository;
     private final GarminActivityIntervalRepository activityIntervalRepository;
@@ -52,10 +53,7 @@ public class GarminDataCleanupService {
         intervalsAthleteMirrorRepository.deleteByUserId(userId);
         dailyLoadRepository.deleteByUserId(userId);
         fitnessRepository.deleteByUserId(userId);
-        log.info("Deleted all Garmin data for user {}", nameOf(userId));
+        log.info("Deleted all Garmin data for user {}", userLookupService.usernameOf(userId));
     }
 
-    private String nameOf(Long userId) {
-        return userRepository.findById(userId).map(com.sgen.entity.User::getUsername).orElse(String.valueOf(userId));
-    }
 }
