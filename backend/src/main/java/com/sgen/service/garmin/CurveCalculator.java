@@ -59,14 +59,6 @@ public final class CurveCalculator {
     }
 
     static double bestAvg(ArrayNode arr, int window) {
-        if (arr.size() < window) return 0;
-        double sum = 0;
-        for (int i = 0; i < window; i++) sum += arr.get(i).asDouble(0);
-        double best = sum / window;
-        for (int i = window; i < arr.size(); i++) {
-            sum += arr.get(i).asDouble(0) - arr.get(i - window).asDouble(0);
-            if (sum / window > best) best = sum / window;
-        }
-        return best;
+        return com.sgen.util.StreamWindows.bestIndexWindowAvg(arr, window);
     }
 }

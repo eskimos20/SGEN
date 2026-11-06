@@ -496,24 +496,8 @@ public class IntervalsActivityAnalysisService {
         if (valueStream == null || timeStream == null || !valueStream.isArray() || !timeStream.isArray()
                 || valueStream.size() != timeStream.size()) return 0;
 
-        int n = timeStream.size();
-        double bestAvg = 0, windowSum = 0;
-        int left = 0;
-
-        for (int right = 0; right < n; right++) {
-            windowSum += valueStream.get(right).asDouble(0);
-            while (left < right &&
-                    timeStream.get(right).asDouble() - timeStream.get(left).asDouble() >= windowSeconds) {
-                windowSum -= valueStream.get(left).asDouble(0);
-                left++;
-            }
-            int count = right - left + 1;
-            if (count >= windowSeconds * 0.8) {
-                double avg = windowSum / count;
-                if (avg > bestAvg) bestAvg = avg;
-            }
-        }
-        return bestAvg;
+        return com.sgen.util.StreamWindows.bestTimeWindowAvg(
+                valueStream, timeStream, windowSeconds, 0.8);
     }
 
     /** Per-step speed above this is treated as a GPS glitch and clamped. */
