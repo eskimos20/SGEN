@@ -387,8 +387,7 @@ public class IntervalsAthleteService {
         }
         try {
             WebClient specClient = WebClient.builder().baseUrl(intervalsBaseUrl).build();
-            String specJson = specClient.get().uri("/api/v1/docs")
-                    .retrieve().bodyToMono(String.class).block();
+            String specJson = intervalsApi.getString(specClient, "/api/v1/docs");
             JsonNode spec = objectMapper.readTree(specJson);
             JsonNode categoryEnum = spec.path("components").path("schemas")
                     .path("CategorySummary").path("properties").path("category").path("enum");

@@ -539,11 +539,9 @@ public class IntervalsService {
         }
 
         try {
-            String activityJson = client.get()
-                    .uri(uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
-                            .queryParam("intervals", "true").build(activityId))
-                    .retrieve().bodyToMono(String.class).block();
-            JsonNode activityNode = objectMapper.readTree(activityJson);
+            JsonNode activityNode = intervalsApi.getJson(client,
+                    uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
+                            .queryParam("intervals", "true").build(activityId));
             details.put("activity", activityNode);
         } catch (Exception e) {
             log.error("Failed to fetch activity {}: {}", activityId, e.getMessage(), e);
@@ -551,11 +549,8 @@ public class IntervalsService {
         }
 
         try {
-            String streamsJson = client.get()
-                    .uri("/api/v1/activity/{id}/streams", activityId)
-                    .retrieve().bodyToMono(String.class).block();
             JsonNode[] streamsNodeRef = new JsonNode[1];
-            streamsNodeRef[0] = objectMapper.readTree(streamsJson);
+            streamsNodeRef[0] = intervalsApi.getJson(client, "/api/v1/activity/{id}/streams", activityId);
             JsonNode streamsNode = streamsNodeRef[0];
             details.put("streams", streamsNode);
             
@@ -613,19 +608,15 @@ public class IntervalsService {
         }
 
         try {
-            String powerCurveJson = client.get()
-                    .uri("/api/v1/activity/{id}/power-curve", activityId)
-                    .retrieve().bodyToMono(String.class).block();
-            details.put("powerCurve", objectMapper.readTree(powerCurveJson));
+            details.put("powerCurve",
+                    intervalsApi.getJson(client, "/api/v1/activity/{id}/power-curve", activityId));
         } catch (Exception e) {
             log.warn("Failed to fetch power curve for {}: {}", activityId, e.getMessage());
         }
 
         // Fetch map data (latlngs for the map)
         try {
-            String mapJson = client.get()
-                    .uri("/api/v1/activity/{id}/map", activityId)
-                    .retrieve().bodyToMono(String.class).block();
+            String mapJson = intervalsApi.getString(client, "/api/v1/activity/{id}/map", activityId);
             if (mapJson != null && !mapJson.isEmpty()) {
                 JsonNode mapData = objectMapper.readTree(mapJson);
                 if (mapData instanceof com.fasterxml.jackson.databind.node.ObjectNode mo
@@ -706,9 +697,7 @@ public class IntervalsService {
             // Mirror streams lack a usable latlng payload — fetch the /map payload instead.
             if (!details.containsKey("mapData")) {
                 try {
-                    String mapJson = client.get()
-                            .uri("/api/v1/activity/{id}/map", activityId)
-                            .retrieve().bodyToMono(String.class).block();
+                    String mapJson = intervalsApi.getString(client, "/api/v1/activity/{id}/map", activityId);
                     if (mapJson != null && !mapJson.isEmpty()) {
                         JsonNode mapData = objectMapper.readTree(mapJson);
                         if (mapData instanceof com.fasterxml.jackson.databind.node.ObjectNode mo
