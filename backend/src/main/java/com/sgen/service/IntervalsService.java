@@ -60,6 +60,7 @@ public class IntervalsService {
     private final IntervalsApiClient intervalsApi;
     private final IntervalsActivityFeedService activityFeedService;
     private final IntervalsActivityDetailService activityDetailService;
+    private final IntervalsActivityOpsService activityOpsService;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -406,65 +407,12 @@ public class IntervalsService {
     // -------------------------------------------------------------------------
 
     public Map<String, Object> updateActivity(String username, String activityId, Map<String, Object> updates) {
-        ApiContext ctx = getValidatedContext(username);
-        try {
-            String responseJson = ctx.client.put()
-                    .uri("/api/v1/activity/{id}", activityId)
-                    .bodyValue(updates)
-                    .retrieve().bodyToMono(String.class).block();
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = objectMapper.readValue(responseJson, Map.class);
-            if (garminClientFactory.isConnected(ctx.user.getId())) {
-                try {
-                    intervalsMirrorService.saveActivity(ctx.user.getId(), objectMapper.readTree(responseJson));
-                } catch (Exception e) {
-                    log.debug("Mirror persist updated activity {} failed: {}", activityId, e.getMessage());
-                }
-            }
-            if (updates.containsKey("type")) {
-                log.info("Activity {} type changed to {} — resetting analysis for recompute",
-                        activityId, updates.get("type"));
-                activityAnalysisService.resetForTypeChange(ctx.user.getId(), activityId);
-            }
-            return result;
-        } catch (Exception e) {
-            log.error("Failed to update activity {}: {}", activityId, e.getMessage());
-            throw new RuntimeException("Failed to update activity: " + e.getMessage());
-        }
+        return activityOpsService.updateActivity(username, activityId, updates);
     }
 
     public void deleteActivity(String username, String activityId) {
-        ApiContext ctx = getValidatedContext(username);
-        try {
-            ctx.client.delete()
-                    .uri("/api/v1/activity/{activityId}", activityId)
-                    .retrieve().bodyToMono(Void.class).block();
-            // Keep the mirror consistent so the activity doesn't reappear.
-            Long uid = ctx.user.getId();
-            if (garminClientFactory.isConnected(uid)) {
-                intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId)
-                        .ifPresent(act -> {
-                            if (act.getStartDateLocal() != null) {
-                                intervalsMirrorService.deleteIntervalsDailyLoad(
-                                        uid, act.getStartDateLocal().toLocalDate());
-                            }
-                            intervalsActivityRepository.delete(act);
-                        });
-                intervalsStreamsRepository.findByUserIdAndActivityId(uid, activityId)
-                        .ifPresent(intervalsStreamsRepository::delete);
-            }
-            // Drop analysis + every result the activity produced (FTP/VO2
-            // top-3, records, achievements) — they are not rebuilt.
-            activityAnalysisService.purgeForDeletedActivity(uid, activityId);
-        } catch (Exception e) {
-            log.error("Failed to delete activity {}: {}", activityId, e.getMessage());
-            throw new RuntimeException("Failed to delete activity: " + e.getMessage());
-        }
+        activityOpsService.deleteActivity(username, activityId);
     }
-
-    // -------------------------------------------------------------------------
-    // Interval & best-effort — delegate to analysis service
-    // -------------------------------------------------------------------------
 
     public JsonNode fetchActivityBestEfforts(String username, String activityId) {
         return analysisService.fetchActivityBestEfforts(username, activityId);
@@ -485,70 +433,16 @@ public class IntervalsService {
     public JsonNode updateActivityIntervals(String username, String activityId,
                                             List<Map<String, Object>> intervals,
                                             Integer searchDuration) {
-        try {
-            Map<String, Object> details = getActivityDetails(username, activityId);
-            JsonNode activityNode = (JsonNode) details.get("activity");
-            JsonNode streamsNode = (JsonNode) details.get("streams");
-            JsonNode result = analysisService.updateActivityIntervals(username, activityId, intervals, searchDuration, activityNode, streamsNode);
-            // Enrich the returned intervals with start/end HR and HRR so the values
-            // are available immediately without refetching activity details.
-            if (result != null) {
-                JsonNode resultIntervals = result.isArray() ? result : result.path("icu_intervals");
-                if (resultIntervals.isArray()) {
-                    com.sgen.util.IntervalEnrichment.enrich(resultIntervals, streamsNode);
-                }
-            }
-            return result;
-        } catch (Exception e) {
-            log.error("Failed to update intervals for activity {}: {}", activityId, e.getMessage(), e);
-            throw new RuntimeException("Failed to update intervals: " + e.getMessage());
-        }
+        return activityOpsService.updateActivityIntervals(username, activityId, intervals, searchDuration);
     }
 
     public Map<String, Object> extractIntervalSummary(JsonNode icuIntervals) {
         return analysisService.extractIntervalSummary(icuIntervals);
     }
 
-    // -------------------------------------------------------------------------
-    // Upload
-    // -------------------------------------------------------------------------
-
     public JsonNode uploadActivity(String username, MultipartFile file, String name, String description) {
-        ApiContext ctx = getValidatedContext(username);
-        try {
-            byte[] fileBytes = file.getBytes();
-            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "activity.fit";
-            MultipartBodyBuilder builder = new MultipartBodyBuilder();
-            builder.part("file", new ByteArrayResource(fileBytes) {
-                @Override
-                public String getFilename() { return originalFilename; }
-            }).header("Content-Disposition", "form-data; name=file; filename=" + originalFilename);
-
-            String responseJson = ctx.client.post()
-                    .uri(uriBuilder -> {
-                        uriBuilder.path("/api/v1/athlete/{athleteId}/activities");
-                        if (name != null && !name.isBlank()) uriBuilder.queryParam("name", name);
-                        if (description != null && !description.isBlank()) uriBuilder.queryParam("description", description);
-                        return uriBuilder.build(ctx.user.getIntervalsAthleteId());
-                    })
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(BodyInserters.fromMultipartData(builder.build()))
-                    .retrieve()
-                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                            response -> response.bodyToMono(String.class)
-                                    .map(body -> new RuntimeException("API error " + response.statusCode() + ": " + body)))
-                    .bodyToMono(String.class).block();
-
-            return objectMapper.readTree(responseJson);
-        } catch (Exception e) {
-            log.error("Failed to upload activity for user {}: {}", username, e.getMessage());
-            throw new RuntimeException("Failed to upload activity: " + e.getMessage());
-        }
+        return activityOpsService.uploadActivity(username, file, name, description);
     }
-
-    // -------------------------------------------------------------------------
-    // Power Curve History
-    // -------------------------------------------------------------------------
 
     public JsonNode getPowerCurveHistory(String username, String oldest, String newest, String type) {
         return statsService.getPowerCurveHistory(username, oldest, newest, type);
