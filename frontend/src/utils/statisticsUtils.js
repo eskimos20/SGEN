@@ -1,5 +1,5 @@
 import { calculateAge, getVolumeColor, getAgeGroupInfo, extractSportSettings, getSportCategory, getSportColorClasses } from './athleteUtils';
-import { removeNullValues, formatDuration, getCurrentDateTime } from './dataUtils';
+import { removeNullValues, formatDuration, formatDate, getCurrentDateTime } from './dataUtils';
 import api from '../api/axios';
 
 // Statistics utility functions - pure functions without side effects
@@ -32,12 +32,12 @@ export const buildMinimalData = (data, weeklyData, getUpcomingWorkouts, includeU
     percent: z.percent
   }));
 
-  const formatDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  
   const addDays = (dateStr, days) => {
     const date = new Date(dateStr);
     if (Number.isNaN(date.getTime())) return undefined;
     date.setDate(date.getDate() + days);
-    return formatDateKey(date);
+    return formatDate(date);
   };
   const getWeekStartKey = (dateStr) => {
     const date = new Date(dateStr);
@@ -45,7 +45,7 @@ export const buildMinimalData = (data, weeklyData, getUpcomingWorkouts, includeU
     const day = date.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day;
     date.setDate(date.getDate() + diffToMonday);
-    return formatDateKey(date);
+    return formatDate(date);
   };
 
   const deloadWeekStarts = new Set(

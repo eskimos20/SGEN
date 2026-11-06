@@ -124,3 +124,15 @@ export default {
   formatDate,
   getCurrentDateTime
 };
+
+/**
+ * Format a duration for chart axes — compact style ("30s", "5m", "1h30m")
+ * shared by the power/pace curve charts.
+ */
+export const formatDurationAxis = (seconds) => {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
+};

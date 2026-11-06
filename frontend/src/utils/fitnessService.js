@@ -1,12 +1,11 @@
 import api from '../api/axios';
+import { formatDate } from './dataUtils';
 
 /**
  * Shared service for fetching fitness, wellness, and athlete profile data
  * Used by Statistics, Calendar AI Scheduler, and other components
  */
 
-// Use local date to match intervals.icu behavior
-const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 /**
  * Fetch athlete profile with sport settings

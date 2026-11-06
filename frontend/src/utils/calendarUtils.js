@@ -1,14 +1,7 @@
 // Calendar utility functions - pure functions without side effects
 import { extractTSSFromName } from './workoutUtils';
-import { formatHoursMinutes } from './dataUtils';
-
-export const formatDate = (date) => {
-  // Use local date to avoid timezone issues
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { formatHoursMinutes, formatDate } from './dataUtils';
+export { formatDate };
 
 export const getMonthRange = (date) => {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);

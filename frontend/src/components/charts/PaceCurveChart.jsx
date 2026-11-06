@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Timer } from 'lucide-react';
+import { formatDurationAxis } from '../../utils/dataUtils';
 
 // Color mapping for running types
 const RUN_COLORS = {
@@ -28,22 +29,6 @@ const velocityToPace = (velocityMs) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-/**
- * Format duration in human-readable format
- */
-const formatDuration = (seconds) => {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60);
-    return `${mins}m`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
-  }
-};
-
 const PaceCurveChart = ({ paceCurveHistory }) => {
   // Process pace curves
   const curvesBySport = useMemo(() => {
@@ -66,7 +51,7 @@ const PaceCurveChart = ({ paceCurveHistory }) => {
         duration: parseInt(duration),
         velocity: velocity,
         pace: velocityToPace(velocity),
-        durationLabel: formatDuration(parseInt(duration)),
+        durationLabel: formatDurationAxis(parseInt(duration)),
         activityDate: curve.activityDate,
         activityName: curve.activityName
       })).sort((a, b) => a.duration - b.duration);
@@ -98,7 +83,7 @@ const PaceCurveChart = ({ paceCurveHistory }) => {
     
     // Create merged data points showing best pace for each duration
     return sortedDurations.map(duration => {
-      const point = { duration, durationLabel: formatDuration(duration) };
+      const point = { duration, durationLabel: formatDurationAxis(duration) };
       
       sportTypes.forEach(sport => {
         // Find the fastest pace (highest velocity) for this sport at this duration
@@ -250,7 +235,7 @@ const PaceCurveChart = ({ paceCurveHistory }) => {
               dataKey="duration"
               scale="log"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(value) => formatDuration(value)}
+              tickFormatter={(value) => formatDurationAxis(value)}
               type="number"
               ticks={[30, 60, 120, 300, 600, 1200, 1800, 3600, 7200]}
               stroke="#6b7280"

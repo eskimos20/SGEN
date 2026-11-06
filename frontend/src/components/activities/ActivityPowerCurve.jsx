@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Zap, TrendingUp } from 'lucide-react';
+import { formatDurationAxis } from '../../utils/dataUtils';
 
 const ActivityPowerCurve = ({ powerCurve }) => {
   const curveData = useMemo(() => {
@@ -13,7 +14,7 @@ const ActivityPowerCurve = ({ powerCurve }) => {
     const points = secs.map((sec, idx) => ({
       duration: sec,
       watts: values[idx] || 0,
-      durationLabel: formatDuration(sec)
+      durationLabel: formatDurationAxis(sec)
     })).filter(p => p.watts > 0);
     
     return points;
@@ -117,7 +118,7 @@ const ActivityPowerCurve = ({ powerCurve }) => {
               dataKey="duration" 
               scale="log" 
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(value) => formatDuration(value)}
+              tickFormatter={(value) => formatDurationAxis(value)}
               type="number"
               ticks={[1, 5, 10, 30, 60, 120, 300, 600, 1200, 3600]}
               stroke="#6b7280"
@@ -179,19 +180,5 @@ const ActivityPowerCurve = ({ powerCurve }) => {
     </div>
   );
 };
-
-// Helper to format duration in human-readable format
-function formatDuration(seconds) {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60);
-    return `${mins}m`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
-  }
-}
 
 export default ActivityPowerCurve;

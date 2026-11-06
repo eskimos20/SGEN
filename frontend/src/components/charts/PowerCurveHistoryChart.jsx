@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Zap } from 'lucide-react';
+import { formatDurationAxis } from '../../utils/dataUtils';
 
 // Color mapping for different sport types (Intervals.icu supported types)
 const SPORT_COLORS = {
@@ -40,7 +41,7 @@ const PowerCurveHistoryChart = ({ powerCurveHistory, title }) => {
       const points = curve.secs.map((sec, idx) => ({
         duration: sec,
         watts: curve.values[idx] || 0,
-        durationLabel: formatDuration(sec)
+        durationLabel: formatDurationAxis(sec)
       })).filter(p => p.watts > 0);
       
       grouped[sportType].push(...points);
@@ -70,7 +71,7 @@ const PowerCurveHistoryChart = ({ powerCurveHistory, title }) => {
     
     // Create merged data points
     return sortedDurations.map(duration => {
-      const point = { duration, durationLabel: formatDuration(duration) };
+      const point = { duration, durationLabel: formatDurationAxis(duration) };
       
       sportTypes.forEach(sport => {
         // Find closest point for this sport at this duration
@@ -184,7 +185,7 @@ const PowerCurveHistoryChart = ({ powerCurveHistory, title }) => {
               dataKey="duration"
               scale="log"
               domain={['dataMin', 'dataMax']}
-              tickFormatter={(value) => formatDuration(value)}
+              tickFormatter={(value) => formatDurationAxis(value)}
               type="number"
               ticks={[1, 5, 10, 30, 60, 120, 300, 600, 1200, 3600]}
               stroke="#6b7280"
@@ -260,19 +261,5 @@ const PowerCurveHistoryChart = ({ powerCurveHistory, title }) => {
     </div>
   );
 };
-
-// Helper to format duration in human-readable format
-function formatDuration(seconds) {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  } else if (seconds < 3600) {
-    const mins = Math.floor(seconds / 60);
-    return `${mins}m`;
-  } else {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    return mins > 0 ? `${hours}h${mins}m` : `${hours}h`;
-  }
-}
 
 export default PowerCurveHistoryChart;
