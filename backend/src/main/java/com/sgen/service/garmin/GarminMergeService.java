@@ -61,7 +61,7 @@ public class GarminMergeService {
         for (GarminActivity a : local) {
             arr.add(toIntervalsActivityJson(a));
         }
-        log.info("Garmin merge for user {}: {} local activities served from DB, {} Intervals duplicates suppressed",
+        log.debug("Garmin merge for user {}: {} local activities served from DB, {} Intervals duplicates suppressed",
                 userId, local.size(), removed);
     }
 
@@ -197,7 +197,7 @@ public class GarminMergeService {
             fitnessDays++;
         }
         if (!rows.isEmpty() || fitnessDays > 0) {
-            log.info("Wellness merge for user {}: {} Garmin wellness rows merged, {} days served with local CTL/ATL",
+            log.debug("Wellness merge for user {}: {} Garmin wellness rows merged, {} days served with local CTL/ATL",
                     userLookupService.usernameOf(userId), rows.size(), fitnessDays);
         }
         return new ArrayList<>(byDate.values());

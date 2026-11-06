@@ -34,7 +34,7 @@ public class DownloadController {
     public ResponseEntity<ApkStatusResponse> getApkStatus() {
         boolean available = isApkAvailable();
         
-        log.info("APK status check - Available: {}, Version: {}, Working dir: {}", 
+        log.debug("APK status check - Available: {}, Version: {}, Working dir: {}", 
             available, appVersion, System.getProperty("user.dir"));
         
         return ResponseEntity.ok(new ApkStatusResponse(available, 
@@ -49,7 +49,7 @@ public class DownloadController {
         // Prefer the APK packaged in the classpath (JAR or target/classes)
         ClassPathResource classpathResource = new ClassPathResource("static/downloads/sgen-android.apk");
         if (classpathResource.exists()) {
-            log.info("APK found in classpath: static/downloads/sgen-android.apk");
+            log.debug("APK found in classpath: static/downloads/sgen-android.apk");
             return true;
         }
         

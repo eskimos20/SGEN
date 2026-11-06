@@ -182,7 +182,7 @@ public class IntervalsService {
                 } catch (Exception e) {
                     log.debug("Events mirror refresh failed: {}", e.getMessage());
                 }
-                log.info("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
+                log.debug("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
                 var rows = intervalsEventRepository
                         .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
                 var arr = com.sgen.util.JsonPayloads.toPayloadArray(
@@ -322,12 +322,12 @@ public class IntervalsService {
             String cached = intervalsMirrorService.findAthleteJson(uid, docKey);
             if (cached != null) {
                 try {
-                    log.info("SOURCE=DB user {} {} served from local mirror", username, label);
+                    log.debug("SOURCE=DB user {} {} served from local mirror", username, label);
                     return objectMapper.readTree(cached);
                 } catch (Exception ignored) {}
             }
         }
-        log.info("SOURCE=INTERVALS user {} fetching {}", username, label);
+        log.debug("SOURCE=INTERVALS user {} fetching {}", username, label);
         try {
             String json = intervalsApi.getString(ctx.client, apiPath, ctx.user.getIntervalsAthleteId());
             if (garminConnected && json != null) persist.accept(uid, json);
@@ -338,7 +338,7 @@ public class IntervalsService {
                 String cached = intervalsMirrorService.findAthleteJson(uid, docKey);
                 if (cached != null) {
                     try {
-                        log.info("SOURCE=DB user {} stale {} served from local mirror", username, label);
+                        log.debug("SOURCE=DB user {} stale {} served from local mirror", username, label);
                         return objectMapper.readTree(cached);
                     } catch (Exception ignored) {}
                 }

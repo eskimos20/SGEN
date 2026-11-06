@@ -206,7 +206,7 @@ public class CalendarController {
                 }
             }
             org.slf4j.LoggerFactory.getLogger(CalendarController.class)
-                    .info("SOURCE=DB user {} wellness served from local mirror {}-{}",
+                    .debug("SOURCE=DB user {} wellness served from local mirror {}-{}",
                             authentication.getName(), oldest, newest);
             base = intervalsMirrorService.findWellnessPayloads(user.getId(),
                     java.time.LocalDate.parse(oldest), java.time.LocalDate.parse(newest));

@@ -53,7 +53,6 @@ public class AuthController {
         }
         try {
             LoginResponse response = userService.login(request);
-            log.info("Login successful for user: {}", request.getUsername());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Login failed for user: {} - Error: {}", request.getUsername(), e.getMessage());

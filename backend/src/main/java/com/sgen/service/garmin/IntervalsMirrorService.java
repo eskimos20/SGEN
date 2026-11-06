@@ -344,7 +344,7 @@ public class IntervalsMirrorService {
                     dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(
                             userId, row.getStartDateLocal().toLocalDate(), "INTERVALS");
                 }
-                log.info("Pruned mirror activity {} (deleted upstream)", row.getActivityId());
+                log.debug("Pruned mirror activity {} (deleted upstream)", row.getActivityId());
             }
         } catch (Exception e) {
             log.debug("Mirror activity prune failed: {}", e.getMessage());
@@ -371,7 +371,7 @@ public class IntervalsMirrorService {
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(userId, from, to)) {
                 if (keepIds.contains(row.getEventId())) continue;
                 eventRepository.deleteByUserIdAndEventId(userId, row.getEventId());
-                log.info("Pruned mirror event {} (deleted upstream)", row.getEventId());
+                log.debug("Pruned mirror event {} (deleted upstream)", row.getEventId());
             }
         } catch (Exception e) {
             log.debug("Mirror event prune failed: {}", e.getMessage());

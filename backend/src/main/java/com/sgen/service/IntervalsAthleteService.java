@@ -396,7 +396,7 @@ public class IntervalsAthleteService {
                 for (JsonNode t : categoryEnum) types.add(t.asText());
                 cachedActivityTypes = types;
                 activityTypesCacheTime = System.currentTimeMillis();
-                log.info("Fetched {} activity types from Intervals.icu OpenAPI spec", types.size());
+                log.debug("Fetched {} activity types from Intervals.icu OpenAPI spec", types.size());
                 return types;
             }
             log.warn("Could not find activity type enum in Intervals.icu OpenAPI spec");

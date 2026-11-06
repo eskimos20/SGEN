@@ -69,7 +69,7 @@ public class IntervalsActivityFeedService {
                 .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
         var arr = com.sgen.util.JsonPayloads.toPayloadArray(
                 rows, r -> r.getPayloadJson(), objectMapper);
-        log.info("SOURCE=DB user {} activities served from local mirror: {}", username, arr.size());
+        log.debug("SOURCE=DB user {} activities served from local mirror: {}", username, arr.size());
         // Hydrate streams/icu_intervals from the mirror — only needed when
         // the Statistics analysis step (analyze=true) consumes them. Skipped
         // entirely for plain period fetches (fitness slider, dashboard).
@@ -140,7 +140,7 @@ public class IntervalsActivityFeedService {
                             .build(athleteId));
 
             if (activitiesNode.isArray()) {
-                log.info("SOURCE=INTERVALS user {} fetched {} activities from Intervals API", username, activitiesNode.size());
+                log.debug("SOURCE=INTERVALS user {} fetched {} activities from Intervals API", username, activitiesNode.size());
                 log.info("Fetching interval data for {} activities", activitiesNode.size());
                 var intervalFutures = new ArrayList<CompletableFuture<Void>>();
                 for (JsonNode activity : activitiesNode) {

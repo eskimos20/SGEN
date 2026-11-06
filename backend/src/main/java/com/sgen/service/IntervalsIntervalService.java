@@ -41,7 +41,7 @@ public class IntervalsIntervalService {
             String cached = intervalsMirrorService.findBestEffortsJson(uid, activityId);
             if (cached != null) {
                 try {
-                    log.info("SOURCE=DB user {} best-efforts served from local mirror: {}", username, activityId);
+                    log.debug("SOURCE=DB user {} best-efforts served from local mirror: {}", username, activityId);
                     return objectMapper.readTree(cached);
                 } catch (Exception ignored) {}
             }

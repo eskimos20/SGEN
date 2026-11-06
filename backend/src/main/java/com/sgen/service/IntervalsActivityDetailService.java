@@ -49,7 +49,7 @@ public class IntervalsActivityDetailService {
         if (garminConnected) {
             var mirrorRow = intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId);
             if (mirrorRow.isPresent()) {
-                log.info("SOURCE=DB user {} activity {} details served from local mirror", username, activityId);
+                log.debug("SOURCE=DB user {} activity {} details served from local mirror", username, activityId);
                 return mirrorActivityDetails(uid, activityId, mirrorRow.get(), client);
             }
         }

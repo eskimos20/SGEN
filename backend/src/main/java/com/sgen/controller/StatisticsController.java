@@ -345,7 +345,7 @@ public class StatisticsController {
             }
             UserVersion userVersion = userVersionService.markVersionAsSeen(authentication.getName(), version);
             if (userVersion != null && userVersion.getSeenAt() != null) {
-                log.info("User {} has seen version {} at {}", authentication.getName(), version, userVersion.getSeenAt());
+                log.debug("User {} has seen version {} at {}", authentication.getName(), version, userVersion.getSeenAt());
                 return ResponseEntity.ok(Map.of("success", true, "version", version, "seenAt", userVersion.getSeenAt()));
             }
             return ResponseEntity.ok(Map.of("success", true, "version", version, "message", "Version already seen"));

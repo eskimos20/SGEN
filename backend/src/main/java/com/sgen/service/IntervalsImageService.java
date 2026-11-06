@@ -38,7 +38,7 @@ public class IntervalsImageService {
         if (garminConnected) {
             byte[] cached = intervalsMirrorService.findImage(uid, activityId, kind);
             if (cached != null && cached.length > 0) {
-                log.info("SOURCE=DB user {} {}.png served from local mirror: {}", username, kind, activityId);
+                log.debug("SOURCE=DB user {} {}.png served from local mirror: {}", username, kind, activityId);
                 return cached;
             }
         }

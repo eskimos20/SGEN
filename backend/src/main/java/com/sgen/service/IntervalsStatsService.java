@@ -160,7 +160,7 @@ public class IntervalsStatsService {
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
             var arr = com.sgen.util.JsonPayloads.toPayloadArray(
                     rows, r -> r.getPayloadJson(), objectMapper);
-            log.info("SOURCE=DB user {} training totals served from local mirror: {}", username, arr.size());
+            log.debug("SOURCE=DB user {} training totals served from local mirror: {}", username, arr.size());
             return arr;
         }
         try {
@@ -262,7 +262,7 @@ public class IntervalsStatsService {
             curve.put("sportType", e.getKey());
             out.add(curve);
         }
-        log.info("SOURCE=DB user {} {} curve history computed from local mirror: {} types",
+        log.debug("SOURCE=DB user {} {} curve history computed from local mirror: {} types",
                 username, streamKey, out.size());
         return out;
     }

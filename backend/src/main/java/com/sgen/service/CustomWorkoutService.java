@@ -201,7 +201,7 @@ public class CustomWorkoutService {
         
         userCacheLoaded.put(username, true);
         customWorkoutCache.put(username, userCache);
-        log.info("Loaded {} categories of custom workouts for user {}", userCache.size(), username);
+        log.debug("Loaded {} categories of custom workouts for user {}", userCache.size(), username);
         
         return userCache;
     }
