@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 const durationLabel = (secs) => {
   const labels = { 1: '1s', 5: '5s', 15: '15s', 30: '30s', 60: '1m', 120: '2m', 180: '3m', 240: '4m', 300: '5m', 480: '8m', 600: '10m', 720: '12m', 900: '15m', 1200: '20m', 1800: '30m', 2400: '40m', 3600: '60m' };
@@ -21,17 +21,6 @@ const formatSecPerKm = (secKm) => {
 // per duration (left y, watts) and best pace per distance (right y,
 // seconds/km reversed). All run types are merged into one pace line.
 const BestAllTimeCurveChart = ({ powerRecords, paceRecords }) => {
-  const [isExpanded, setIsExpanded] = useState(() => {
-    const saved = localStorage.getItem('statistics-recordsExpanded');
-    return saved !== null ? saved === 'true' : true;
-  });
-
-  const toggle = () => {
-    const next = !isExpanded;
-    setIsExpanded(next);
-    localStorage.setItem('statistics-recordsExpanded', next.toString());
-  };
-
   const recordsChart = (() => {
     const durations = new Set((powerRecords || []).map(r => r.durationS));
     const distances = new Set((paceRecords || []).map(r => r.distanceM));
@@ -58,18 +47,11 @@ const BestAllTimeCurveChart = ({ powerRecords, paceRecords }) => {
 
   return (
     <div>
-      <div
-        className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity mb-4"
-        onClick={toggle}
-      >
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-amber-600" />
-          Best All Time Power/Pace Curve
-        </h2>
-        {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-600" /> : <ChevronDown className="h-5 w-5 text-gray-600" />}
-      </div>
-      {isExpanded && (
-        <div className="h-56 sm:h-64">
+      <h3 className="text-sm font-semibold text-gray-600 flex items-center gap-2 mb-3">
+        <TrendingUp className="h-4 w-4 text-amber-600" />
+        Best All Time Power/Pace Curve
+      </h3>
+      <div className="h-56 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={recordsChart.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -150,7 +132,6 @@ const BestAllTimeCurveChart = ({ powerRecords, paceRecords }) => {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      )}
     </div>
   );
 };
