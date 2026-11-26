@@ -67,6 +67,14 @@ public class GarminMergeService {
         for (GarminActivity a : local) {
             arr.add(toIntervalsActivityJson(a));
         }
+        // Keep the feed newest-first — appended local rows would otherwise
+        // land at the bottom regardless of date.
+        var sorted = new ArrayList<JsonNode>();
+        arr.forEach(sorted::add);
+        sorted.sort((x, y) -> y.path("start_date_local").asText("")
+                .compareTo(x.path("start_date_local").asText("")));
+        arr.removeAll();
+        sorted.forEach(arr::add);
         log.debug("Garmin merge for user {}: {} local activities served from DB, {} Intervals duplicates suppressed",
                 userId, local.size(), removed);
     }
