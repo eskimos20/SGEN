@@ -380,6 +380,31 @@ public class IntervalsAthleteService {
         return null;
     }
 
+    /**
+     * Zone upper-bound array for a sport — "hr_zones" (absolute BPM) or
+     * "power_zones" (% of FTP). Returns null when the sport or field is unset.
+     */
+    public double[] getZoneBoundsForSport(JsonNode sportSettings, String sportType, String field) {
+        if (sportSettings == null || !sportSettings.isArray() || sportType == null) {
+            return null;
+        }
+        for (JsonNode setting : sportSettings) {
+            JsonNode types = setting.get("types");
+            if (types != null && types.isArray()) {
+                for (JsonNode type : types) {
+                    if (type.asText().equalsIgnoreCase(sportType)) {
+                        JsonNode arr = setting.get(field);
+                        if (arr == null || !arr.isArray() || arr.size() == 0) return null;
+                        double[] out = new double[arr.size()];
+                        for (int i = 0; i < arr.size(); i++) out[i] = arr.get(i).asDouble();
+                        return out;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     private Integer getValueForSport(JsonNode sportSettings, String sportType, String field) {
         if (sportSettings == null || !sportSettings.isArray() || sportType == null) {
             return null;

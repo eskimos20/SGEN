@@ -35,10 +35,19 @@ public class ZoneTimeCalculator {
         Integer lthr = sportSettings.lthr(userId, sportKey);
 
         if (watts != null && ftp != null && ftp > 0) {
-            out.set("icu_zone_times", zoneTimes(watts, time, bounds(POWER_BOUNDS_PCT, ftp)));
+            // User's own power_zones (%FTP upper bounds) beat Coggan defaults.
+            double[] pct = sportSettings.powerZoneBoundsPct(userId, sportKey);
+            out.set("icu_zone_times", zoneTimes(watts, time,
+                    bounds(pct != null ? pct : POWER_BOUNDS_PCT, ftp)));
         }
-        if (hr != null && lthr != null && lthr > 0) {
-            out.set("icu_hr_zone_times", zoneTimes(hr, time, bounds(HR_BOUNDS_PCT, lthr)));
+        if (hr != null) {
+            // User's own hr_zones are absolute BPM bounds — compare directly.
+            double[] bpm = sportSettings.hrZoneBoundsBpm(userId, sportKey);
+            if (bpm != null) {
+                out.set("icu_hr_zone_times", zoneTimes(hr, time, bpm));
+            } else if (lthr != null && lthr > 0) {
+                out.set("icu_hr_zone_times", zoneTimes(hr, time, bounds(HR_BOUNDS_PCT, lthr)));
+            }
         }
         return out;
     }

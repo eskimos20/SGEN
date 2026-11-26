@@ -49,6 +49,35 @@ public class GarminSportSettingsService {
                 .map(LocalSportSettings::getLthr).orElse(null);
     }
 
+    /**
+     * Custom HR zone upper bounds in BPM from Intervals sport settings
+     * (hr_zones), for the given sport. Null when not configured — callers
+     * should fall back to %LTHR defaults.
+     */
+    public double[] hrZoneBoundsBpm(Long userId, String sportKey) {
+        return zoneBounds(userId, sportKey, "hr_zones");
+    }
+
+    /**
+     * Custom power zone upper bounds in % of FTP from Intervals sport
+     * settings (power_zones). Null when not configured.
+     */
+    public double[] powerZoneBoundsPct(Long userId, String sportKey) {
+        return zoneBounds(userId, sportKey, "power_zones");
+    }
+
+    private double[] zoneBounds(Long userId, String sportKey, String field) {
+        try {
+            String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
+            if (username != null) {
+                JsonNode settings = intervalsAthleteService.getSportSettings(username);
+                double[] b = intervalsAthleteService.getZoneBoundsForSport(settings, toIntervalsType(sportKey), field);
+                if (b != null && b.length > 0) return b;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     /** Athlete resting HR from the Intervals profile (icu_resting_hr). */
     public Integer restingHr(Long userId) {
         try {
