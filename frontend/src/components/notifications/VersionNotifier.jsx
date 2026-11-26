@@ -6,6 +6,32 @@ import api from '../../api/axios';
 
 const VERSION_NOTES = [
   {
+    title: 'Garmin Connect — Live Sync',
+    date: '2026-11-26',
+    features: [
+      {
+        icon: '⌚',
+        title: 'Real-Time Garmin Push',
+        description: 'New activities arrive instantly via Garmin Push with full detail — GPS, heart rate and power streams, laps and intervals. Wellness data (sleep, stress, HRV, daily metrics) and Move IQ activities sync automatically too.'
+      },
+      {
+        icon: '🏋️',
+        title: 'Workouts Straight to Your Watch',
+        description: 'Workouts created in SGEN are pushed directly to your Garmin Connect calendar — no more detour via Intervals.icu. Rescheduling or deleting an event updates or removes the workout in Garmin automatically.'
+      },
+      {
+        icon: '🔧',
+        title: 'Push Reliability Fixes',
+        description: 'Fixed stream and interval persistence, Move IQ summaries, authenticated FIT file downloads and workout upload content type — incoming push items now process cleanly with automatic retries.'
+      },
+      {
+        icon: '🔌',
+        title: 'Intervals.icu Still Works',
+        description: 'Garmin is optional. Without a direct connection everything keeps working through Intervals.icu — activities, wellness, planned workouts and uploads are unchanged.'
+      }
+    ]
+  },
+  {
     title: 'Personal Records',
     date: '2026-11-04',
     features: [
@@ -75,11 +101,6 @@ const VERSION_NOTES = [
         icon: '⚡',
         title: 'Local Data Mirror',
         description: 'Statistics, calendar, activity details, route maps, power and pace curves, and wellness now load from the local database instead of external APIs — faster loads and no rate limits.'
-      },
-      {
-        icon: '🔔',
-        title: 'Ready for Real-Time Push',
-        description: 'Push endpoints are in place so new Garmin activities arrive automatically once your app is approved by Garmin.'
       },
       {
         icon: '🗑️',
