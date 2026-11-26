@@ -9,7 +9,10 @@ import java.util.Optional;
 @Repository
 public interface GarminWorkoutPushRepository extends JpaRepository<GarminWorkoutPush, Long> {
     Optional<GarminWorkoutPush> findByCalendarEventId(Long calendarEventId);
-    Optional<GarminWorkoutPush> findByIntervalsEventId(Integer intervalsEventId);
+    // Local event ids can be reused after delete — several pushes may share an
+    // intervals_event_id. Always consume the ordered list, never Optional.
+    List<GarminWorkoutPush> findByIntervalsEventIdOrderByIdDesc(Integer intervalsEventId);
     List<GarminWorkoutPush> findByUserIdAndStatus(Long userId, String status);
+    List<GarminWorkoutPush> findByUserId(Long userId);
     void deleteByUserId(Long userId);
 }

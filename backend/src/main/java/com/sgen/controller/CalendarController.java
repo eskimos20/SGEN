@@ -253,19 +253,31 @@ public class CalendarController {
             // Users without an active Garmin connection stay on the Intervals-only path
             if (!garminClientFactory.isConnected(user.getId())) return;
             for (Map<String, Object> ev : eventsWithIds) {
-                if (!"WORKOUT".equals(ev.get("category")) || ev.get("workout_doc") == null) continue;
+                // Scheduler events arrive without category/type (stripped in
+                // the frontend) — a workout_doc is what makes it a workout.
+                Object cat = ev.get("category");
+                if (ev.get("workout_doc") == null || (cat != null && !"WORKOUT".equals(cat))) continue;
                 Object idObj = ev.get("id");
                 Integer intervalsId = idObj != null ? Integer.valueOf(idObj.toString()) : null;
                 Long calId = calendarEventRepository
                         .findByIntervalsEventIdAndUsername(intervalsId, username)
                         .map(CalendarEvent::getId).orElse(null);
-                String type = String.valueOf(ev.getOrDefault("type", "Ride"));
-                String sportKey = "Run".equalsIgnoreCase(type) ? "run" : "ride";
+                String sportKey = sportKeyFor(ev);
                 garminWorkoutService.scheduleWorkout(user.getId(), calId, intervalsId, ev, sportKey);
             }
         } catch (Exception e) {
             log.warn("Garmin workout push skipped: {}", e.getMessage());
         }
+    }
+
+    /** Resolve Garmin sport key: event type first, then workout_doc.sport_type. */
+    private String sportKeyFor(Map<String, Object> ev) {
+        String type = ev.get("type") != null ? ev.get("type").toString() : null;
+        if (type == null && ev.get("workout_doc") instanceof Map<?, ?> doc) {
+            Object st = doc.get("sport_type");
+            if (st != null) type = st.toString();
+        }
+        return type != null && type.toLowerCase().contains("run") ? "run" : "ride";
     }
 
     private void deleteGarminWorkout(String username, Integer intervalsEventId) {

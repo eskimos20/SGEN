@@ -96,8 +96,11 @@ public class GarminWorkoutService {
 
     @Async
     public void deleteWorkoutByIntervalsEvent(Long userId, Integer intervalsEventId) {
-        pushRepository.findByIntervalsEventId(intervalsEventId)
-                .ifPresent(push -> deletePush(userId, push));
+        // Several pushes can share an intervals_event_id after local id reuse —
+        // delete every Garmin object still referenced, skip finished rows.
+        for (GarminWorkoutPush push : pushRepository.findByIntervalsEventIdOrderByIdDesc(intervalsEventId)) {
+            if (!"DELETED".equals(push.getStatus())) deletePush(userId, push);
+        }
     }
 
     private void deletePush(Long userId, GarminWorkoutPush push) {
@@ -124,7 +127,9 @@ public class GarminWorkoutService {
     /** Reschedule = update the existing schedule's date. */
     @Async
     public void rescheduleByIntervalsEvent(Long userId, Integer intervalsEventId, LocalDate newDate) {
-        pushRepository.findByIntervalsEventId(intervalsEventId)
+        pushRepository.findByIntervalsEventIdOrderByIdDesc(intervalsEventId).stream()
+                .filter(p -> !"DELETED".equals(p.getStatus()))
+                .findFirst()
                 .ifPresent(push -> reschedulePush(userId, push, newDate));
     }
 

@@ -23,6 +23,8 @@ public class IntervalsEventService {
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
+    private final com.sgen.repository.GarminWorkoutPushRepository garminWorkoutPushRepository;
+    private final com.sgen.repository.CalendarEventRepository calendarEventRepository;
     private final com.sgen.service.garmin.GarminMergeService garminMergeService;
 
     public JsonNode fetchCalendarEvents(String username, String oldest, String newest) {
@@ -219,8 +221,13 @@ public class IntervalsEventService {
             // best-effort and remember the upstream id for update/delete.
             var ev = (com.fasterxml.jackson.databind.node.ObjectNode)
                     objectMapper.valueToTree(eventData);
-            ev.put("id", nextLocalEventId(ctx.user.getId()));
+            ev.put("id", nextLocalEventId(ctx.user));
             ev.put("sgen_local", true);
+            // Scheduler events arrive without category — a workout_doc means
+            // WORKOUT, same default Intervals applies.
+            if (!ev.hasNonNull("category") && ev.hasNonNull("workout_doc")) {
+                ev.put("category", "WORKOUT");
+            }
             normalizeEndDate(ev);
             intervalsMirrorService.saveEvents(ctx.user.getId(),
                     objectMapper.createArrayNode().add(ev));
@@ -294,13 +301,30 @@ public class IntervalsEventService {
         }
     }
 
-    private int nextLocalEventId(Long userId) {
+    /**
+     * Allocate a local event id. Negative ids must NEVER be reused: a deleted
+     * event frees its id, but garmin_workout_pushes and calendar_events keep
+     * historical rows keyed by it — reusing the id collides the new event
+     * with stale push/deload records. Scan all three tables for the lowest
+     * id ever assigned.
+     */
+    private int nextLocalEventId(com.sgen.entity.User user) {
         int min = 0;
-        for (var row : intervalsEventRepository.findByUserId(userId)) {
+        for (var row : intervalsEventRepository.findByUserId(user.getId())) {
             try {
                 int v = Integer.parseInt(row.getEventId());
                 if (v < min) min = v;
             } catch (Exception ignored) {}
+        }
+        for (var push : garminWorkoutPushRepository.findByUserId(user.getId())) {
+            Integer v = push.getIntervalsEventId();
+            if (v != null && v < min) min = v;
+        }
+        if (user.getUsername() != null) {
+            for (var ce : calendarEventRepository.findByUsernameOrderByEventDate(user.getUsername())) {
+                Integer v = ce.getIntervalsEventId();
+                if (v != null && v < min) min = v;
+            }
         }
         return min - 1;
     }
