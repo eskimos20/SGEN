@@ -26,23 +26,32 @@ public class ZoneTimeCalculator {
     private final GarminSportSettingsService sportSettings;
 
     public ObjectNode compute(JsonNode streams, Long userId, String sportKey) {
+        return compute(streams, userId, sportKey, null);
+    }
+
+    /**
+     * @param intervalsType resolved Intervals activity type (e.g. "NordicSki") —
+     *                     its sport-settings entry (zones, LTHR, FTP) wins over
+     *                     the coarse sport_key mapping.
+     */
+    public ObjectNode compute(JsonNode streams, Long userId, String sportKey, String intervalsType) {
         ObjectNode out = M.createObjectNode();
         ArrayNode watts = streams.has("watts") ? (ArrayNode) streams.get("watts") : null;
         ArrayNode hr = streams.has("heartrate") ? (ArrayNode) streams.get("heartrate") : null;
         ArrayNode time = streams.has("time") ? (ArrayNode) streams.get("time") : null;
 
-        Double ftp = sportSettings.ftpWatts(userId, sportKey);
-        Integer lthr = sportSettings.lthr(userId, sportKey);
+        Double ftp = sportSettings.ftpWatts(userId, sportKey, intervalsType);
+        Integer lthr = sportSettings.lthr(userId, sportKey, intervalsType);
 
         if (watts != null && ftp != null && ftp > 0) {
             // User's own power_zones (%FTP upper bounds) beat Coggan defaults.
-            double[] pct = sportSettings.powerZoneBoundsPct(userId, sportKey);
+            double[] pct = sportSettings.powerZoneBoundsPct(userId, sportKey, intervalsType);
             out.set("icu_zone_times", zoneTimes(watts, time,
                     bounds(pct != null ? pct : POWER_BOUNDS_PCT, ftp)));
         }
         if (hr != null) {
             // User's own hr_zones are absolute BPM bounds — compare directly.
-            double[] bpm = sportSettings.hrZoneBoundsBpm(userId, sportKey);
+            double[] bpm = sportSettings.hrZoneBoundsBpm(userId, sportKey, intervalsType);
             if (bpm != null) {
                 out.set("icu_hr_zone_times", zoneTimes(hr, time, bpm));
             } else if (lthr != null && lthr > 0) {

@@ -36,6 +36,7 @@ public class GarminActivityMapper {
     private final GarminActivityStreamsRepository streamsRepository;
     private final GarminActivityIntervalRepository intervalRepository;
     private final TrainingLoadCalculator trainingLoadCalculator;
+    private final GarminMergeService mergeService;
     private final IntervalDetectionService intervalDetectionService;
     private final FitnessModelService fitnessModelService;
     private final ObjectMapper objectMapper;
@@ -52,7 +53,7 @@ public class GarminActivityMapper {
         }
         // Summary-only pushes carry avg HR + duration — enough for HRSS.
         if (!Boolean.TRUE.equals(act.getLoadOverridden())) {
-            Double load = trainingLoadCalculator.compute(act, null);
+            Double load = trainingLoadCalculator.compute(act, null, mergeService.intervalsTypeFor(act));
             if (load != null) act.setTrainingLoad(load);
         }
         activityRepository.save(act);
@@ -74,7 +75,7 @@ public class GarminActivityMapper {
             applyStreamDerivedMetrics(act, streams);
             detectIntervals(act, item.path("laps"), streams);
             if (!Boolean.TRUE.equals(act.getLoadOverridden())) {
-                Double load = trainingLoadCalculator.compute(act, streams);
+                Double load = trainingLoadCalculator.compute(act, streams, mergeService.intervalsTypeFor(act));
                 if (load != null) act.setTrainingLoad(load);
             }
             activityRepository.save(act);

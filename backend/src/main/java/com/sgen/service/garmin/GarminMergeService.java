@@ -140,9 +140,7 @@ public class GarminMergeService {
         n.put("name", a.getName());
         // A user-picked type (icu_type) always wins — otherwise map the
         // Garmin activity_type enum onto Intervals' activity types.
-        n.put("type", a.getIcuType() != null && !a.getIcuType().isBlank()
-                ? a.getIcuType()
-                : toIntervalsType(a.getSportType(), a.getActivityType()));
+        n.put("type", intervalsTypeFor(a));
         n.put("source", "GARMIN");
         n.put("start_date", a.getStartTime() != null
                 ? Instant_at(a.getStartTime()) : null);
@@ -183,6 +181,17 @@ public class GarminMergeService {
 
     private String Instant_at(long epoch) {
         return java.time.Instant.ofEpochSecond(epoch).toString();
+    }
+
+    /**
+     * The Intervals.icu type a stored Garmin activity resolves to:
+     * user override (icu_type) > activity_type mapping > sport_key fallback.
+     * Used both for display and for sport-settings/zone lookups.
+     */
+    public String intervalsTypeFor(GarminActivity a) {
+        return a.getIcuType() != null && !a.getIcuType().isBlank()
+                ? a.getIcuType()
+                : toIntervalsType(a.getSportType(), a.getActivityType());
     }
 
     private String toIntervalsType(String sportType, String activityType) {

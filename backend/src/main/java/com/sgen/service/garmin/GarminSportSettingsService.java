@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Resolves FTP/LTHR for a user+sport: Intervals sport-settings first,
  * then local_sport_settings fallback. Shared by TrainingLoadCalculator
@@ -24,12 +27,24 @@ public class GarminSportSettingsService {
     private final UserRepository userRepository;
 
     public Double ftpWatts(Long userId, String sportKey) {
+        return ftpWatts(userId, sportKey, null);
+    }
+
+    /**
+     * FTP for a user+sport. When intervalsType is set (e.g. "NordicSki" — the
+     * resolved Intervals type of the activity) it is matched against the
+     * user's sport-settings `types` first; the sport_key-mapped type is the
+     * fallback, then local_sport_settings.
+     */
+    public Double ftpWatts(Long userId, String sportKey, String intervalsType) {
         try {
             String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
             if (username != null) {
                 JsonNode settings = intervalsAthleteService.getSportSettings(username);
-                Integer ftp = intervalsAthleteService.getFtpForSport(settings, toIntervalsType(sportKey));
-                if (ftp != null && ftp > 0) return ftp.doubleValue();
+                for (String t : lookupTypes(sportKey, intervalsType)) {
+                    Integer ftp = intervalsAthleteService.getFtpForSport(settings, t);
+                    if (ftp != null && ftp > 0) return ftp.doubleValue();
+                }
             }
         } catch (Exception ignored) {}
         return localSportSettingsRepository.findByUserIdAndSportKey(userId, sportKeyOrDefault(sportKey))
@@ -37,12 +52,19 @@ public class GarminSportSettingsService {
     }
 
     public Integer lthr(Long userId, String sportKey) {
+        return lthr(userId, sportKey, null);
+    }
+
+    /** LTHR — same lookup order as {@link #ftpWatts}. */
+    public Integer lthr(Long userId, String sportKey, String intervalsType) {
         try {
             String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
             if (username != null) {
                 JsonNode settings = intervalsAthleteService.getSportSettings(username);
-                Integer lthr = intervalsAthleteService.getLthrForSport(settings, toIntervalsType(sportKey));
-                if (lthr != null && lthr > 0) return lthr;
+                for (String t : lookupTypes(sportKey, intervalsType)) {
+                    Integer lthr = intervalsAthleteService.getLthrForSport(settings, t);
+                    if (lthr != null && lthr > 0) return lthr;
+                }
             }
         } catch (Exception ignored) {}
         return localSportSettingsRepository.findByUserIdAndSportKey(userId, sportKeyOrDefault(sportKey))
@@ -55,7 +77,11 @@ public class GarminSportSettingsService {
      * should fall back to %LTHR defaults.
      */
     public double[] hrZoneBoundsBpm(Long userId, String sportKey) {
-        return zoneBounds(userId, sportKey, "hr_zones");
+        return hrZoneBoundsBpm(userId, sportKey, null);
+    }
+
+    public double[] hrZoneBoundsBpm(Long userId, String sportKey, String intervalsType) {
+        return zoneBounds(userId, sportKey, intervalsType, "hr_zones");
     }
 
     /**
@@ -63,19 +89,37 @@ public class GarminSportSettingsService {
      * settings (power_zones). Null when not configured.
      */
     public double[] powerZoneBoundsPct(Long userId, String sportKey) {
-        return zoneBounds(userId, sportKey, "power_zones");
+        return powerZoneBoundsPct(userId, sportKey, null);
     }
 
-    private double[] zoneBounds(Long userId, String sportKey, String field) {
+    public double[] powerZoneBoundsPct(Long userId, String sportKey, String intervalsType) {
+        return zoneBounds(userId, sportKey, intervalsType, "power_zones");
+    }
+
+    private double[] zoneBounds(Long userId, String sportKey, String intervalsType, String field) {
         try {
             String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
             if (username != null) {
                 JsonNode settings = intervalsAthleteService.getSportSettings(username);
-                double[] b = intervalsAthleteService.getZoneBoundsForSport(settings, toIntervalsType(sportKey), field);
-                if (b != null && b.length > 0) return b;
+                for (String t : lookupTypes(sportKey, intervalsType)) {
+                    double[] b = intervalsAthleteService.getZoneBoundsForSport(settings, t, field);
+                    if (b != null && b.length > 0) return b;
+                }
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /**
+     * Settings lookup order: the resolved Intervals activity type first
+     * ("NordicSki"), then the coarse sport_key mapping ("other" → "Ride").
+     */
+    private List<String> lookupTypes(String sportKey, String intervalsType) {
+        List<String> out = new ArrayList<>(2);
+        if (intervalsType != null && !intervalsType.isBlank()) out.add(intervalsType);
+        String mapped = toIntervalsType(sportKey);
+        if (!out.contains(mapped)) out.add(mapped);
+        return out;
     }
 
     /** Athlete resting HR from the Intervals profile (icu_resting_hr). */
@@ -106,11 +150,17 @@ public class GarminSportSettingsService {
 
     /** Max HR for a sport — Intervals sport-settings, any sport's max as fallback. */
     public Integer maxHr(Long userId, String sportKey) {
+        return maxHr(userId, sportKey, null);
+    }
+
+    public Integer maxHr(Long userId, String sportKey, String intervalsType) {
         try {
             String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
             if (username != null) {
                 JsonNode settings = intervalsAthleteService.getSportSettings(username);
-                Integer maxHr = intervalsAthleteService.getMaxHrForSport(settings, toIntervalsType(sportKey));
+                String preferred = intervalsType != null && !intervalsType.isBlank()
+                        ? intervalsType : toIntervalsType(sportKey);
+                Integer maxHr = intervalsAthleteService.getMaxHrForSport(settings, preferred);
                 if (maxHr != null && maxHr > 0) return maxHr;
             }
         } catch (Exception ignored) {}

@@ -48,11 +48,13 @@ public class GarminActivityViewService {
             details.put("streams", streams);
         }
 
+        String intervalsType = mergeService.intervalsTypeFor(act);
+
         // Lazy backfill: activities stored before load computation existed
         // (e.g. summary-only pushes like gym sessions) get HRSS on first view.
         if (act.getTrainingLoad() == null && !Boolean.TRUE.equals(act.getLoadOverridden())
                 && !Boolean.TRUE.equals(act.getManual())) {
-            Double load = trainingLoadCalculator.compute(act, streams);
+            Double load = trainingLoadCalculator.compute(act, streams, intervalsType);
             if (load != null) {
                 act.setTrainingLoad(load);
                 activityRepository.save(act);
@@ -91,7 +93,7 @@ public class GarminActivityViewService {
             details.put("powerCurve", CurveCalculator.curve(streams.get("watts")));
             details.put("hrCurve", CurveCalculator.curve(streams.get("heartrate")));
             details.put("mapData", mapData(streams));
-            ObjectNode zones = zoneTimeCalculator.compute(streams, userId, act.getSportType());
+            ObjectNode zones = zoneTimeCalculator.compute(streams, userId, act.getSportType(), intervalsType);
             if (zones.has("icu_zone_times")) {
                 ((ObjectNode) details.get("activity")).set("icu_zone_times", zones.get("icu_zone_times"));
             }

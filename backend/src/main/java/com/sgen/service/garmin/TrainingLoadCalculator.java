@@ -23,10 +23,18 @@ public class TrainingLoadCalculator {
     private final GarminSportSettingsService sportSettings;
 
     public Double compute(GarminActivity act, JsonNode streams) {
+        return compute(act, streams, null);
+    }
+
+    /**
+     * @param intervalsType resolved Intervals activity type (e.g. "NordicSki") —
+     *                     its sport-settings thresholds win over sport_key.
+     */
+    public Double compute(GarminActivity act, JsonNode streams, String intervalsType) {
         ArrayNode watts = streams != null && streams.has("watts")
                 ? (ArrayNode) streams.get("watts") : null;
         if (watts != null && watts.size() > 60) {
-            Double ftp = sportSettings.ftpWatts(act.getUserId(), act.getSportType());
+            Double ftp = sportSettings.ftpWatts(act.getUserId(), act.getSportType(), intervalsType);
             if (ftp != null && ftp > 0) {
                 double np = normalizedPower(watts);
                 if (np > 0) {
@@ -36,7 +44,7 @@ public class TrainingLoadCalculator {
                 }
             }
         }
-        return hrTss(act);
+        return hrTss(act, intervalsType);
     }
 
     /** Classic 30s-rolling-average fourth-power NP. */
@@ -68,15 +76,15 @@ public class TrainingLoadCalculator {
      * k/b: 0.64/1.92 men, 0.86/1.67 women.
      * maxHR falls back to LTHR/0.95, restingHR to 60 when not configured.
      */
-    private Double hrTss(GarminActivity act) {
+    private Double hrTss(GarminActivity act, String intervalsType) {
         if (act.getAvgHr() == null || act.getAvgHr() <= 0) return null;
-        Integer lthr = sportSettings.lthr(act.getUserId(), act.getSportType());
+        Integer lthr = sportSettings.lthr(act.getUserId(), act.getSportType(), intervalsType);
         if (lthr == null || lthr <= 0) return null;
         double durationS = durationS(act, 0);
         if (durationS <= 0) return null;
 
         int resting = Optional.ofNullable(sportSettings.restingHr(act.getUserId())).orElse(60);
-        int max = Optional.ofNullable(sportSettings.maxHr(act.getUserId(), act.getSportType()))
+        int max = Optional.ofNullable(sportSettings.maxHr(act.getUserId(), act.getSportType(), intervalsType))
                 .orElse((int) Math.round(lthr / 0.95));
         if (max <= lthr || resting >= max) return null;
 
