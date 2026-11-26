@@ -161,6 +161,14 @@ public class GarminMergeService {
         n.put("average_watts", a.getAvgPower());
         n.put("max_watts", a.getMaxPower());
         n.put("average_speed", a.getAvgSpeed());
+        // Intervals-format pace (m/s) — needed for pace display on pace sports
+        // (skiing etc.) where Intervals derives it from average_speed.
+        Double pace = a.getAvgSpeed();
+        int moveSecs = Math.max(moving, dur);
+        if ((pace == null || pace <= 0) && a.getDistanceM() != null && a.getDistanceM() > 0 && moveSecs > 0) {
+            pace = a.getDistanceM() / moveSecs;
+        }
+        n.put("pace", pace);
         n.put("average_cadence", a.getAvgCadence());
         n.put("total_elevation_gain", a.getElevationGain());
         n.put("total_elevation_loss", a.getElevationLoss());

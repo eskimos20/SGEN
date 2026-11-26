@@ -71,6 +71,15 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
     activityType.toLowerCase() === 'virtualrun'
   );
 
+  // Sports where pace-per-km is a meaningful metric (running plus distance-
+  // paced sports like Nordic skiing — Intervals sets pace for these too).
+  const isPaceSport = isRunning || (activityType && (
+    activityType.toLowerCase().includes('ski') ||
+    activityType.toLowerCase().includes('snowshoe') ||
+    activityType.toLowerCase() === 'walk' ||
+    activityType.toLowerCase() === 'rollerski'
+  ));
+
   // Calculate max cadence from intervals (since it's not in the activity object)
   const maxCadenceFromIntervals = Array.isArray(allIntervals) && allIntervals.length > 0
     ? Math.max(...allIntervals.map(i => i.max_cadence || 0).filter(c => c > 0))
@@ -440,8 +449,8 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
           </div>
           </Tooltip>
         )}
-        {/* Pace - for running activities */}
-        {isRunning && formatPace(paceValue) && (
+        {/* Pace - for pace sports (running, skiing, walking) */}
+        {isPaceSport && formatPace(paceValue) && (
           <Tooltip text="Average pace (min/km) for the activity.">
             <div className="bg-white rounded-lg p-3 text-center shadow-sm cursor-default">
               <Footprints className="h-5 w-5 text-cyan-600 mx-auto mb-1" />
@@ -485,8 +494,8 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
       {/* Power Curve (for cycling) */}
       {powerCurve && <ActivityPowerCurve powerCurve={powerCurve} />}
 
-      {/* Pace Curve (for running) */}
-      {isRunning && (
+      {/* Pace Curve (for pace sports) */}
+      {isPaceSport && (
         <div className="bg-white rounded-lg p-4 shadow-sm">
           {paceCurve ? (
             <PaceCurveChart paceCurveHistory={[paceCurve]} />
