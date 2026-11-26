@@ -161,6 +161,9 @@ public class GarminMergeService {
         n.put("total_elevation_gain", a.getElevationGain());
         n.put("total_elevation_loss", a.getElevationLoss());
         n.put("icu_training_load", a.getTrainingLoad());
+        n.put("icu_rpe", a.getRpe());
+        n.put("feel", a.getFeel());
+        n.put("description", a.getDescription());
         n.put("device_name", a.getDeviceName());
         n.put("external_id", String.valueOf(a.getGarminActivityId()));
         return n;

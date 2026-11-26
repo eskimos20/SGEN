@@ -174,12 +174,23 @@ public class IntervalsActivityOpsService {
             act.setTrainingLoad(v != null ? ((Number) v).doubleValue() : null);
             act.setLoadOverridden(true);
         }
+        if (updates.containsKey("icu_rpe")) {
+            Object v = updates.get("icu_rpe");
+            act.setRpe(v != null ? ((Number) v).intValue() : null);
+        }
+        if (updates.containsKey("feel")) {
+            Object v = updates.get("feel");
+            act.setFeel(v != null ? ((Number) v).intValue() : null);
+        }
+        if (updates.containsKey("description")) {
+            act.setDescription((String) updates.get("description"));
+        }
         if (updates.containsKey("type")) {
             act.setSportType(intervalsTypeToSportKey(String.valueOf(updates.get("type"))));
         }
         garminActivityRepository.save(act);
         fitnessModelService.rebuildGarminLoads(ctx.user.getId());
-        pushLoadToIntervalsCopy(ctx, act, updates);
+        pushToIntervalsCopy(ctx, act, updates);
         return objectMapper.convertValue(garminMergeService.toIntervalsActivityJson(act), Map.class);
     }
 
@@ -194,9 +205,17 @@ public class IntervalsActivityOpsService {
         };
     }
 
-    /** Best-effort mirror of the load override onto the Intervals copy. */
-    private void pushLoadToIntervalsCopy(ApiContext ctx, com.sgen.entity.GarminActivity act, Map<String, Object> updates) {
-        if (!updates.containsKey("icu_training_load") || act.getStartDateLocal() == null) return;
+    /** Best-effort mirror of editable fields onto the Intervals copy. */
+    private static final java.util.Set<String> UPSTREAM_FIELDS =
+            java.util.Set.of("name", "icu_rpe", "feel", "description", "icu_training_load", "type");
+
+    private void pushToIntervalsCopy(ApiContext ctx, com.sgen.entity.GarminActivity act, Map<String, Object> updates) {
+        if (act.getStartDateLocal() == null) return;
+        var upstream = new java.util.HashMap<String, Object>();
+        for (String f : UPSTREAM_FIELDS) {
+            if (updates.containsKey(f)) upstream.put(f, updates.get(f));
+        }
+        if (upstream.isEmpty()) return;
         try {
             var day = act.getStartDateLocal().toLocalDate();
             for (var row : intervalsActivityRepository
@@ -205,10 +224,10 @@ public class IntervalsActivityOpsService {
                 JsonNode payload = objectMapper.readTree(row.getPayloadJson());
                 if (garminMergeService.isDuplicateOfLocal(List.of(act), payload)) {
                     ctx.client.put().uri("/api/v1/activity/{id}", row.getActivityId())
-                            .bodyValue(Map.of("icu_training_load", updates.get("icu_training_load")))
+                            .bodyValue(upstream)
                             .retrieve().bodyToMono(String.class).block();
                     if (payload instanceof com.fasterxml.jackson.databind.node.ObjectNode on) {
-                        on.set("icu_training_load", objectMapper.valueToTree(updates.get("icu_training_load")));
+                        upstream.forEach((k, v) -> on.set(k, objectMapper.valueToTree(v)));
                         row.setPayloadJson(on.toString());
                         intervalsActivityRepository.save(row);
                     }
@@ -216,7 +235,7 @@ public class IntervalsActivityOpsService {
                 }
             }
         } catch (Exception e) {
-            log.debug("Intervals load sync for garmin activity {} failed: {}", act.getId(), e.getMessage());
+            log.debug("Intervals sync for garmin activity {} failed: {}", act.getId(), e.getMessage());
         }
     }
 

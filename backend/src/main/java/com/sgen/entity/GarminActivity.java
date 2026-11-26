@@ -87,6 +87,16 @@ public class GarminActivity {
     @Column(name = "load_overridden", nullable = false)
     private Boolean loadOverridden = false;
 
+    /** User feedback — RPE (1-10), feel (1-5), free-text description. */
+    @Column(name = "rpe")
+    private Integer rpe;
+
+    @Column(name = "feel")
+    private Integer feel;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @Builder.Default
     @Column(name = "manual", nullable = false)
     private Boolean manual = false;

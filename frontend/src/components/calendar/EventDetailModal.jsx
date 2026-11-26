@@ -162,6 +162,14 @@ const EventDetailModal = ({
       if (setSelectedEvent) {
         setSelectedEvent(updatedEvent);
       }
+      // Merge the saved fields into the detail payload too — otherwise the
+      // detail panel keeps showing pre-edit TSS/RPE until a refetch.
+      if (setActivityDetails) {
+        setActivityDetails(prev => prev ? ({
+          ...prev,
+          activity: { ...(prev.activity || {}), ...feedback }
+        }) : prev);
+      }
 
       // Apply pending intervals if any
       const pendingIntervals = findIntervalsRef.current?.getPendingPayload();
