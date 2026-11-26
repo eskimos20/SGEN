@@ -221,6 +221,7 @@ public class IntervalsEventService {
                     objectMapper.valueToTree(eventData);
             ev.put("id", nextLocalEventId(ctx.user.getId()));
             ev.put("sgen_local", true);
+            normalizeEndDate(ev);
             intervalsMirrorService.saveEvents(ctx.user.getId(),
                     objectMapper.createArrayNode().add(ev));
             pushEventToIntervals(ctx, ev);
@@ -279,6 +280,20 @@ public class IntervalsEventService {
         }
     }
 
+    /**
+     * Intervals normalizes an end_date_local with a non-midnight time to that
+     * same date at 00:00 (i.e. "end of the previous day"). The outbound
+     * payload keeps the raw value (Intervals normalizes it), but the locally
+     * stored copy must match — otherwise a one-day event renders as two days
+     * in our calendar.
+     */
+    private void normalizeEndDate(com.fasterxml.jackson.databind.node.ObjectNode ev) {
+        String ed = ev.path("end_date_local").asText("");
+        if (ed.length() >= 19 && !"00:00:00".equals(ed.substring(11, 19))) {
+            ev.put("end_date_local", ed.substring(0, 10) + "T00:00:00");
+        }
+    }
+
     private int nextLocalEventId(Long userId) {
         int min = 0;
         for (var row : intervalsEventRepository.findByUserId(userId)) {
@@ -305,6 +320,7 @@ public class IntervalsEventService {
         try {
             var node = (com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.readTree(row.getPayloadJson());
             node.setAll((com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.valueToTree(updates));
+            normalizeEndDate(node);
             intervalsMirrorService.saveEvents(userId, objectMapper.createArrayNode().add(node));
             return node;
         } catch (Exception e) {
