@@ -24,6 +24,7 @@ public class GarminFileService {
 
     private final com.sgen.repository.UserRepository userRepository;
     private final com.sgen.service.UserLookupService userLookupService;
+    private final com.sgen.service.IntervalsActivityOpsService activityOpsService;
     private final GarminFileQueueItemRepository fileQueueRepository;
     private final GarminConnectionRepository connectionRepository;
     private final GarminOAuthService oauthService;
@@ -64,6 +65,7 @@ public class GarminFileService {
             q.setFitBytes(bytes);
             q.setStatus("FETCHED");
             q.setFetchedAt(LocalDateTime.now());
+            uploadToIntervals(q, bytes);
         } catch (Exception e) {
             q.setStatus("FAILED");
             q.setAttempts(q.getAttempts() + 1);
@@ -72,6 +74,25 @@ public class GarminFileService {
             log.warn("Garmin file fetch failed for {}: {}", q.getSummaryId(), e.getMessage());
         }
         fileQueueRepository.save(q);
+    }
+
+    private void uploadToIntervals(GarminFileQueueItem q, byte[] bytes) {
+        if (q.getUserId() == null || bytes == null || bytes.length == 0) return;
+        String username = userLookupService.usernameOf(q.getUserId());
+        if (username == null) return;
+        try {
+            String filename = "garmin-activity-" + q.getGarminActivityId()
+                    + (q.getFileType() != null ? "." + q.getFileType().toLowerCase() : ".fit");
+            activityOpsService.uploadActivity(username, bytes, filename, null, null);
+            q.setStatus("UPLOADED");
+            log.info("Uploaded Garmin file {} ({} bytes) to Intervals.icu for user {}",
+                    q.getSummaryId(), bytes.length, username);
+        } catch (Exception e) {
+            q.setLastError("Intervals upload failed: " + (e.getMessage() != null
+                    ? e.getMessage().substring(0, Math.min(950, e.getMessage().length())) : "unknown"));
+            log.warn("Intervals upload failed for Garmin file {} (user {}): {}",
+                    q.getSummaryId(), username, e.getMessage());
+        }
     }
 
 }

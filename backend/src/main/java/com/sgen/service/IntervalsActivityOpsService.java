@@ -150,10 +150,18 @@ public class IntervalsActivityOpsService {
     // -------------------------------------------------------------------------
 
     public JsonNode uploadActivity(String username, MultipartFile file, String name, String description) {
+        try {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "activity.fit";
+            return uploadActivity(username, file.getBytes(), originalFilename, name, description);
+        } catch (java.io.IOException e) {
+            log.error("Failed to upload activity for user {}: {}", username, e.getMessage());
+            throw new RuntimeException("Failed to upload activity: " + e.getMessage());
+        }
+    }
+
+    public JsonNode uploadActivity(String username, byte[] fileBytes, String originalFilename, String name, String description) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
-            byte[] fileBytes = file.getBytes();
-            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "activity.fit";
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
             builder.part("file", new ByteArrayResource(fileBytes) {
                 @Override
