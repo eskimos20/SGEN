@@ -11,9 +11,10 @@ import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 const PROVIDERS = [
   {
     key: 'garmin', name: 'Garmin Connect', writable: true,
-    isConnected: (a) => !!(a.icu_garmin_last_upload || a.icu_garmin_sync_activities ||
-        a.icu_garmin_health || a.icu_garmin_training ||
-        a.icu_garmin_download_wellness || a.icu_garmin_upload_workouts),
+    // icu_garmin_health/training are OAuth-scope flags — they go false when
+    // the user disconnects Garmin on intervals.icu. icu_garmin_last_upload is
+    // just a last-activity timestamp that persists after disconnect.
+    isConnected: (a) => !!(a.icu_garmin_health || a.icu_garmin_training),
     options: [
       { field: 'icu_garmin_sync_activities', label: 'Download activities' },
       // icu_garmin_health / icu_garmin_training are capability flags derived
