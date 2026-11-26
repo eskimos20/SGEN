@@ -35,7 +35,9 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   const paceCurve = details.paceCurve || null;
   
   const activityId = activity?.id;
-  const hasMap = mapData.latlngs && mapData.latlngs.length > 0;
+  const hasMap = Array.isArray(mapData.latlngs)
+    && mapData.latlngs.filter(p => p && Array.isArray(p) && p.length >= 2
+        && typeof p[0] === 'number' && typeof p[1] === 'number').length >= 2;
 
   const sportSettings = athleteProfile?.athlete?.sportSettings?.[0] || {};
   // Indoor activities compare FTP achievements against indoor FTP (falls back to regular FTP)

@@ -103,7 +103,17 @@ public class GarminActivityViewService {
         // Trim again at serve time — time-based, so already-trimmed stored
         // streams are unaffected (same window, already-null points stay null).
         GpsTrackTrimmer.trimNormalized(streams);
-        if (streams.has("latlng")) map.set("latlngs", streams.get("latlng"));
+        // Only claim a map when at least two valid [lat,lng] pairs exist —
+        // indoor sessions (strength etc.) store all-null latlng samples and
+        // the frontend would otherwise render an empty Route Map box.
+        if (streams.get("latlng") instanceof com.fasterxml.jackson.databind.node.ArrayNode ll) {
+            int valid = 0;
+            for (JsonNode p : ll) {
+                if (p != null && p.isArray() && p.size() >= 2
+                        && p.get(0).isNumber() && p.get(1).isNumber()) valid++;
+            }
+            if (valid >= 2) map.set("latlngs", ll);
+        }
         return map;
     }
 
