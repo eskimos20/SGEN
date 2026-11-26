@@ -125,8 +125,12 @@ public class GarminMergeService {
         n.put("start_date", a.getStartTime() != null
                 ? Instant_at(a.getStartTime()) : null);
         n.put("start_date_local", a.getStartDateLocal() != null ? a.getStartDateLocal().format(ISO) : null);
-        n.put("moving_time", a.getMovingTimeS() != null && a.getMovingTimeS() > 0
-                ? a.getMovingTimeS() : a.getDurationS());
+        // Garmin's moving duration excludes auto-pause/short stops that
+        // Intervals counts in moving_time — use the larger so volume totals
+        // match what Intervals.icu shows for the same session.
+        int moving = a.getMovingTimeS() != null ? a.getMovingTimeS() : 0;
+        int dur = a.getDurationS() != null ? a.getDurationS() : 0;
+        n.put("moving_time", Math.max(moving, dur));
         n.put("elapsed_time", a.getDurationS());
         n.put("distance", a.getDistanceM());
         n.put("calories", a.getCalories());
