@@ -95,51 +95,57 @@ public class GarminWorkoutService {
     }
 
     @Async
-    public void deleteWorkout(Long userId, Long calendarEventId) {
-        pushRepository.findByCalendarEventId(calendarEventId).ifPresent(push -> {
-            WebClient client = clientFactory.clientForUser(userId);
-            try {
-                if (client != null && push.getGarminScheduleId() != null) {
-                    client.delete().uri("/training-api/schedule/" + push.getGarminScheduleId())
-                            .retrieve().toBodilessEntity().block();
-                }
-                if (client != null && push.getGarminWorkoutId() != null) {
-                    client.delete().uri("/training-api/workout/v2/" + push.getGarminWorkoutId())
-                            .retrieve().toBodilessEntity().block();
-                }
-                push.setStatus("DELETED");
-            } catch (Exception e) {
-                push.setStatus("FAILED");
-                push.setLastError(e.getMessage());
-                log.warn("Garmin workout delete failed for event {}: {}", calendarEventId, e.getMessage());
-            }
-            pushRepository.save(push);
-        });
+    public void deleteWorkoutByIntervalsEvent(Long userId, Integer intervalsEventId) {
+        pushRepository.findByIntervalsEventId(intervalsEventId)
+                .ifPresent(push -> deletePush(userId, push));
     }
 
-    /** Reschedule = delete old schedule + create new one for the same workout. */
-    @Async
-    public void reschedule(Long userId, Long calendarEventId, LocalDate newDate) {
-        pushRepository.findByCalendarEventId(calendarEventId).ifPresent(push -> {
-            WebClient client = clientFactory.clientForUser(userId);
-            try {
-                if (client != null && push.getGarminScheduleId() != null) {
-                    ObjectNode upd = objectMapper.createObjectNode();
-                    upd.put("scheduleId", Long.parseLong(push.getGarminScheduleId()));
-                    upd.put("workoutId", Long.parseLong(push.getGarminWorkoutId()));
-                    upd.put("date", newDate.toString());
-                    client.put().uri("/training-api/schedule/" + push.getGarminScheduleId())
-                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                            .bodyValue(upd.toString()).retrieve().bodyToMono(String.class).block();
-                    push.setScheduledDate(newDate);
-                    push.setStatus("SCHEDULED");
-                }
-            } catch (Exception e) {
-                push.setStatus("FAILED");
-                push.setLastError(e.getMessage());
+    private void deletePush(Long userId, GarminWorkoutPush push) {
+        WebClient client = clientFactory.clientForUser(userId);
+        try {
+            if (client != null && push.getGarminScheduleId() != null) {
+                client.delete().uri("/training-api/schedule/" + push.getGarminScheduleId())
+                        .retrieve().toBodilessEntity().block();
             }
-            pushRepository.save(push);
-        });
+            if (client != null && push.getGarminWorkoutId() != null) {
+                client.delete().uri("/training-api/workout/v2/" + push.getGarminWorkoutId())
+                        .retrieve().toBodilessEntity().block();
+            }
+            push.setStatus("DELETED");
+        } catch (Exception e) {
+            push.setStatus("FAILED");
+            push.setLastError(e.getMessage());
+            log.warn("Garmin workout delete failed for event {}: {}", push.getCalendarEventId(), e.getMessage());
+        }
+        pushRepository.save(push);
+    }
+
+    /** Reschedule = update the existing schedule's date. */
+    @Async
+    public void rescheduleByIntervalsEvent(Long userId, Integer intervalsEventId, LocalDate newDate) {
+        pushRepository.findByIntervalsEventId(intervalsEventId)
+                .ifPresent(push -> reschedulePush(userId, push, newDate));
+    }
+
+    private void reschedulePush(Long userId, GarminWorkoutPush push, LocalDate newDate) {
+        WebClient client = clientFactory.clientForUser(userId);
+        try {
+            if (client != null && push.getGarminScheduleId() != null) {
+                ObjectNode upd = objectMapper.createObjectNode();
+                upd.put("scheduleId", Long.parseLong(push.getGarminScheduleId()));
+                upd.put("workoutId", Long.parseLong(push.getGarminWorkoutId()));
+                upd.put("date", newDate.toString());
+                client.put().uri("/training-api/schedule/" + push.getGarminScheduleId())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .bodyValue(upd.toString()).retrieve().bodyToMono(String.class).block();
+                push.setScheduledDate(newDate);
+                push.setStatus("SCHEDULED");
+            }
+        } catch (Exception e) {
+            push.setStatus("FAILED");
+            push.setLastError(e.getMessage());
+        }
+        pushRepository.save(push);
     }
 
     private String extractDate(Map<String, Object> eventData) {

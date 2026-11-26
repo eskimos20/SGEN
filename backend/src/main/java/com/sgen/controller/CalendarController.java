@@ -269,8 +269,7 @@ public class CalendarController {
     private void deleteGarminWorkout(String username, Integer intervalsEventId) {
         try {
             User user = userService.getUserEntityByUsername(username);
-            calendarEventRepository.findByIntervalsEventIdAndUsername(intervalsEventId, username)
-                    .ifPresent(ev -> garminWorkoutService.deleteWorkout(user.getId(), ev.getId()));
+            garminWorkoutService.deleteWorkoutByIntervalsEvent(user.getId(), intervalsEventId);
         } catch (Exception e) {
             log.warn("Garmin workout delete skipped: {}", e.getMessage());
         }
@@ -283,9 +282,8 @@ public class CalendarController {
             String d = sdl.toString();
             if (d.length() < 10) return;
             User user = userService.getUserEntityByUsername(username);
-            calendarEventRepository.findByIntervalsEventIdAndUsername(intervalsEventId, username)
-                    .ifPresent(ev -> garminWorkoutService.reschedule(
-                            user.getId(), ev.getId(), java.time.LocalDate.parse(d.substring(0, 10))));
+            garminWorkoutService.rescheduleByIntervalsEvent(
+                    user.getId(), intervalsEventId, java.time.LocalDate.parse(d.substring(0, 10)));
         } catch (Exception e) {
             log.warn("Garmin reschedule skipped: {}", e.getMessage());
         }
