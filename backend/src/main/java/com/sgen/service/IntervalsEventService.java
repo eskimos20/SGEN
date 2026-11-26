@@ -126,32 +126,34 @@ public class IntervalsEventService {
         boolean localMaster = garminClientFactory.isConnected(ctx.user.getId());
         if (localMaster) {
             // Local DB is master: apply the update locally first, then push
-            // to Intervals best-effort. Local-only events (id < 0) skip the API.
+            // to Intervals best-effort. Positive ids are themselves the
+            // upstream id; local events carry theirs in sgen_intervals_id.
             JsonNode merged = mergeEventIntoMirror(ctx.user.getId(), eventId, updates);
-            if (eventId < 0) {
-                if (merged == null) throw new RuntimeException("Local event not found: " + eventId);
+            if (merged == null) {
+                throw new RuntimeException("Event not found: " + eventId);
+            }
+            Long upstreamId = upstreamIdFor(merged, eventId);
+            if (upstreamId == null) {
+                // Never reached Intervals — try creating it there now.
+                pushEventToIntervals(ctx, (com.fasterxml.jackson.databind.node.ObjectNode) merged);
                 return merged;
             }
             try {
                 String json = ctx.client.put()
                         .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
-                                ctx.user.getIntervalsAthleteId(), eventId)
+                                ctx.user.getIntervalsAthleteId(), upstreamId)
                         .bodyValue(updates)
                         .retrieve().bodyToMono(String.class).block();
                 JsonNode updated = objectMapper.readTree(json);
-                if (updated != null) {
+                if (updated != null && eventId > 0) {
                     intervalsMirrorService.saveEvents(ctx.user.getId(),
                             updated.isArray() ? updated : objectMapper.createArrayNode().add(updated));
                 }
-                return updated;
+                return merged;
             } catch (Exception e) {
-                if (merged != null) {
-                    log.warn("Intervals update failed for event {} — local master keeps change: {}",
-                            eventId, e.getMessage());
-                    return merged;
-                }
-                log.error("Failed to update event {}: {}", eventId, e.getMessage());
-                throw new RuntimeException("Failed to update event: " + e.getMessage());
+                log.warn("Intervals update failed for event {} — local master keeps change: {}",
+                        eventId, e.getMessage());
+                return merged;
             }
         }
         try {
@@ -173,13 +175,23 @@ public class IntervalsEventService {
         boolean localMaster = garminClientFactory.isConnected(ctx.user.getId());
         if (localMaster) {
             // Master: always remove locally; Intervals delete best-effort.
+            // Resolve the upstream id before deleting the local row.
+            Long upstreamId = null;
+            var row = intervalsEventRepository
+                    .findByUserIdAndEventId(ctx.user.getId(), String.valueOf(eventId)).orElse(null);
+            if (row != null) {
+                try {
+                    var payload = objectMapper.readTree(row.getPayloadJson());
+                    upstreamId = upstreamIdFor(payload, eventId);
+                } catch (Exception ignored) {}
+            }
             intervalsEventRepository.deleteByUserIdAndEventId(
                     ctx.user.getId(), String.valueOf(eventId));
-            if (eventId < 0) return; // local-only, never existed upstream
+            if (upstreamId == null) return; // never existed upstream
             try {
                 ctx.client.delete()
                         .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
-                                ctx.user.getIntervalsAthleteId(), eventId)
+                                ctx.user.getIntervalsAthleteId(), upstreamId)
                         .retrieve().bodyToMono(Void.class).block();
             } catch (Exception e) {
                 log.warn("Intervals delete failed for event {} — already removed locally: {}",
@@ -200,7 +212,20 @@ public class IntervalsEventService {
 
     public JsonNode createEvent(String username, Map<String, Object> eventData) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
-        boolean localMaster = garminClientFactory.isConnected(ctx.user.getId());
+        if (garminClientFactory.isConnected(ctx.user.getId())) {
+            // Local DB is master: always write the event locally first with a
+            // negative id (compatible with calendar_events and
+            // garmin_workout_pushes int columns), then push to Intervals
+            // best-effort and remember the upstream id for update/delete.
+            var ev = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    objectMapper.valueToTree(eventData);
+            ev.put("id", nextLocalEventId(ctx.user.getId()));
+            ev.put("sgen_local", true);
+            intervalsMirrorService.saveEvents(ctx.user.getId(),
+                    objectMapper.createArrayNode().add(ev));
+            pushEventToIntervals(ctx, ev);
+            return ev;
+        }
         try {
             List<Map<String, Object>> events = List.of(eventData);
             String json = ctx.client.post()
@@ -215,35 +240,43 @@ public class IntervalsEventService {
                                     .map(body -> new RuntimeException("API error " + response.statusCode() + ": " + body)))
                     .bodyToMono(String.class).block();
             JsonNode result = objectMapper.readTree(json);
-            if (localMaster && result != null) {
-                intervalsMirrorService.saveEvents(ctx.user.getId(),
-                        result.isArray() ? result : objectMapper.createArrayNode().add(result));
-            }
             if (result.isArray() && result.size() > 0) return result.get(0);
             return result;
         } catch (Exception e) {
-            if (!localMaster) {
-                throw new RuntimeException("Failed to create event: " + e.getMessage());
-            }
-            // Master is local: the event must exist in our DB even when
-            // Intervals is unreachable. Negative int ids stay compatible
-            // with calendar_events and garmin_workout_pushes (int columns).
-            log.warn("Intervals push failed for {} — storing event locally: {}",
-                    username, e.getMessage());
-            return createLocalEvent(ctx.user.getId(), eventData);
+            throw new RuntimeException("Failed to create event: " + e.getMessage());
         }
     }
 
-    /** Local-master event: negative int id, sgen_local marker (never pruned). */
-    private JsonNode createLocalEvent(Long userId, Map<String, Object> eventData) {
-        com.fasterxml.jackson.databind.node.ObjectNode ev =
-                (com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.valueToTree(eventData);
-        int id = nextLocalEventId(userId);
-        ev.put("id", id);
-        ev.put("sgen_local", true);
-        intervalsMirrorService.saveEvents(userId, objectMapper.createArrayNode().add(ev));
-        log.info("Created local-master event {} '{}' for userId {}", id, ev.path("name").asText(""), userId);
-        return ev;
+    /**
+     * Best-effort POST of a local-master event to Intervals. On success the
+     * upstream id is stored as sgen_intervals_id inside the payload so
+     * update/delete can address the Intervals copy later.
+     */
+    private void pushEventToIntervals(ApiContext ctx,
+                                      com.fasterxml.jackson.databind.node.ObjectNode ev) {
+        try {
+            var outbound = ev.deepCopy();
+            outbound.remove("id");
+            outbound.remove("sgen_local");
+            outbound.remove("sgen_intervals_id");
+            String json = ctx.client.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/athlete/{athleteId}/events/bulk")
+                            .queryParam("upsert", "true")
+                            .build(ctx.user.getIntervalsAthleteId()))
+                    .bodyValue(List.of(objectMapper.convertValue(outbound, Map.class)))
+                    .retrieve().bodyToMono(String.class).block();
+            JsonNode result = objectMapper.readTree(json);
+            JsonNode first = result.isArray() && result.size() > 0 ? result.get(0) : result;
+            if (first != null && first.hasNonNull("id")) {
+                ev.put("sgen_intervals_id", first.get("id").asLong());
+                intervalsMirrorService.saveEvents(ctx.user.getId(),
+                        objectMapper.createArrayNode().add(ev));
+            }
+        } catch (Exception e) {
+            log.warn("Intervals push failed for local event {} — stays local-only: {}",
+                    ev.path("id").asText(), e.getMessage());
+        }
     }
 
     private int nextLocalEventId(Long userId) {
@@ -255,6 +288,14 @@ public class IntervalsEventService {
             } catch (Exception ignored) {}
         }
         return min - 1;
+    }
+
+    /** Intervals-side id of an event: the id itself for upstream events,
+     *  sgen_intervals_id from the payload for local-master events. */
+    private Long upstreamIdFor(JsonNode payload, int eventId) {
+        if (eventId > 0) return (long) eventId;
+        var n = payload.path("sgen_intervals_id");
+        return n.isNumber() ? n.asLong() : null;
     }
 
     /** Merge update fields into the stored mirror event; returns merged node or null. */
