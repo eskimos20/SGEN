@@ -362,6 +362,18 @@ public class IntervalsMirrorService {
         }
     }
 
+    /** True when the event was created locally (negative int id or sgen_local flag). */
+    private boolean isLocalEvent(IntervalsEvent row) {
+        try {
+            if (Integer.parseInt(row.getEventId()) < 0) return true;
+        } catch (Exception ignored) {}
+        try {
+            return objectMapper.readTree(row.getPayloadJson()).path("sgen_local").asBoolean(false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** Same pruning for events in [from,to] whose ids are absent upstream. */
     @org.springframework.transaction.annotation.Transactional
     public void pruneEvents(Long userId, java.time.LocalDateTime from,
@@ -370,6 +382,9 @@ public class IntervalsMirrorService {
             for (var row : eventRepository
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(userId, from, to)) {
                 if (keepIds.contains(row.getEventId())) continue;
+                // Local-master events (negative ids / sgen_local) never
+                // exist upstream — absence must not delete them.
+                if (isLocalEvent(row)) continue;
                 eventRepository.deleteByUserIdAndEventId(userId, row.getEventId());
                 log.debug("Pruned mirror event {} (deleted upstream)", row.getEventId());
             }

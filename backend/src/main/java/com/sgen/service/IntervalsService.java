@@ -159,23 +159,8 @@ public class IntervalsService {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
             if (garminConnected) {
-                // Refresh the requested range from Intervals so events added,
-                // edited or deleted later (Garmin sync, other sources) reach
-                // the mirror — same pattern as the activities mirror sync.
-                try {
-                    JsonNode fetched = intervalsApi.getJson(client,
-                            uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/events")
-                                    .queryParam("oldest", oldest).queryParam("newest", newest)
-                                    .build(athleteId));
-                    if (fetched != null && fetched.isArray()) {
-                        var keepIds = new java.util.HashSet<String>();
-                        fetched.forEach(e -> keepIds.add(e.path("id").asText()));
-                        intervalsMirrorService.saveEvents(ctx.user.getId(), fetched);
-                        intervalsMirrorService.pruneEvents(ctx.user.getId(), from, to, keepIds);
-                    }
-                } catch (Exception e) {
-                    log.debug("Events mirror refresh failed: {}", e.getMessage());
-                }
+                // Local DB is the calendar master — Intervals is a write
+                // destination only, never a read source.
                 log.debug("SOURCE=DB user {} events served from local mirror", ctx.user.getUsername());
                 var rows = intervalsEventRepository
                         .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
