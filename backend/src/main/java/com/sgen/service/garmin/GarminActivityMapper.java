@@ -37,6 +37,7 @@ public class GarminActivityMapper {
     private final GarminActivityIntervalRepository intervalRepository;
     private final TrainingLoadCalculator trainingLoadCalculator;
     private final IntervalDetectionService intervalDetectionService;
+    private final FitnessModelService fitnessModelService;
     private final ObjectMapper objectMapper;
 
     /** Push item shape: flat summary object (no "summary" wrapper). */
@@ -71,6 +72,9 @@ public class GarminActivityMapper {
             if (load != null) act.setTrainingLoad(load);
             activityRepository.save(act);
         }
+        // Feed the local CTL/ATL model so Fitness/Form updates without
+        // waiting for the next page view (fetchAllData rebuild path).
+        fitnessModelService.rebuildGarminLoads(userId);
     }
 
     private Long resolveUserId(String garminUserId) {
