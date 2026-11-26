@@ -168,6 +168,7 @@ public class IntervalsActivityOpsService {
         }
         if (updates.containsKey("name")) {
             act.setName((String) updates.get("name"));
+            act.setNameOverridden(true);
         }
         if (updates.containsKey("icu_training_load")) {
             Object v = updates.get("icu_training_load");
@@ -186,7 +187,9 @@ public class IntervalsActivityOpsService {
             act.setDescription((String) updates.get("description"));
         }
         if (updates.containsKey("type")) {
-            act.setSportType(intervalsTypeToSportKey(String.valueOf(updates.get("type"))));
+            String t = String.valueOf(updates.get("type"));
+            act.setIcuType(t);
+            act.setSportType(intervalsTypeToSportKey(t));
         }
         garminActivityRepository.save(act);
         fitnessModelService.rebuildGarminLoads(ctx.user.getId());

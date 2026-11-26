@@ -24,6 +24,21 @@ const Tooltip = ({ text, children }) => {
   );
 };
 
+const FEEL_MAP = {
+  1: { emoji: '💪', label: 'Strong' },
+  2: { emoji: '😊', label: 'Good' },
+  3: { emoji: '😐', label: 'Normal' },
+  4: { emoji: '😕', label: 'Poor' },
+  5: { emoji: '😩', label: 'Weak' },
+};
+
+const rpeBadgeColor = (rpe) => {
+  if (rpe <= 3) return 'bg-green-500';
+  if (rpe <= 5) return 'bg-yellow-500';
+  if (rpe <= 7) return 'bg-orange-500';
+  return 'bg-red-500';
+};
+
 const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile }) => {
   const activityData = details.activity || {};
   const intervalsData = details.intervals || {};
@@ -35,6 +50,8 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   const paceCurve = details.paceCurve || null;
   
   const activityId = activity?.id;
+  // Local Garmin activities carry "garmin_<id>" — the Intervals link would 404.
+  const hasIntervalsId = activityId != null && /^\d+$/.test(String(activityId));
   const hasMap = Array.isArray(mapData.latlngs)
     && mapData.latlngs.filter(p => p && Array.isArray(p) && p.length >= 2
         && typeof p[0] === 'number' && typeof p[1] === 'number').length >= 2;
@@ -211,7 +228,7 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
   return (
     <div className="space-y-4 max-w-full overflow-hidden">
       {/* Activity Link */}
-      {activityId && (
+      {hasIntervalsId && (
         <div className="flex items-center justify-between bg-blue-50 rounded-lg p-3">
           <div className="flex items-center gap-2">
             <Bike className="h-5 w-5 text-blue-600" />
@@ -225,6 +242,33 @@ const ActivityDetailsView = ({ details, activity, formatDuration, athleteProfile
           >
             View on Intervals.icu →
           </a>
+        </div>
+      )}
+
+      {/* RPE / Feel / Notes */}
+      {(activityData.icu_rpe || activityData.feel || activityData.description) && (
+        <div className="bg-white sm:rounded-lg sm:shadow-sm p-3 sm:p-4">
+          {(activityData.icu_rpe || activityData.feel) && (
+            <div className="flex items-center gap-4 mb-2">
+              {activityData.icu_rpe > 0 && (
+                <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">
+                  <span className="font-medium">RPE</span>
+                  <span className={`px-2 py-0.5 rounded-full text-white text-xs font-bold ${rpeBadgeColor(activityData.icu_rpe)}`}>
+                    {activityData.icu_rpe}
+                  </span>
+                </span>
+              )}
+              {activityData.feel > 0 && FEEL_MAP[activityData.feel] && (
+                <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">
+                  <span>{FEEL_MAP[activityData.feel].emoji}</span>
+                  <span>{FEEL_MAP[activityData.feel].label}</span>
+                </span>
+              )}
+            </div>
+          )}
+          {activityData.description && (
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{activityData.description}</p>
+          )}
         </div>
       )}
 

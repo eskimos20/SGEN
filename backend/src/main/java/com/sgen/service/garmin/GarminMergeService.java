@@ -138,7 +138,11 @@ public class GarminMergeService {
         n.put("id", "garmin_" + a.getId());
         n.put("garmin_activity_id", a.getGarminActivityId());
         n.put("name", a.getName());
-        n.put("type", toIntervalsType(a.getSportType(), a.getActivityType()));
+        // A user-picked type (icu_type) always wins — otherwise map the
+        // Garmin activity_type enum onto Intervals' activity types.
+        n.put("type", a.getIcuType() != null && !a.getIcuType().isBlank()
+                ? a.getIcuType()
+                : toIntervalsType(a.getSportType(), a.getActivityType()));
         n.put("source", "GARMIN");
         n.put("start_date", a.getStartTime() != null
                 ? Instant_at(a.getStartTime()) : null);
@@ -174,6 +178,8 @@ public class GarminMergeService {
     }
 
     private String toIntervalsType(String sportType, String activityType) {
+        String mapped = mapGarminActivityType(activityType);
+        if (mapped != null) return mapped;
         if (sportType != null) {
             return switch (sportType) {
                 case "run" -> "Run";
@@ -184,6 +190,54 @@ public class GarminMergeService {
             };
         }
         return "Workout";
+    }
+
+    /** Garmin summary activityType enum -> Intervals.icu activity type. */
+    private String mapGarminActivityType(String activityType) {
+        if (activityType == null) return null;
+        return switch (activityType) {
+            case "RUNNING", "STREET_RUNNING", "TRACK_RUNNING", "ULTRA_RUN", "OBSTACLE_RUN",
+                 "TREADMILL_RUNNING", "INDOOR_RUNNING" -> "Run";
+            case "TRAIL_RUNNING" -> "TrailRun";
+            case "VIRTUAL_RUN" -> "VirtualRun";
+            case "CYCLING", "ROAD_BIKING", "TRACK_CYCLING", "RECUMBENT_CYCLING",
+                 "BMX", "CYCLOCROSS" -> "Ride";
+            case "INDOOR_CYCLING" -> "Ride";
+            case "MOUNTAIN_BIKING", "DOWNHILL_BIKING" -> "MountainBikeRide";
+            case "GRAVEL_CYCLING" -> "GravelRide";
+            case "E_BIKE_RIDING" -> "EBikeRide";
+            case "E_MOUNTAIN_BIKING" -> "EMountainBikeRide";
+            case "SWIMMING", "LAP_SWIMMING", "POOL_SWIMMING" -> "Swim";
+            case "OPEN_WATER_SWIMMING" -> "OpenWaterSwim";
+            case "WALKING", "CASUAL_WALKING", "SPEED_WALKING" -> "Walk";
+            case "HIKING" -> "Hike";
+            case "CROSS_COUNTRY_SKIING_WS", "SKATE_SKIING_WS" -> "NordicSki";
+            case "BACKCOUNTRY_SKIING_SNOWBOARDING_WS", "BACKCOUNTRY_SKIING" -> "BackcountrySki";
+            case "RESORT_SKIING_SNOWBOARDING_WS", "RESORT_SKIING" -> "AlpineSki";
+            case "SNOWBOARDING_WS" -> "Snowboard";
+            case "SNOW_SHOE_WS" -> "Snowshoe";
+            case "ROLLER_SKI" -> "RollerSki";
+            case "STRENGTH_TRAINING" -> "WeightTraining";
+            case "ROWING", "INDOOR_ROWING", "INDOOR_ROWING_V2" -> "Rowing";
+            case "ELLIPTICAL" -> "Elliptical";
+            case "STAIR_CLIMBING" -> "StairStepper";
+            case "YOGA" -> "Yoga";
+            case "PILATES" -> "Pilates";
+            case "HIIT" -> "HighIntensityIntervalTraining";
+            case "INLINE_SKATING" -> "InlineSkate";
+            case "ICE_SKATING" -> "IceSkate";
+            case "KAYAKING" -> "Kayaking";
+            case "STAND_UP_PADDLEBOARDING", "SUP" -> "StandUpPaddling";
+            case "SURFING" -> "Surfing";
+            case "WINDSURFING" -> "Windsurf";
+            case "KITESURFING" -> "Kitesurf";
+            case "GOLF" -> "Golf";
+            case "SOCCER" -> "Soccer";
+            case "TENNIS" -> "Tennis";
+            case "ROCK_CLIMBING" -> "RockClimbing";
+            case "MULTI_SPORT" -> "Other";
+            default -> null;
+        };
     }
 
     /**

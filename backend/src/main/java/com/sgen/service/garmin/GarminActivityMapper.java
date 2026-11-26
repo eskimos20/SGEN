@@ -106,7 +106,10 @@ public class GarminActivityMapper {
         }
         if (garminActivityId > 0) act.setGarminActivityId(garminActivityId);
         act.setSummaryId(s.path("summaryId").asText(act.getSummaryId()));
-        act.setName(s.path("activityName").asText(act.getName()));
+        // A name the user edited in SGEN survives updated-summary re-pushes.
+        if (!Boolean.TRUE.equals(act.getNameOverridden())) {
+            act.setName(s.path("activityName").asText(act.getName()));
+        }
         act.setActivityType(s.path("activityType").asText(act.getActivityType()));
         act.setSportType(normalizeSportType(act.getActivityType()));
         long start = s.path("startTimeInSeconds").asLong(0);

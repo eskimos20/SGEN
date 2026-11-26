@@ -97,6 +97,17 @@ public class GarminActivity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /** User-set Intervals-style activity type (e.g. NordicSki) — wins over the
+     *  type derived from sport_type/activity_type when rendering. */
+    @Column(name = "icu_type", length = 48)
+    private String icuType;
+
+    /** True when the user renamed the activity in SGEN — a Garmin re-push
+     *  must not restore the device name. Same pattern as load_overridden. */
+    @Builder.Default
+    @Column(name = "name_overridden", nullable = false)
+    private Boolean nameOverridden = false;
+
     @Builder.Default
     @Column(name = "manual", nullable = false)
     private Boolean manual = false;
