@@ -192,50 +192,95 @@ public class GarminMergeService {
         return "Workout";
     }
 
-    /** Garmin summary activityType enum -> Intervals.icu activity type. */
+    /**
+     * Garmin Health API summary activityType enum -> Intervals.icu activity type.
+     * Covers the full Health API enum (Appendix A of the REST spec). Values with
+     * no meaningful Intervals counterpart return null and fall back to the
+     * generic sport_type mapping.
+     */
     private String mapGarminActivityType(String activityType) {
         if (activityType == null) return null;
         return switch (activityType) {
+            // Running
             case "RUNNING", "STREET_RUNNING", "TRACK_RUNNING", "ULTRA_RUN", "OBSTACLE_RUN",
                  "TREADMILL_RUNNING", "INDOOR_RUNNING" -> "Run";
             case "TRAIL_RUNNING" -> "TrailRun";
             case "VIRTUAL_RUN" -> "VirtualRun";
-            case "CYCLING", "ROAD_BIKING", "TRACK_CYCLING", "RECUMBENT_CYCLING",
-                 "BMX", "CYCLOCROSS" -> "Ride";
-            case "INDOOR_CYCLING" -> "Ride";
+            // Cycling
+            case "CYCLING", "ROAD_BIKING", "BMX", "RECUMBENT_CYCLING", "INDOOR_CYCLING" -> "Ride";
+            case "TRACK_CYCLING" -> "TrackRide";
             case "MOUNTAIN_BIKING", "DOWNHILL_BIKING" -> "MountainBikeRide";
-            case "GRAVEL_CYCLING" -> "GravelRide";
-            case "E_BIKE_RIDING" -> "EBikeRide";
-            case "E_MOUNTAIN_BIKING" -> "EMountainBikeRide";
+            case "GRAVEL_CYCLING", "CYCLOCROSS" -> "GravelRide";
+            case "E_BIKE_FITNESS", "E_BIKE_RIDING" -> "EBikeRide";
+            case "E_BIKE_MOUNTAIN", "E_MOUNTAIN_BIKING" -> "EMountainBikeRide";
+            case "VIRTUAL_RIDE" -> "VirtualRide";
+            case "HANDCYCLING", "INDOOR_HANDCYCLING" -> "Handcycle";
+            // Swimming
             case "SWIMMING", "LAP_SWIMMING", "POOL_SWIMMING" -> "Swim";
             case "OPEN_WATER_SWIMMING" -> "OpenWaterSwim";
+            case "SNORKELING" -> "Swim";
+            // Walking / hiking
             case "WALKING", "CASUAL_WALKING", "SPEED_WALKING" -> "Walk";
-            case "HIKING" -> "Hike";
-            case "CROSS_COUNTRY_SKIING_WS", "SKATE_SKIING_WS" -> "NordicSki";
-            case "BACKCOUNTRY_SKIING_SNOWBOARDING_WS", "BACKCOUNTRY_SKIING" -> "BackcountrySki";
-            case "RESORT_SKIING_SNOWBOARDING_WS", "RESORT_SKIING" -> "AlpineSki";
-            case "SNOWBOARDING_WS" -> "Snowboard";
-            case "SNOW_SHOE_WS" -> "Snowshoe";
+            case "HIKING", "MOUNTAINEERING" -> "Hike";
+            // Winter sports
+            case "CROSS_COUNTRY_SKIING", "CROSS_COUNTRY_SKIING_WS", "SKATE_SKIING",
+                 "SKATE_SKIING_WS" -> "NordicSki";
+            case "BACKCOUNTRY_SKIING_SNOWBOARDING", "BACKCOUNTRY_SKIING_SNOWBOARDING_WS",
+                 "BACKCOUNTRY_SKIING" -> "BackcountrySki";
+            case "BACKCOUNTRY_SNOWBOARDING", "SNOWBOARDING_WS" -> "Snowboard";
+            case "RESORT_SKIING_SNOWBOARDING", "RESORT_SKIING_SNOWBOARDING_WS",
+                 "RESORT_SKIING" -> "AlpineSki";
+            case "SNOW_SHOE", "SNOW_SHOE_WS" -> "Snowshoe";
+            case "SKATING", "SKATING_WS", "ICE_SKATING" -> "IceSkate";
+            case "INLINE_SKATING" -> "InlineSkate";
             case "ROLLER_SKI" -> "RollerSki";
+            // Gym / fitness
             case "STRENGTH_TRAINING" -> "WeightTraining";
-            case "ROWING", "INDOOR_ROWING", "INDOOR_ROWING_V2" -> "Rowing";
+            case "HIIT" -> "HighIntensityIntervalTraining";
             case "ELLIPTICAL" -> "Elliptical";
-            case "STAIR_CLIMBING" -> "StairStepper";
+            case "STAIR_CLIMBING", "FLOOR_CLIMBING" -> "StairStepper";
+            case "FITNESS_EQUIPMENT", "INDOOR_CARDIO", "BOXING", "MIXED_MARTIAL_ARTS",
+                 "BREATHWORK" -> "Workout";
             case "YOGA" -> "Yoga";
             case "PILATES" -> "Pilates";
-            case "HIIT" -> "HighIntensityIntervalTraining";
-            case "INLINE_SKATING" -> "InlineSkate";
-            case "ICE_SKATING" -> "IceSkate";
-            case "KAYAKING" -> "Kayaking";
-            case "STAND_UP_PADDLEBOARDING", "SUP" -> "StandUpPaddling";
-            case "SURFING" -> "Surfing";
-            case "WINDSURFING" -> "Windsurf";
-            case "KITESURFING" -> "Kitesurf";
-            case "GOLF" -> "Golf";
+            // Water sports
+            case "ROWING", "ROWING_V2", "INDOOR_ROWING", "INDOOR_ROWING_V2" -> "Rowing";
+            case "KAYAKING", "KAYAKING_V2" -> "Kayaking";
+            case "STAND_UP_PADDLEBOARDING", "STAND_UP_PADDLEBOARDING_V2", "SUP" -> "StandUpPaddling";
+            case "SURFING", "SURFING_V2" -> "Surfing";
+            case "WINDSURFING", "WINDSURFING_V2" -> "Windsurf";
+            case "KITEBOARDING", "KITEBOARDING_V2", "WIND_KITE_SURFING" -> "Kitesurf";
+            case "SAILING", "SAILING_V2", "OFFSHORE_GRINDING", "OFFSHORE_GRINDING_V2",
+                 "ONSHORE_GRINDING", "ONSHORE_GRINDING_V2" -> "Sail";
+            case "PADDLING", "PADDLING_V2", "WAKEBOARDING", "WAKEBOARDING_V2", "WATERSKIING",
+                 "WATER_SPORTS", "WHITEWATER_RAFTING_KAYAKING", "WHITEWATER_RAFTING_V2" -> "WaterSport";
+            // Racket / team sports
+            case "TENNIS", "TENNIS_V2", "PLATFORM_TENNIS" -> "Tennis";
+            case "PADEL" -> "Padel";
+            case "PICKLEBALL" -> "Pickleball";
+            case "SQUASH" -> "Squash";
+            case "RACQUTBALL" -> "Racquetball";
+            case "BADMINTON" -> "Badminton";
+            case "TABLE_TENNIS" -> "TableTennis";
             case "SOCCER" -> "Soccer";
-            case "TENNIS" -> "Tennis";
-            case "ROCK_CLIMBING" -> "RockClimbing";
-            case "MULTI_SPORT" -> "Other";
+            case "FIELD_HOCKEY", "ICE_HOCKEY" -> "Hockey";
+            case "RUGBY" -> "Rugby";
+            // Other mapped
+            case "GOLF" -> "Golf";
+            case "BOULDERING", "INDOOR_CLIMBING", "ROCK_CLIMBING" -> "RockClimbing";
+            case "WHEELCHAIR_PUSH_RUN", "WHEELCHAIR_PUSH_WALK" -> "Wheelchair";
+            case "BIKE_TO_RUN_TRANSITION_V2", "BIKETORUNTRANSITION",
+                 "RUN_TO_BIKE_TRANSITION_V2", "RUNTOBIKETRANSITION",
+                 "SWIM_TO_BIKE_TRANSITION_V2", "SWIMTOBIKETRANSITION",
+                 "TRANSITION", "TRANSITION_V2" -> "Transition";
+            case "MULTI_SPORT", "OTHER", "UNCATEGORIZED", "TEAM_SPORTS", "RACKET_SPORTS",
+                 "WINTER_SPORTS", "AMERICAN_FOOTBALL", "BASEBALL", "BASKETBALL", "CRICKET",
+                 "DISC_GOLF", "ULTIMATE_DISC", "LACROSSE", "SOFTBALL", "VOLLEYBALL",
+                 "HORSEBACK_RIDING", "PARA_SPORTS", "DRIVING_GENERAL", "FLYING",
+                 "MOTORCYCLING", "BOATING", "BOATING_V2", "FISHING", "FISHING_V2",
+                 "SNOWMOBILING", "SNOWMOBILING_WS", "MEDITATION", "SEDENTARY",
+                 "SLEEP", "STOP_WATCH" -> "Other";
+            // Anything not yet in the Health API enum falls back to sport_type
             default -> null;
         };
     }
