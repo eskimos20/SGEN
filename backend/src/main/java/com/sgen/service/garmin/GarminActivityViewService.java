@@ -63,18 +63,24 @@ public class GarminActivityViewService {
 
         List<GarminActivityInterval> intervals = intervalRepository.findByActivityIdOrderByStepOrderAsc(id);
         if (!intervals.isEmpty()) {
+            ArrayNode hrStream = streams != null && streams.get("heartrate") instanceof ArrayNode a ? a : null;
             ArrayNode icu = objectMapper.createArrayNode();
             for (GarminActivityInterval iv : intervals) {
                 ObjectNode o = icu.addObject();
                 o.put("type", iv.getType());
                 o.put("start_index", iv.getStartIndex());
                 o.put("end_index", iv.getEndIndex());
-                o.put("duration", iv.getDurationS());
+                // Frontend reads moving_time/elapsed_time for interval duration.
+                o.put("moving_time", iv.getDurationS());
                 if (iv.getAvgWatts() != null) o.put("average_watts", iv.getAvgWatts());
                 if (iv.getMaxWatts() != null) o.put("max_watts", iv.getMaxWatts());
                 if (iv.getAvgHr() != null) o.put("average_heartrate", iv.getAvgHr());
-                if (iv.getStartHr() != null) o.put("start_hr", iv.getStartHr());
-                if (iv.getEndHr() != null) o.put("end_hr", iv.getEndHr());
+                // start/end HR stored at push time; fall back to the stored
+                // stream so rows saved before the fields existed still render.
+                Integer sHr = iv.getStartHr() != null ? iv.getStartHr() : hrAt(hrStream, iv.getStartIndex());
+                Integer eHr = iv.getEndHr() != null ? iv.getEndHr() : hrAt(hrStream, iv.getEndIndex() - 1);
+                if (sHr != null) o.put("start_hr", sHr);
+                if (eHr != null) o.put("end_hr", eHr);
                 if (iv.getHrr() != null) o.put("hrr", iv.getHrr());
             }
             details.put("intervals", Map.of("icu_intervals", icu));
@@ -96,6 +102,17 @@ public class GarminActivityViewService {
         return details;
     }
 
+
+    /** HR at a stream index — scans outward when the sample itself is 0. */
+    private Integer hrAt(ArrayNode a, Integer idx) {
+        if (a == null || a.isEmpty() || idx == null) return null;
+        int i = Math.max(0, Math.min(idx, a.size() - 1));
+        for (int d = 0; d < 30; d++) {
+            if (i - d >= 0) { double v = a.get(i - d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+            if (d > 0 && i + d < a.size()) { double v = a.get(i + d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+        }
+        return null;
+    }
 
     private ObjectNode mapData(JsonNode streams) {
         ObjectNode map = objectMapper.createObjectNode();

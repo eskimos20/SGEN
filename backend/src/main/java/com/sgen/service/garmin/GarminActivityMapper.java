@@ -244,6 +244,8 @@ public class GarminActivityMapper {
                     .type("LAP")
                     .avgWatts(avgInRange(watts, startIdx, endIdx))
                     .avgHr(avgInRange(hr, startIdx, endIdx))
+                    .startHr(hrAt(hr, startIdx))
+                    .endHr(hrAt(hr, endIdx - 1))
                     .build());
         }
     }
@@ -256,6 +258,17 @@ public class GarminActivityMapper {
             if (time.get(mid).asDouble(0) < target) lo = mid + 1; else hi = mid;
         }
         return lo;
+    }
+
+    /** HR at a stream index — scans outward when the sample itself is 0. */
+    private Integer hrAt(ArrayNode a, int idx) {
+        if (a == null || a.isEmpty()) return null;
+        int i = Math.max(0, Math.min(idx, a.size() - 1));
+        for (int d = 0; d < 30; d++) {
+            if (i - d >= 0) { double v = a.get(i - d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+            if (d > 0 && i + d < a.size()) { double v = a.get(i + d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+        }
+        return null;
     }
 
     private Double avgInRange(ArrayNode arr, int from, int to) {
