@@ -32,11 +32,29 @@ export const CalendarProvider = ({ children }) => {
         api.get('/statistics/calendar', { params: { oldest, newest } }),
         api.get('/statistics/calendar/activities', { params: { oldest, newest } })
       ]);
-      
-      // Replace data entirely (don't merge) to ensure deleted events are removed
-      setCalendarEvents(eventsResponse.data || []);
-      setCalendarActivities(activitiesResponse.data || []);
-      setCalendarDateRange({ oldest, newest });
+
+      // Replace only the fetched range: items inside [oldest,newest] take the
+      // fresh server data (so deletes propagate), items outside are kept —
+      // a narrow refresh (e.g. bulk delete) must not blank the rest of the
+      // visible calendar.
+      const mergeRange = (prev, fresh) => {
+        const outside = prev.filter(e => {
+          const d = e.start_date_local?.substring(0, 10);
+          return !d || d < oldest || d > newest;
+        });
+        const seen = new Set();
+        return [...outside, ...fresh].filter(e => {
+          if (seen.has(e.id)) return false;
+          seen.add(e.id);
+          return true;
+        });
+      };
+      setCalendarEvents(prev => mergeRange(prev, eventsResponse.data || []));
+      setCalendarActivities(prev => mergeRange(prev, activitiesResponse.data || []));
+      setCalendarDateRange(prev => prev
+        ? { oldest: prev.oldest < oldest ? prev.oldest : oldest,
+            newest: prev.newest > newest ? prev.newest : newest }
+        : { oldest, newest });
       
       // Return the new data
       return {
