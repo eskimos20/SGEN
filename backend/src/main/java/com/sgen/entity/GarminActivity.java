@@ -110,7 +110,7 @@ public class GarminActivity {
     /** True if an Intervals-feed activity matches this one (start +-120s, duration +-10%). */
     public boolean isDuplicateOfIntervalsActivity(com.fasterxml.jackson.databind.JsonNode intervalsActivities) {
         if (intervalsActivities == null || !intervalsActivities.isArray() || startTime == null) return false;
-        long localT = startTime + (startTimeOffset != null ? startTimeOffset : 0);
+        long localT = startTime; // already local-time-as-epoch — no offset
         for (com.fasterxml.jackson.databind.JsonNode n : intervalsActivities) {
             String ds = n.path("start_date_local").asText("");
             if (ds.length() < 19) continue;

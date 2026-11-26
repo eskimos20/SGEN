@@ -83,7 +83,8 @@ public class GarminMergeService {
                 intervalsActivity.path("elapsed_time").asDouble(0));
         for (GarminActivity a : local) {
             if (a.getStartTime() == null) continue;
-            long localT = a.getStartTime() + (a.getStartTimeOffset() != null ? a.getStartTimeOffset() : 0);
+            // startTime is already local-time-as-epoch — offset must NOT be added.
+            long localT = a.getStartTime();
             if (Math.abs(t - localT) > 120) continue;
             double dur2 = a.getDurationS() != null ? a.getDurationS() : 0;
             if (dur1 <= 0 || dur2 <= 0 || Math.abs(dur1 - dur2) / Math.max(dur1, dur2) <= 0.10) {
@@ -100,7 +101,7 @@ public class GarminMergeService {
             if (ds.length() < 19) continue;
             try {
                 long t = LocalDateTime.parse(ds.substring(0, 19)).toEpochSecond(ZoneOffset.UTC);
-                long localT = a.getStartTime() + (a.getStartTimeOffset() != null ? a.getStartTimeOffset() : 0);
+                long localT = a.getStartTime(); // already local-time-as-epoch
                 if (Math.abs(t - localT) <= 120) {
                     double dur1 = n.path("moving_time").asDouble(n.path("elapsed_time").asDouble(0));
                     double dur2 = a.getDurationS() != null ? a.getDurationS() : 0;
@@ -121,8 +122,10 @@ public class GarminMergeService {
         n.put("name", a.getName());
         n.put("type", toIntervalsType(a.getSportType(), a.getActivityType()));
         n.put("source", "GARMIN");
+        // startTime is local-time-as-epoch; true UTC = startTime - offset.
         n.put("start_date", a.getStartTime() != null
-                ? Instant_at(a.getStartTime()) : null);
+                ? Instant_at(a.getStartTime() - (a.getStartTimeOffset() != null ? a.getStartTimeOffset() : 0))
+                : null);
         n.put("start_date_local", a.getStartDateLocal() != null ? a.getStartDateLocal().format(ISO) : null);
         n.put("moving_time", a.getMovingTimeS() != null ? a.getMovingTimeS() : a.getDurationS());
         n.put("elapsed_time", a.getDurationS());
