@@ -250,6 +250,8 @@ public class CalendarController {
     private void pushWorkoutsToGarmin(String username, List<Map<String, Object>> eventsWithIds) {
         try {
             User user = userService.getUserEntityByUsername(username);
+            // Users without an active Garmin connection stay on the Intervals-only path
+            if (!garminClientFactory.isConnected(user.getId())) return;
             for (Map<String, Object> ev : eventsWithIds) {
                 if (!"WORKOUT".equals(ev.get("category")) || ev.get("workout_doc") == null) continue;
                 Object idObj = ev.get("id");
@@ -269,6 +271,7 @@ public class CalendarController {
     private void deleteGarminWorkout(String username, Integer intervalsEventId) {
         try {
             User user = userService.getUserEntityByUsername(username);
+            if (!garminClientFactory.isConnected(user.getId())) return;
             garminWorkoutService.deleteWorkoutByIntervalsEvent(user.getId(), intervalsEventId);
         } catch (Exception e) {
             log.warn("Garmin workout delete skipped: {}", e.getMessage());
@@ -282,6 +285,7 @@ public class CalendarController {
             String d = sdl.toString();
             if (d.length() < 10) return;
             User user = userService.getUserEntityByUsername(username);
+            if (!garminClientFactory.isConnected(user.getId())) return;
             garminWorkoutService.rescheduleByIntervalsEvent(
                     user.getId(), intervalsEventId, java.time.LocalDate.parse(d.substring(0, 10)));
         } catch (Exception e) {
