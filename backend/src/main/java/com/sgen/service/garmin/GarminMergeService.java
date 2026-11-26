@@ -73,12 +73,17 @@ public class GarminMergeService {
 
     /** True if an Intervals-feed activity matches any stored Garmin activity (start +-120s, duration +-10%). */
     public boolean isDuplicateOfLocal(List<GarminActivity> local, JsonNode intervalsActivity) {
+        return findLocalMatch(local, intervalsActivity) != null;
+    }
+
+    /** The stored Garmin activity matching an Intervals-feed activity, or null. */
+    private GarminActivity findLocalMatch(List<GarminActivity> local, JsonNode intervalsActivity) {
         String ds = intervalsActivity.path("start_date_local").asText("");
-        if (ds.length() < 19) return false;
+        if (ds.length() < 19) return null;
         long t;
         try {
             t = LocalDateTime.parse(ds.substring(0, 19)).toEpochSecond(ZoneOffset.UTC);
-        } catch (Exception e) { return false; }
+        } catch (Exception e) { return null; }
         double dur1 = intervalsActivity.path("moving_time").asDouble(
                 intervalsActivity.path("elapsed_time").asDouble(0));
         for (GarminActivity a : local) {
@@ -88,10 +93,15 @@ public class GarminMergeService {
             if (Math.abs(t - localT) > 120) continue;
             double dur2 = a.getDurationS() != null ? a.getDurationS() : 0;
             if (dur1 <= 0 || dur2 <= 0 || Math.abs(dur1 - dur2) / Math.max(dur1, dur2) <= 0.10) {
-                return true;
+                return a;
             }
         }
-        return false;
+        return null;
+    }
+
+    private void copyField(JsonNode from, ObjectNode to, String field) {
+        JsonNode v = from.get(field);
+        if (v != null && !v.isNull()) to.set(field, v);
     }
 
     private boolean isDuplicate(ArrayNode arr, GarminActivity a) {

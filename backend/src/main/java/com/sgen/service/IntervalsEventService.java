@@ -23,6 +23,7 @@ public class IntervalsEventService {
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsEventRepository intervalsEventRepository;
+    private final com.sgen.service.garmin.GarminMergeService garminMergeService;
 
     public JsonNode fetchCalendarEvents(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -95,6 +96,9 @@ public class IntervalsEventService {
                 try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
                 catch (Exception e) { log.debug("mirror parse {}", e.getMessage()); }
             }
+            // Same merge as statistics — local Garmin activities (with locally
+            // computed load) take precedence over their Intervals copies.
+            garminMergeService.mergeActivities(ctx.user.getId(), arr);
             return arr;
         }
         try {
