@@ -88,7 +88,7 @@ public class GarminWorkoutService {
             push.setStatus("SCHEDULED");
             push.setLastError(null);
             pushRepository.save(push);
-            log.info("Pushed workout '{}' to Garmin for user {} on {}", push.getWorkoutName(), userId, push.getScheduledDate());
+            log.info("Pushed workout '{}' to Garmin for user {} on {}", push.getWorkoutName(), userLookupService.usernameOf(userId), push.getScheduledDate());
         } catch (Exception e) {
             fail(push, e.getMessage());
         }
@@ -112,10 +112,11 @@ public class GarminWorkoutService {
                         .retrieve().toBodilessEntity().block();
             }
             push.setStatus("DELETED");
+            log.info("Deleted workout '{}' from Garmin for user {}", push.getWorkoutName(), userLookupService.usernameOf(userId));
         } catch (Exception e) {
             push.setStatus("FAILED");
             push.setLastError(e.getMessage());
-            log.warn("Garmin workout delete failed for event {}: {}", push.getCalendarEventId(), e.getMessage());
+            log.warn("Garmin workout delete failed for user {}: {}", userLookupService.usernameOf(userId), e.getMessage());
         }
         pushRepository.save(push);
     }
@@ -140,10 +141,12 @@ public class GarminWorkoutService {
                         .bodyValue(upd.toString()).retrieve().bodyToMono(String.class).block();
                 push.setScheduledDate(newDate);
                 push.setStatus("SCHEDULED");
+                log.info("Rescheduled workout '{}' to {} for user {}", push.getWorkoutName(), newDate, userLookupService.usernameOf(userId));
             }
         } catch (Exception e) {
             push.setStatus("FAILED");
             push.setLastError(e.getMessage());
+            log.warn("Garmin workout reschedule failed for user {}: {}", userLookupService.usernameOf(userId), e.getMessage());
         }
         pushRepository.save(push);
     }
@@ -159,7 +162,7 @@ public class GarminWorkoutService {
         push.setStatus("FAILED");
         push.setLastError(msg != null ? msg.substring(0, Math.min(1000, msg.length())) : "unknown");
         pushRepository.save(push);
-        log.warn("Garmin workout push failed for user {}: {}", push.getUserId(), msg);
+        log.warn("Garmin workout push failed for user {}: {}", userLookupService.usernameOf(push.getUserId()), msg);
     }
 
 }
