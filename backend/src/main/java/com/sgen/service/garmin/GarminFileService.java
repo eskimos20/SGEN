@@ -6,6 +6,7 @@ import com.sgen.repository.GarminConnectionRepository;
 import com.sgen.repository.GarminFileQueueItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -25,6 +26,7 @@ public class GarminFileService {
     private final com.sgen.service.UserLookupService userLookupService;
     private final GarminFileQueueItemRepository fileQueueRepository;
     private final GarminConnectionRepository connectionRepository;
+    private final GarminOAuthService oauthService;
 
     public void queue(JsonNode item) {
         String summaryId = item.path("summaryId").asText(null);
@@ -48,9 +50,17 @@ public class GarminFileService {
         GarminFileQueueItem q = fileQueueRepository.findById(queueItemId).orElse(null);
         if (q == null || q.getCallbackUrl() == null) return;
         try {
-            byte[] bytes = WebClient.create().get()
-                    .uri(q.getCallbackUrl())
-                    .retrieve().bodyToMono(byte[].class).block();
+            // The token inside callbackURL is not a UAT — the call still needs
+            // the user's OAuth2 Bearer access token.
+            WebClient.RequestHeadersSpec<?> request = WebClient.create().get()
+                    .uri(q.getCallbackUrl());
+            if (q.getUserId() != null) {
+                String token = oauthService.getValidAccessToken(q.getUserId());
+                if (token != null) {
+                    request = request.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+                }
+            }
+            byte[] bytes = request.retrieve().bodyToMono(byte[].class).block();
             q.setFitBytes(bytes);
             q.setStatus("FETCHED");
             q.setFetchedAt(LocalDateTime.now());

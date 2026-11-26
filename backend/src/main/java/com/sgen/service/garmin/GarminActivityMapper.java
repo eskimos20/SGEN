@@ -64,7 +64,7 @@ public class GarminActivityMapper {
         JsonNode samples = item.path("samples");
         if (samples.isArray() && samples.size() > 0) {
             ObjectNode streams = buildStreams(samples, summary);
-            saveStreams(act.getId(), streams, samples.size());
+            saveStreams(act, streams, samples.size());
             applyStreamDerivedMetrics(act, streams);
             detectIntervals(act, item.path("laps"), streams);
             Double load = trainingLoadCalculator.compute(act, streams);
@@ -93,7 +93,7 @@ public class GarminActivityMapper {
         if (act == null) {
             act = GarminActivity.builder().userId(userId).source("GARMIN").build();
         }
-        act.setGarminActivityId(garminActivityId > 0 ? garminActivityId : act.getGarminActivityId());
+        if (garminActivityId > 0) act.setGarminActivityId(garminActivityId);
         act.setSummaryId(s.path("summaryId").asText(act.getSummaryId()));
         act.setName(s.path("activityName").asText(act.getName()));
         act.setActivityType(s.path("activityType").asText(act.getActivityType()));
@@ -167,10 +167,12 @@ public class GarminActivityMapper {
         return out;
     }
 
-    private void saveStreams(Long activityId, ObjectNode streams, int sampleCount) {
+    private void saveStreams(GarminActivity act, ObjectNode streams, int sampleCount) {
         GpsTrackTrimmer.trimNormalized(streams);
+        Long activityId = act.getId();
         GarminActivityStreams entity = streamsRepository.findById(activityId)
-                .orElse(GarminActivityStreams.builder().activityId(activityId).build());
+                .orElse(GarminActivityStreams.builder()
+                        .activityId(activityId).activity(act).build());
         entity.setStreamsJson(streams.toString());
         entity.setSampleCount(sampleCount);
         streamsRepository.save(entity);

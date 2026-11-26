@@ -16,7 +16,7 @@ public class GarminActivity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "garmin_activity_id", nullable = false)
+    @Column(name = "garmin_activity_id")
     private Long garminActivityId;
 
     @Column(name = "summary_id", unique = true, length = 128)
