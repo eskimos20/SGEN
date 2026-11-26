@@ -80,6 +80,7 @@ public class FitnessModelService {
                         userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0), java.time.LocalDateTime.now().plusDays(1));
         Map<LocalDate, double[]> byDay = new HashMap<>();
         for (GarminActivity a : acts) {
+            if (Boolean.TRUE.equals(a.getManual())) continue; // MoveIQ items are not real sessions
             LocalDate d = a.getStartDateLocal() != null ? a.getStartDateLocal().toLocalDate() : null;
             if (d == null || a.getTrainingLoad() == null) continue;
             double[] acc = byDay.computeIfAbsent(d, k -> new double[2]);
@@ -118,9 +119,7 @@ public class FitnessModelService {
     @Transactional
     public void recordIntervalsLoads(Long userId, JsonNode activities, boolean recompute) {
         if (activities == null || !activities.isArray()) return;
-        List<GarminActivity> localGarmin = garminActivityRepository
-                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
-                        userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0), java.time.LocalDateTime.now().plusDays(1));
+        List<GarminActivity> localGarmin = localRealActivities(userId);
         int skippedDup = 0;
         Map<LocalDate, double[]> byDay = new HashMap<>();
         for (JsonNode a : activities) {
@@ -158,10 +157,7 @@ public class FitnessModelService {
     @Transactional
     public void recordIntervalsLoadForDate(Long userId, java.time.LocalDate date) {
         try {
-            List<GarminActivity> localGarmin = garminActivityRepository
-                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
-                            userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0),
-                            java.time.LocalDateTime.now().plusDays(1));
+            List<GarminActivity> localGarmin = localRealActivities(userId);
             double sum = 0;
             int count = 0;
             for (var row : intervalsActivityRepository
@@ -229,6 +225,21 @@ public class FitnessModelService {
                 .tsb(latest.path("ctl").asDouble(0) - latest.path("atl").asDouble(0))
                 .build();
         fitnessRepository.save(row);
+    }
+
+    /**
+     * Locally stored Garmin activities excluding MoveIQ auto-detections
+     * (manual=1). MoveIQ events often duplicate a recorded session and are
+     * not counted as activities by Garmin Connect or Intervals.icu.
+     */
+    private List<GarminActivity> localRealActivities(Long userId) {
+        return garminActivityRepository
+                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
+                        userId, java.time.LocalDateTime.of(2000, 1, 1, 0, 0),
+                        java.time.LocalDateTime.now().plusDays(1))
+                .stream()
+                .filter(a -> !Boolean.TRUE.equals(a.getManual()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /** Recompute the EMA series from combined daily loads (last 400 days). */

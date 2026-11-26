@@ -50,7 +50,13 @@ public class GarminMergeService {
         if (!(activitiesNode instanceof ArrayNode arr)) return;
         List<GarminActivity> local = activityRepository
                 .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
-                        userId, LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now().plusDays(1));
+                        userId, LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now().plusDays(1))
+                .stream()
+                // MoveIQ auto-detected items are not real activities — the watch
+                // often duplicates a recorded session (e.g. ski flagged as swim)
+                // and neither Garmin Connect nor Intervals counts them as volume.
+                .filter(a -> !Boolean.TRUE.equals(a.getManual()))
+                .collect(Collectors.toList());
         if (local.isEmpty()) return;
 
         // Remove Intervals copies of activities we hold locally
