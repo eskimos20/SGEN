@@ -95,8 +95,8 @@ public class GarminActivityViewService {
             if (zones.has("icu_zone_times")) {
                 ((ObjectNode) details.get("activity")).set("icu_zone_times", zones.get("icu_zone_times"));
             }
-            if (zones.has("hr_zone_times")) {
-                ((ObjectNode) details.get("activity")).set("hr_zone_times", zones.get("hr_zone_times"));
+            if (zones.has("icu_hr_zone_times")) {
+                ((ObjectNode) details.get("activity")).set("icu_hr_zone_times", zones.get("icu_hr_zone_times"));
             }
         }
         return details;

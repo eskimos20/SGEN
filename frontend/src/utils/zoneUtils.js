@@ -142,6 +142,22 @@ export const parseHrZones = (hrZones) => {
 };
 
 /**
+ * Convert parsed HR zones (absolute BPM bounds from Intervals.icu) to
+ * percent-of-LTHR bounds, so zone lookups can compare against hrPercent.
+ * @param {Array} zones - Zones with numeric min/max in BPM
+ * @param {number} lthr - Lactate threshold HR
+ * @returns {Array} Same zones with min/max as % of LTHR
+ */
+const hrZonesToPercent = (zones, lthr) => {
+  if (!lthr || lthr <= 0 || !Array.isArray(zones)) return zones;
+  return zones.map(z => ({
+    ...z,
+    min: Math.round(z.min / lthr * 100),
+    max: Math.round(z.max / lthr * 100)
+  }));
+};
+
+/**
  * Get sport settings for a specific activity type
  * @param {Array} sportSettings - Array of sport settings from athlete profile
  * @param {string} activityType - Activity type (e.g., 'Ride', 'Run', 'VirtualRide')
@@ -182,25 +198,31 @@ export const getSportSettingsForType = (sportSettings, activityType) => {
   if (!settings) {
     // Try to find default/first settings
     const defaultSettings = sportSettings[0];
+    const fallbackLthr = defaultSettings?.lthr || 165;
     return {
       ftp: defaultSettings?.ftp || 280,
       indoorFtp: (defaultSettings?.indoor_ftp > 0 ? defaultSettings.indoor_ftp : defaultSettings?.ftp) || 280,
-      lthr: defaultSettings?.lthr || 165,
+      lthr: fallbackLthr,
       maxHr: defaultSettings?.max_hr || defaultSettings?.maxHr || 190,
       powerZones: parsePowerZones(defaultSettings?.power_zones || defaultSettings?.powerZones),
-      hrZones: parseHrZones(defaultSettings?.hr_zones || defaultSettings?.hrZones),
+      hrZones: (defaultSettings?.hr_zones || defaultSettings?.hrZones)
+        ? hrZonesToPercent(parseHrZones(defaultSettings.hr_zones || defaultSettings.hrZones), fallbackLthr)
+        : DEFAULT_HR_ZONES,
       thresholdPace: defaultSettings?.threshold_pace || defaultSettings?.thresholdPace || 0,
       paceUnits: defaultSettings?.pace_units || defaultSettings?.paceUnits || 'MINS_KM'
     };
   }
 
+  const lthr = settings.lthr || 165;
   return {
     ftp: settings.ftp || 280,
     indoorFtp: (settings.indoor_ftp > 0 ? settings.indoor_ftp : settings.ftp) || 280,
-    lthr: settings.lthr || 165,
+    lthr,
     maxHr: settings.max_hr || settings.maxHr || 190,
     powerZones: parsePowerZones(settings.power_zones || settings.powerZones),
-    hrZones: parseHrZones(settings.hr_zones || settings.hrZones),
+    hrZones: (settings.hr_zones || settings.hrZones)
+      ? hrZonesToPercent(parseHrZones(settings.hr_zones || settings.hrZones), lthr)
+      : DEFAULT_HR_ZONES,
     thresholdPace: settings.threshold_pace || settings.thresholdPace || 0,
     paceUnits: settings.pace_units || settings.paceUnits || 'MINS_KM'
   };
@@ -382,8 +404,9 @@ export const calculateActivityZones = (activity, sportSettings, streams) => {
   let hasPreCalculatedHrZones = false;
 
   // Try to use pre-calculated Intervals.icu HR zone times
-  if (activity?.icu_hr_zone_times && Array.isArray(activity.icu_hr_zone_times) && activity.icu_hr_zone_times.length > 0) {
-    activity.icu_hr_zone_times.forEach((time, idx) => {
+  const preCalcHrZoneTimes = activity?.icu_hr_zone_times || activity?.hr_zone_times;
+  if (preCalcHrZoneTimes && Array.isArray(preCalcHrZoneTimes) && preCalcHrZoneTimes.length > 0) {
+    preCalcHrZoneTimes.forEach((time, idx) => {
       if (idx < 7) {
         const seconds = (typeof time === 'number' ? time : (time?.secs || 0));
         hrZoneSeconds[idx] = seconds;

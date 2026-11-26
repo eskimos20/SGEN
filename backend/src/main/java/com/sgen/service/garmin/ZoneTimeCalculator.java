@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Time-in-zone from activity streams, Intervals.icu shape:
- * icu_zone_times / hr_zone_times = [{id:"Z1..Z7",secs:n}].
+ * icu_zone_times / icu_hr_zone_times = [{id:"Z1..Z7",secs:n}].
  * Boundaries: FTP/LTHR via GarminSportSettingsService with Coggan defaults
  * (power %FTP: 55,75,90,105,120,150; HR %LTHR: 81,89,93,99,102,105).
  */
@@ -38,7 +38,7 @@ public class ZoneTimeCalculator {
             out.set("icu_zone_times", zoneTimes(watts, time, bounds(POWER_BOUNDS_PCT, ftp)));
         }
         if (hr != null && lthr != null && lthr > 0) {
-            out.set("hr_zone_times", zoneTimes(hr, time, bounds(HR_BOUNDS_PCT, lthr)));
+            out.set("icu_hr_zone_times", zoneTimes(hr, time, bounds(HR_BOUNDS_PCT, lthr)));
         }
         return out;
     }
