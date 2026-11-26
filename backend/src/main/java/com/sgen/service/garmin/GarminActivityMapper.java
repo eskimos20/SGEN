@@ -113,10 +113,9 @@ public class GarminActivityMapper {
         }
         act.setStartTimeOffset(offset);
         if (act.getStartTime() != null) {
-            // Garmin's startTimeInSeconds is already local-time-as-epoch —
-            // do NOT add the offset again (verified vs Intervals start_date/start_date_local).
+            // startTimeInSeconds is UTC epoch; local = start + offset.
             act.setStartDateLocal(LocalDateTime.ofInstant(
-                    Instant.ofEpochSecond(act.getStartTime()), ZoneOffset.UTC));
+                    Instant.ofEpochSecond(act.getStartTime() + (offset != null ? offset : 0)), ZoneOffset.UTC));
         }
         act.setDurationS(intOrNull(s, "durationInSeconds"));
         act.setDistanceM(dblOrNull(s, "distanceInMeters"));

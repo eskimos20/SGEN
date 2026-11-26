@@ -62,8 +62,10 @@ public class GarminWellnessMapper {
         long ts = item.path("startTimeInSeconds").asLong(
                 item.path("measurementTimeInSeconds").asLong(0));
         if (ts > 0) {
-            // Timestamps are already local-time-as-epoch — no offset needed.
-            return LocalDate.ofInstant(Instant.ofEpochSecond(ts), ZoneOffset.UTC);
+            long offset = item.path("startTimeOffsetInSeconds")
+                    .asLong(item.path("measurementTimeOffsetInSeconds").asLong(0));
+            // Timestamps are UTC epoch; local = ts + offset.
+            return LocalDate.ofInstant(Instant.ofEpochSecond(ts + offset), ZoneOffset.UTC);
         }
         return null;
     }
