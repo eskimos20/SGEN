@@ -40,8 +40,14 @@ public class IntervalsActivityOpsService {
     private final IntervalsActivityAnalysisService analysisService;
     private final IntervalsIntervalService intervalsIntervalService;
     private final IntervalsActivityDetailService activityDetailService;
+    private final com.sgen.repository.GarminActivityRepository garminActivityRepository;
+    private final com.sgen.service.garmin.GarminMergeService garminMergeService;
+    private final com.sgen.service.garmin.FitnessModelService fitnessModelService;
 
     public Map<String, Object> updateActivity(String username, String activityId, Map<String, Object> updates) {
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            return updateLocalGarminActivity(username, activityId, updates);
+        }
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String responseJson = ctx.client.put()
@@ -143,6 +149,75 @@ public class IntervalsActivityOpsService {
 
     public Map<String, Object> extractIntervalSummary(JsonNode icuIntervals) {
         return intervalsIntervalService.extractIntervalSummary(icuIntervals);
+    }
+
+    /**
+     * Local edit path for garmin_ activities: Intervals doesn't know the
+     * garmin_<id> synthetic ids, so we update garmin_activities directly.
+     * icu_training_load writes set loadOverridden so the calculator never
+     * overwrites the user's value. The Intervals copy (if the session was
+     * also synced there) is updated best-effort to keep data consistent.
+     */
+    private Map<String, Object> updateLocalGarminActivity(String username, String activityId, Map<String, Object> updates) {
+        ApiContext ctx = clientFactory.buildContext(userService, username);
+        Long gid = Long.parseLong(activityId.substring("garmin_".length()));
+        com.sgen.entity.GarminActivity act = garminActivityRepository.findById(gid)
+                .orElseThrow(() -> new RuntimeException("Garmin activity not found: " + activityId));
+        if (!act.getUserId().equals(ctx.user.getId())) {
+            throw new RuntimeException("Activity does not belong to user");
+        }
+        if (updates.containsKey("name")) {
+            act.setName((String) updates.get("name"));
+        }
+        if (updates.containsKey("icu_training_load")) {
+            Object v = updates.get("icu_training_load");
+            act.setTrainingLoad(v != null ? ((Number) v).doubleValue() : null);
+            act.setLoadOverridden(true);
+        }
+        if (updates.containsKey("type")) {
+            act.setSportType(intervalsTypeToSportKey(String.valueOf(updates.get("type"))));
+        }
+        garminActivityRepository.save(act);
+        fitnessModelService.rebuildGarminLoads(ctx.user.getId());
+        pushLoadToIntervalsCopy(ctx, act, updates);
+        return objectMapper.convertValue(garminMergeService.toIntervalsActivityJson(act), Map.class);
+    }
+
+    private String intervalsTypeToSportKey(String type) {
+        if (type == null) return "other";
+        return switch (type) {
+            case "Run", "VirtualRun", "TrailRun" -> "run";
+            case "Ride", "VirtualRide", "MountainBikeRide", "GravelRide", "EBikeRide", "EMountainBikeRide", "TrackRide" -> "ride";
+            case "Swim", "OpenWaterSwim" -> "swim";
+            case "Walk", "Hike" -> "walk";
+            default -> "other";
+        };
+    }
+
+    /** Best-effort mirror of the load override onto the Intervals copy. */
+    private void pushLoadToIntervalsCopy(ApiContext ctx, com.sgen.entity.GarminActivity act, Map<String, Object> updates) {
+        if (!updates.containsKey("icu_training_load") || act.getStartDateLocal() == null) return;
+        try {
+            var day = act.getStartDateLocal().toLocalDate();
+            for (var row : intervalsActivityRepository
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(
+                            ctx.user.getId(), day.atStartOfDay(), day.plusDays(1).atStartOfDay())) {
+                JsonNode payload = objectMapper.readTree(row.getPayloadJson());
+                if (garminMergeService.isDuplicateOfLocal(List.of(act), payload)) {
+                    ctx.client.put().uri("/api/v1/activity/{id}", row.getActivityId())
+                            .bodyValue(Map.of("icu_training_load", updates.get("icu_training_load")))
+                            .retrieve().bodyToMono(String.class).block();
+                    if (payload instanceof com.fasterxml.jackson.databind.node.ObjectNode on) {
+                        on.set("icu_training_load", objectMapper.valueToTree(updates.get("icu_training_load")));
+                        row.setPayloadJson(on.toString());
+                        intervalsActivityRepository.save(row);
+                    }
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Intervals load sync for garmin activity {} failed: {}", act.getId(), e.getMessage());
+        }
     }
 
     // -------------------------------------------------------------------------

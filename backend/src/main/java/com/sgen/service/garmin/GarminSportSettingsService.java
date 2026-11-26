@@ -49,6 +49,45 @@ public class GarminSportSettingsService {
                 .map(LocalSportSettings::getLthr).orElse(null);
     }
 
+    /** Athlete resting HR from the Intervals profile (icu_resting_hr). */
+    public Integer restingHr(Long userId) {
+        try {
+            String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
+            if (username != null) {
+                JsonNode athlete = (JsonNode) intervalsAthleteService.getAthleteProfile(username).get("athlete");
+                int rhr = athlete.path("icu_resting_hr").asInt(0);
+                if (rhr > 0) return rhr;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /** Athlete sex from the Intervals profile ("M"/"F"). */
+    public String sex(Long userId) {
+        try {
+            String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
+            if (username != null) {
+                JsonNode athlete = (JsonNode) intervalsAthleteService.getAthleteProfile(username).get("athlete");
+                String sex = athlete.path("sex").asText(null);
+                if (sex != null && !sex.isBlank()) return sex;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /** Max HR for a sport — Intervals sport-settings, any sport's max as fallback. */
+    public Integer maxHr(Long userId, String sportKey) {
+        try {
+            String username = userRepository.findById(userId).map(u -> u.getUsername()).orElse(null);
+            if (username != null) {
+                JsonNode settings = intervalsAthleteService.getSportSettings(username);
+                Integer maxHr = intervalsAthleteService.getMaxHrForSport(settings, toIntervalsType(sportKey));
+                if (maxHr != null && maxHr > 0) return maxHr;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     private String sportKeyOrDefault(String sportKey) {
         return sportKey != null ? sportKey : "ride";
     }

@@ -363,6 +363,23 @@ public class IntervalsAthleteService {
         return getValueForSport(sportSettings, sportType, "lthr");
     }
 
+    /**
+     * Extract the max HR for a sport type — falls back to the first
+     * configured max_hr across all sport settings when the requested
+     * sport does not define one.
+     */
+    public Integer getMaxHrForSport(JsonNode sportSettings, String sportType) {
+        Integer v = getValueForSport(sportSettings, sportType, "max_hr");
+        if (v != null) return v;
+        if (sportSettings != null && sportSettings.isArray()) {
+            for (JsonNode setting : sportSettings) {
+                JsonNode m = setting.get("max_hr");
+                if (m != null && m.isInt() && m.asInt() > 0) return m.asInt();
+            }
+        }
+        return null;
+    }
+
     private Integer getValueForSport(JsonNode sportSettings, String sportType, String field) {
         if (sportSettings == null || !sportSettings.isArray() || sportType == null) {
             return null;

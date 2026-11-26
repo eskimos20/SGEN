@@ -27,6 +27,8 @@ public class GarminActivityViewService {
     private final GarminActivityIntervalRepository intervalRepository;
     private final GarminMergeService mergeService;
     private final ZoneTimeCalculator zoneTimeCalculator;
+    private final TrainingLoadCalculator trainingLoadCalculator;
+    private final FitnessModelService fitnessModelService;
     private final UserRepository userRepository;
     private final com.sgen.service.UserLookupService userLookupService;
     private final ObjectMapper objectMapper;
@@ -44,6 +46,19 @@ public class GarminActivityViewService {
         if (s.isPresent()) {
             try { streams = objectMapper.readTree(s.get().getStreamsJson()); } catch (Exception ignored) {}
             details.put("streams", streams);
+        }
+
+        // Lazy backfill: activities stored before load computation existed
+        // (e.g. summary-only pushes like gym sessions) get HRSS on first view.
+        if (act.getTrainingLoad() == null && !Boolean.TRUE.equals(act.getLoadOverridden())
+                && !Boolean.TRUE.equals(act.getManual())) {
+            Double load = trainingLoadCalculator.compute(act, streams);
+            if (load != null) {
+                act.setTrainingLoad(load);
+                activityRepository.save(act);
+                fitnessModelService.rebuildGarminLoads(userId);
+                ((ObjectNode) details.get("activity")).put("icu_training_load", load);
+            }
         }
 
         List<GarminActivityInterval> intervals = intervalRepository.findByActivityIdOrderByStepOrderAsc(id);

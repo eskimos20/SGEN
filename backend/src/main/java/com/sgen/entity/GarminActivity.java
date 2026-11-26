@@ -82,6 +82,11 @@ public class GarminActivity {
     @Column(name = "training_load")
     private Double trainingLoad;
 
+    /** True when the user manually set training_load — never auto-overwrite. */
+    @Builder.Default
+    @Column(name = "load_overridden", nullable = false)
+    private Boolean loadOverridden = false;
+
     @Builder.Default
     @Column(name = "manual", nullable = false)
     private Boolean manual = false;

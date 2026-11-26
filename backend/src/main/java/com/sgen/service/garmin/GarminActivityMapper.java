@@ -50,6 +50,11 @@ public class GarminActivityMapper {
                 || item.path("manual").asBoolean(false)) {
             act.setManual(true);
         }
+        // Summary-only pushes carry avg HR + duration — enough for HRSS.
+        if (!Boolean.TRUE.equals(act.getLoadOverridden())) {
+            Double load = trainingLoadCalculator.compute(act, null);
+            if (load != null) act.setTrainingLoad(load);
+        }
         activityRepository.save(act);
     }
 
@@ -68,8 +73,10 @@ public class GarminActivityMapper {
             saveStreams(act.getId(), streams, samples.size());
             applyStreamDerivedMetrics(act, streams);
             detectIntervals(act, item.path("laps"), streams);
-            Double load = trainingLoadCalculator.compute(act, streams);
-            if (load != null) act.setTrainingLoad(load);
+            if (!Boolean.TRUE.equals(act.getLoadOverridden())) {
+                Double load = trainingLoadCalculator.compute(act, streams);
+                if (load != null) act.setTrainingLoad(load);
+            }
             activityRepository.save(act);
         }
         // Feed the local CTL/ATL model so Fitness/Form updates without
