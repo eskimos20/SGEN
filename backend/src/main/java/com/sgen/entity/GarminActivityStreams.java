@@ -12,11 +12,6 @@ public class GarminActivityStreams {
     @Column(name = "activity_id")
     private Long activityId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "activity_id")
-    private GarminActivity activity;
-
     @Column(name = "streams_json", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String streamsJson;
 

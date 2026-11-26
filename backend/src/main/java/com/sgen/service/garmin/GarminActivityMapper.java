@@ -64,7 +64,7 @@ public class GarminActivityMapper {
         JsonNode samples = item.path("samples");
         if (samples.isArray() && samples.size() > 0) {
             ObjectNode streams = buildStreams(samples, summary);
-            saveStreams(act, streams, samples.size());
+            saveStreams(act.getId(), streams, samples.size());
             applyStreamDerivedMetrics(act, streams);
             detectIntervals(act, item.path("laps"), streams);
             Double load = trainingLoadCalculator.compute(act, streams);
@@ -100,7 +100,13 @@ public class GarminActivityMapper {
         act.setSportType(normalizeSportType(act.getActivityType()));
         long start = s.path("startTimeInSeconds").asLong(0);
         if (start > 0) act.setStartTime(start);
-        Integer offset = s.has("startTimeOffsetInSeconds") ? s.get("startTimeOffsetInSeconds").asInt() : act.getStartTimeOffset();
+        Integer offset = act.getStartTimeOffset();
+        if (s.has("startTimeOffsetInSeconds") && !s.get("startTimeOffsetInSeconds").isNull()) {
+            offset = s.get("startTimeOffsetInSeconds").asInt();
+        } else if (s.has("offsetInSeconds") && !s.get("offsetInSeconds").isNull()) {
+            // moveIQActivities payloads use offsetInSeconds instead
+            offset = s.get("offsetInSeconds").asInt();
+        }
         act.setStartTimeOffset(offset);
         if (act.getStartTime() != null) {
             act.setStartDateLocal(LocalDateTime.ofInstant(
@@ -167,12 +173,10 @@ public class GarminActivityMapper {
         return out;
     }
 
-    private void saveStreams(GarminActivity act, ObjectNode streams, int sampleCount) {
+    private void saveStreams(Long activityId, ObjectNode streams, int sampleCount) {
         GpsTrackTrimmer.trimNormalized(streams);
-        Long activityId = act.getId();
         GarminActivityStreams entity = streamsRepository.findById(activityId)
-                .orElse(GarminActivityStreams.builder()
-                        .activityId(activityId).activity(act).build());
+                .orElse(GarminActivityStreams.builder().activityId(activityId).build());
         entity.setStreamsJson(streams.toString());
         entity.setSampleCount(sampleCount);
         streamsRepository.save(entity);
