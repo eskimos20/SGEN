@@ -55,6 +55,7 @@ public class GarminWorkoutService {
             ObjectNode workout = workoutMapper.toGarminWorkout(userId, eventData, sportKey);
             String createdJson = client.post()
                     .uri("/workoutportal/workout/v2")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .bodyValue(workout.toString())
                     .retrieve().bodyToMono(String.class).block();
             JsonNode created = objectMapper.readTree(createdJson);
@@ -75,6 +76,7 @@ public class GarminWorkoutService {
             sched.put("date", push.getScheduledDate().toString());
             String schedJson = client.post()
                     .uri("/training-api/schedule/")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .bodyValue(sched.toString())
                     .retrieve().bodyToMono(String.class).block();
             JsonNode schedNode = objectMapper.readTree(schedJson);
@@ -127,6 +129,7 @@ public class GarminWorkoutService {
                     upd.put("workoutId", Long.parseLong(push.getGarminWorkoutId()));
                     upd.put("date", newDate.toString());
                     client.put().uri("/training-api/schedule/" + push.getGarminScheduleId())
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                             .bodyValue(upd.toString()).retrieve().bodyToMono(String.class).block();
                     push.setScheduledDate(newDate);
                     push.setStatus("SCHEDULED");
