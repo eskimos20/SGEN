@@ -423,7 +423,7 @@ const Dashboard = () => {
             {hasIntervalsConfig ? (
               <div className="flex items-start gap-3 mb-4 text-gray-600">
                 <span className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-sm font-medium">✓</span>
-                <span>Your Intervals.icu is connected! Data syncs automatically when you visit Statistics.</span>
+                <span>Your Intervals.icu is connected! Provider sync settings live under <strong>Profile</strong>.</span>
               </div>
             ) : (
               <ol className="space-y-3 text-gray-600 mb-4">
@@ -444,7 +444,7 @@ const Dashboard = () => {
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">4</span>
-                <span>Navigate to <strong>Statistics</strong> to view your training data and fetch from Intervals.icu</span>
+                <span>Connect <strong>Garmin</strong> directly in Profile to sync new activities automatically — or run the <strong>import</strong> on Statistics to pull your history from Intervals.icu</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">5</span>
