@@ -216,17 +216,44 @@ public class IntervalsActivityDetailService {
     }
 
     /** {latlngs: [[lat,lng],...]} from the latlng stream — the shape the
-     *  frontend map renderer expects (Intervals /map payload format). */
+     *  frontend map renderer expects (Intervals /map payload format).
+     *  Garmin stores pairs [[lat,lng],...]; Intervals /streams stores a flat
+     *  [lat,lng,lat,lng,...] array — both are normalized to pairs here.
+     *  Trimmed/invalid points are emitted as null (the renderer filters them). */
     private ObjectNode localMapData(ObjectNode normalized) {
         ObjectNode map = objectMapper.createObjectNode();
-        if (normalized.get("latlng") instanceof com.fasterxml.jackson.databind.node.ArrayNode ll) {
-            int valid = 0;
-            for (JsonNode p : ll) {
-                if (p != null && p.isArray() && p.size() >= 2
-                        && p.get(0).isNumber() && p.get(1).isNumber()) valid++;
-            }
-            if (valid >= 2) map.set("latlngs", ll);
+        if (!(normalized.get("latlng") instanceof com.fasterxml.jackson.databind.node.ArrayNode ll)
+                || ll.size() < 2) return map;
+
+        // Detect format from the first non-null element: an array means
+        // pairs [[lat,lng],...], a number means flat [lat,lng,lat,lng,...].
+        boolean flat = false;
+        for (JsonNode el : ll) {
+            if (el != null && el.isArray()) { flat = false; break; }
+            if (el != null && el.isNumber()) { flat = true; break; }
         }
+        if (flat) {
+            var out = objectMapper.createArrayNode();
+            int valid = 0;
+            for (int i = 0; i + 1 < ll.size(); i += 2) {
+                JsonNode lat = ll.get(i), lng = ll.get(i + 1);
+                if (lat != null && lat.isNumber() && lng != null && lng.isNumber()) {
+                    out.addArray().add(lat.asDouble()).add(lng.asDouble());
+                    valid++;
+                } else {
+                    out.addNull();
+                }
+            }
+            if (valid >= 2) map.set("latlngs", out);
+            return map;
+        }
+
+        int valid = 0;
+        for (JsonNode p : ll) {
+            if (p != null && p.isArray() && p.size() >= 2
+                    && p.get(0).isNumber() && p.get(1).isNumber()) valid++;
+        }
+        if (valid >= 2) map.set("latlngs", ll);
         return map;
     }
 
