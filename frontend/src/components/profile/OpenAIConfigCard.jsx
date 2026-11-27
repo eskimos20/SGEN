@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Loader2, Sparkles, ChevronDown } from 'lucide-react';
+import { Save, Loader2, Sparkles, ChevronDown, CheckCircle } from 'lucide-react';
 import api from '../../api/axios';
 import ConnectionCard, { ConnectedBadge } from './ConnectionCard';
 
@@ -198,9 +198,10 @@ const OpenAIConfigCard = () => {
             )}
 
             {selectedModel && (
-              <div className="bg-green-50 text-green-700 p-3 sm:p-4 rounded-lg">
-                <p className="text-sm">Using model: {selectedModel}</p>
-              </div>
+              <p className="text-sm text-green-700 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Using model: {selectedModel}
+              </p>
             )}
           </>
         )}
