@@ -62,6 +62,10 @@ public class IntervalsActivityFeedService {
             // list+hydrate import on every dashboard load.
             if (intervalsActivityRepository.countByUserId(uid) > 0
                     || intervalsMirrorService.getDoc(uid, "activities-seeded") != null) {
+                // Non-Garmin sources (Zwift, Strava uploads, ...) only reach
+                // us via Intervals — top up the mirror with anything new
+                // before serving it.
+                refreshNewFromApi(ctx, uid, newest);
                 return serveFromMirror(ctx, uid, username, oldest, newest, analyze, streamsMap);
             }
             JsonNode imported = fetchFromApi(ctx, uid, username, oldest, newest, true, streamsMap);
@@ -74,6 +78,36 @@ public class IntervalsActivityFeedService {
             return imported;
         }
         return fetchFromApi(ctx, uid, username, oldest, newest, garminConnected, streamsMap);
+    }
+
+    /**
+     * Incremental mirror top-up for Garmin-connected users: fetch Intervals
+     * activities since just before the mirror's newest row (a 14-day overlap
+     * covers activities uploaded to Intervals days after they were done —
+     * e.g. delayed Zwift syncs) and upsert them into the mirror.
+     */
+    private void refreshNewFromApi(ApiContext ctx, Long uid, String newest) {
+        try {
+            String oldest = intervalsActivityRepository
+                    .findTop1ByUserIdOrderByStartDateLocalDesc(uid)
+                    .map(r -> r.getStartDateLocal() != null
+                            ? r.getStartDateLocal().toLocalDate().minusDays(14).toString()
+                            : "1970-01-01")
+                    .orElse("1970-01-01");
+            JsonNode acts = intervalsApi.getJson(ctx.client,
+                    uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
+                            .queryParam("oldest", oldest).queryParam("newest", newest)
+                            .build(ctx.user.getIntervalsAthleteId()));
+            if (acts != null && acts.isArray()) {
+                for (JsonNode a : acts) {
+                    if (!a.path("id").asText("").isBlank()) {
+                        intervalsMirrorService.saveActivity(uid, a);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Incremental activity mirror refresh skipped: {}", e.getMessage());
+        }
     }
 
     /** Local mirror path: rows → payloads, hydrated with streams/intervals. */

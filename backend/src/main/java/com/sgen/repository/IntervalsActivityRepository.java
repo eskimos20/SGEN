@@ -19,6 +19,7 @@ public interface IntervalsActivityRepository extends JpaRepository<IntervalsActi
     void deleteByUserId(Long userId);
     void deleteByUserIdAndActivityId(Long userId, String activityId);
     long countByUserId(Long userId);
+    Optional<IntervalsActivity> findTop1ByUserIdOrderByStartDateLocalDesc(Long userId);
 
     /** Id-only projection — avoids loading MEDIUMTEXT payloads for sweeps. */
     @Query("SELECT a.activityId FROM IntervalsActivity a WHERE a.userId = :userId")
