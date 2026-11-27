@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../api/axios';
+import api from '../../api/axios';
 import { Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 
 /**
+ * Intervals.icu provider connections and sync toggles — embedded inside the
+ * Intervals.icu Configuration card on the Profile page.
+ *
  * Provider definitions: detection + toggleable sync options.
  * Fields map to Intervals.icu athlete profile fields (PUT /api/v1/athlete/{id}).
  * `invert: true` shows a positive label over a negative stored field
@@ -125,7 +128,7 @@ const PROVIDERS = [
   },
 ];
 
-const Connections = () => {
+const IntervalsProviderSettings = () => {
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -181,129 +184,118 @@ const Connections = () => {
   const connectedProviders = athlete ? PROVIDERS.filter(p => p.isConnected(athlete)) : [];
   const notConnectedProviders = athlete ? PROVIDERS.filter(p => !p.isConnected(athlete)) : [];
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="w-full max-w-[1600px] mx-auto space-y-4 sm:space-y-6 p-2 sm:p-4 lg:p-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl sm:shadow-sm p-3 sm:p-6 border-b sm:border border-gray-200">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Connections</h1>
-          <p className="text-gray-600 mt-1">Manage your Intervals.icu provider connections and sync settings</p>
+  if (loading) {
+    return (
+      <div className="border-t border-gray-200 pt-6 mt-6">
+        <div className="text-center py-6">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400 mb-2" />
+          <p className="text-gray-500 text-sm">Loading connections...</p>
         </div>
+      </div>
+    );
+  }
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-        {saveError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-3 rounded-lg">
-            {saveError}
-          </div>
-        )}
+  return (
+    <div className="border-t border-gray-200 pt-6 mt-6">
+      <h3 className="text-base font-semibold text-gray-900 mb-1">Connected providers</h3>
+      <p className="text-gray-600 text-sm mb-4">
+        Sync settings for providers linked to your Intervals.icu account.
+      </p>
 
-        {loading ? (
-          <div className="card-mobile">
-            <div className="text-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-gray-400 mb-3" />
-              <p className="text-gray-500">Loading connections...</p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="card-mobile divide-y divide-gray-100">
-              {connectedProviders.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  <p>No providers connected yet.</p>
-                </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm mb-4">
+          {error}
+        </div>
+      )}
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm mb-4">
+          {saveError}
+        </div>
+      )}
+
+      {connectedProviders.length === 0 ? (
+        <p className="text-sm text-gray-500">No providers connected yet.</p>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {connectedProviders.map(provider => (
+            <div key={provider.key} className="py-3 first:pt-0">
+              <div className="flex items-center gap-2 mb-2">
+                <h4 className="text-sm font-semibold text-gray-900">{provider.name}</h4>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                  <CheckCircle className="h-3 w-3" />
+                  Connected
+                </span>
+              </div>
+              {provider.options.length === 0 ? (
+                <p className="text-sm text-gray-500">No sync options available for this provider.</p>
               ) : (
-                connectedProviders.map(provider => (
-                  <div key={provider.key} className="p-3 sm:p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base font-semibold text-gray-900">{provider.name}</h2>
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-                          <CheckCircle className="h-3 w-3" />
-                          Connected
-                        </span>
-                      </div>
-                    </div>
-                    {provider.options.length === 0 ? (
-                      <p className="text-sm text-gray-500">No sync options available for this provider.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {provider.options.map(opt => {
-                          const checked = isChecked(opt);
-                          const saving = savingField === opt.field;
-                          // Intervals.icu accepts writes only for garmin/strava
-                          // toggles — other provider sync flags are re-derived
-                          // server-side and cannot be changed via the API.
-                          const readOnly = !provider.writable;
-                          return (
-                            <label
-                              key={opt.field}
-                              className={`flex items-center gap-2 text-sm text-gray-700 select-none ${readOnly ? '' : 'cursor-pointer'}`}
-                              title={readOnly ? 'Managed on intervals.icu — not writable via API' : undefined}
-                            >
-                              <div
-                                onClick={() => !readOnly && !saving && handleToggle(opt, !checked)}
-                                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                                  checked ? (readOnly ? 'bg-blue-400 border-blue-400' : 'bg-blue-600 border-blue-600') : 'bg-white border-gray-300'
-                                } ${(saving || readOnly) ? 'opacity-60' : ''}`}
-                              >
-                                {checked && (
-                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                              <span className="flex-1">{opt.label}</span>
-                              {saving && (
-                                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))
+                <div className="space-y-2">
+                  {provider.options.map(opt => {
+                    const checked = isChecked(opt);
+                    const saving = savingField === opt.field;
+                    // Intervals.icu accepts writes only for garmin/strava
+                    // toggles — other provider sync flags are re-derived
+                    // server-side and cannot be changed via the API.
+                    const readOnly = !provider.writable;
+                    return (
+                      <label
+                        key={opt.field}
+                        className={`flex items-center gap-2 text-sm text-gray-700 select-none ${readOnly ? '' : 'cursor-pointer'}`}
+                        title={readOnly ? 'Managed on intervals.icu — not writable via API' : undefined}
+                      >
+                        <div
+                          onClick={() => !readOnly && !saving && handleToggle(opt, !checked)}
+                          className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
+                            checked ? (readOnly ? 'bg-blue-400 border-blue-400' : 'bg-blue-600 border-blue-600') : 'bg-white border-gray-300'
+                          } ${(saving || readOnly) ? 'opacity-60' : ''}`}
+                        >
+                          {checked && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="flex-1">{opt.label}</span>
+                        {saving && (
+                          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               )}
             </div>
+          ))}
+        </div>
+      )}
 
-            {notConnectedProviders.length > 0 && (
-              <div className="card-mobile">
-                <div className="p-3 sm:p-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-700">Available providers</h2>
-                </div>
-                <div className="p-3 sm:p-4">
-                  <div className="flex flex-wrap gap-2">
-                    {notConnectedProviders.map(p => (
-                      <span
-                        key={p.key}
-                        className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5"
-                      >
-                        <XCircle className="h-3 w-3" />
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
-                  <a
-                    href="https://intervals.icu/settings"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary-600 hover:text-primary-700"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Connect a provider on Intervals.icu
-                  </a>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {notConnectedProviders.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <h4 className="text-sm font-semibold text-gray-700 mb-2">Available providers</h4>
+          <div className="flex flex-wrap gap-2">
+            {notConnectedProviders.map(p => (
+              <span
+                key={p.key}
+                className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5"
+              >
+                <XCircle className="h-3 w-3" />
+                {p.name}
+              </span>
+            ))}
+          </div>
+          <a
+            href="https://intervals.icu/settings"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 mt-3 text-sm text-primary-600 hover:text-primary-700"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Connect a provider on Intervals.icu
+          </a>
+        </div>
+      )}
     </div>
   );
 };
 
-export default Connections;
+export default IntervalsProviderSettings;

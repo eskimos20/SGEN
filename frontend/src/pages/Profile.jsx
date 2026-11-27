@@ -1,4 +1,5 @@
 import ZwiftConfigCard from '../components/profile/ZwiftConfigCard';
+import IntervalsProviderSettings from '../components/profile/IntervalsProviderSettings';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -306,6 +307,10 @@ const Profile = () => {
             </div>
           )}
         </form>
+
+        {/* Provider connections + sync toggles live here too — they are all
+            Intervals.icu athlete-profile settings. */}
+        {hasCredentialsSaved && <IntervalsProviderSettings />}
         </div>
 
         {/* Garmin Direct Connection */}

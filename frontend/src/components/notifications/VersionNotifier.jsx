@@ -90,7 +90,7 @@ const VERSION_NOTES = [
       {
         icon: '⌚',
         title: 'Connect Your Garmin Account',
-        description: 'Link Garmin Connect under Connections to sync activities, wellness, and fitness data directly. OAuth login with secure token storage.'
+        description: 'Link Garmin Connect under Profile to sync activities, wellness, and fitness data directly. OAuth login with secure token storage.'
       },
       {
         icon: '📥',

@@ -19,8 +19,7 @@ import {
   X, 
   Key, 
   Utensils,
-  Activity,
-  Cable
+  Activity
 } from 'lucide-react';
 import VersionNotifier from '../notifications/VersionNotifier';
 import WorkoutShareNotifier from '../notifications/WorkoutShareNotifier';
@@ -136,7 +135,6 @@ const Layout = () => {
         ...(hasIntervalsConfig ? [{ to: '/bikefit', icon: Scan, label: 'BikeFit' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/achievements', icon: Trophy, label: 'Achievements' }] : []),
         ...(hasIntervalsConfig ? [{ to: '/gear', icon: Bike, label: 'Gear' }] : []),
-        ...(hasIntervalsConfig ? [{ to: '/connections', icon: Cable, label: 'Connections' }] : []),
         { to: '/profile', icon: User, label: 'Profile' },
       ];
 
