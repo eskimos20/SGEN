@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import GarminConnectCard from '../components/connections/GarminConnectCard';
+import { ToggleSwitch } from '../components/profile/ConnectionCard';
 import { Share2 } from 'lucide-react';
 
 const Profile = () => {
@@ -17,6 +18,7 @@ const Profile = () => {
 
   // Workout sharing state
   const [shareWorkoutsEnabled, setShareWorkoutsEnabled] = useState(false);
+  const [shareWorkoutsBusy, setShareWorkoutsBusy] = useState(false);
   const [shareWorkoutsMessage, setShareWorkoutsMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
@@ -45,6 +47,7 @@ const Profile = () => {
   // Workout sharing handlers
   const toggleShareWorkouts = async (enabled) => {
     try {
+      setShareWorkoutsBusy(true);
       setShareWorkoutsMessage({ type: '', text: '' });
       await api.put('/user/profile', { shareWorkoutsEnabled: enabled });
       setShareWorkoutsEnabled(enabled);
@@ -58,6 +61,8 @@ const Profile = () => {
       });
     } catch (err) {
       setShareWorkoutsMessage({ type: 'error', text: 'Failed to update sharing setting' });
+    } finally {
+      setShareWorkoutsBusy(false);
     }
   };
 
@@ -109,21 +114,14 @@ const Profile = () => {
               </div>
             )}
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <div
-                onClick={() => toggleShareWorkouts(!shareWorkoutsEnabled)}
-                className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors ${
-                  shareWorkoutsEnabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                }`}
-              >
-                {shareWorkoutsEnabled && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
+            <div className="flex items-center gap-3">
+              <ToggleSwitch
+                enabled={shareWorkoutsEnabled}
+                busy={shareWorkoutsBusy}
+                onToggle={toggleShareWorkouts}
+              />
               <span className="font-medium text-gray-900">Share/Receive Workouts</span>
-            </label>
+            </div>
           </div>
         </div>
       </div>

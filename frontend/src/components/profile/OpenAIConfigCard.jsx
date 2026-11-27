@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import api from '../../api/axios';
-import ConnectionCard from './ConnectionCard';
+import ConnectionCard, { ConnectedBadge } from './ConnectionCard';
 
 /**
  * OpenAI connection — API key + model picker with the shared card pattern:
@@ -115,6 +115,7 @@ const OpenAIConfigCard = () => {
       iconColor="text-purple-600"
       title="OpenAI"
       name="OpenAI"
+      badge={enabled && hasConfig && connectionTested ? <ConnectedBadge /> : null}
       enabled={enabled}
       onToggle={toggle}
       toggleLabel="Enable OpenAI Integration"

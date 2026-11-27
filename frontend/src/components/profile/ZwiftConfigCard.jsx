@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save, Zap } from 'lucide-react';
 import api from '../../api/axios';
-import ConnectionCard from './ConnectionCard';
+import ConnectionCard, { ConnectedBadge } from './ConnectionCard';
 
 /**
  * Zwift connection — enable toggle, credentials, and the shared card
@@ -83,6 +83,7 @@ const ZwiftConfigCard = ({ initialEnabled = false, initialUsername = '', initial
       iconColor="text-orange-500"
       title="Zwift"
       name="Zwift"
+      badge={enabled && hasConfig ? <ConnectedBadge /> : null}
       enabled={enabled}
       onToggle={toggle}
       toggleLabel="Enable Zwift Integration"

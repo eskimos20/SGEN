@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Loader2, Link2 } from 'lucide-react';
 import api from '../../api/axios';
-import ConnectionCard from './ConnectionCard';
+import ConnectionCard, { ConnectedBadge } from './ConnectionCard';
 import IntervalsProviderSettings from './IntervalsProviderSettings';
 
 /**
@@ -89,6 +89,7 @@ const IntervalsConfigCard = ({ initialEnabled = true, initialAthleteId = '', ini
       iconColor="text-blue-600"
       title="Intervals.icu"
       name="Intervals.icu"
+      badge={enabled && hasConfig ? <ConnectedBadge /> : null}
       enabled={enabled}
       onToggle={toggle}
       toggleLabel="Enable Intervals.icu Integration"

@@ -1,6 +1,32 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, CheckCircle } from 'lucide-react';
 import ConfirmDialog from '../modals/ConfirmDialog';
+
+/** Green "Connected" pill shown next to every card title. */
+export const ConnectedBadge = () => (
+  <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+    <CheckCircle className="h-3 w-3" />
+    Connected
+  </span>
+);
+
+/** The shared On/Off switch — used by ConnectionCard and standalone toggles. */
+export const ToggleSwitch = ({ enabled, busy = false, onToggle }) => (
+  <button
+    type="button"
+    onClick={() => !busy && onToggle(!enabled)}
+    disabled={busy}
+    className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full border-2 transition-colors ${
+      enabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
+    } ${busy ? 'opacity-60' : ''}`}
+  >
+    <span
+      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+        enabled ? 'translate-x-5' : 'translate-x-0.5'
+      }`}
+    />
+  </button>
+);
 
 /**
  * Shared shell for every connection card on Profile: header with icon +
@@ -67,20 +93,7 @@ const ConnectionCard = ({
 
       {onToggle && (
         <div className="flex items-center gap-3 mb-4">
-          <button
-            type="button"
-            onClick={() => handleToggle(!enabled)}
-            disabled={toggleBusy}
-            className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full border-2 transition-colors ${
-              enabled ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-            } ${toggleBusy ? 'opacity-60' : ''}`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                enabled ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
+          <ToggleSwitch enabled={enabled} busy={toggleBusy} onToggle={handleToggle} />
           <span className="font-medium text-gray-900">{toggleLabel || `Enable ${title}`}</span>
         </div>
       )}

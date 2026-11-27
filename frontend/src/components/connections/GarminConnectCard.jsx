@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
 import { CheckCircle, Loader2, Link2, Download } from 'lucide-react';
-import ConnectionCard from '../profile/ConnectionCard';
+import ConnectionCard, { ConnectedBadge } from '../profile/ConnectionCard';
 
 /**
  * Garmin Connect OAuth connection card with anonymized-data consent gate.
@@ -113,10 +113,7 @@ export default function GarminConnectCard() {
   const garminEnabled = status.enabled !== false;
 
   const badge = status.connected && garminEnabled ? (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-      <CheckCircle className="h-3 w-3" />
-      Connected
-    </span>
+    <ConnectedBadge />
   ) : status.status === 'NEEDS_REAUTH' ? (
     <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
       Reconnect required
