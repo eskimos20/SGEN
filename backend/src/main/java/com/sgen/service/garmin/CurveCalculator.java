@@ -25,7 +25,24 @@ public final class CurveCalculator {
             ObjectNode wrapper = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
             for (JsonNode el : streams) {
                 String type = el.path("type").asText("");
-                if (!type.isEmpty() && el.has("data")) wrapper.set(type, el.get("data"));
+                if (type.isEmpty() || !el.has("data")) continue;
+                // Dual-channel streams (latlng): data = channel 1 (lat),
+                // data2 = channel 2 (lng) — zip into [[d1,d2],...] pairs.
+                if (el.get("data") instanceof com.fasterxml.jackson.databind.node.ArrayNode d1
+                        && el.get("data2") instanceof com.fasterxml.jackson.databind.node.ArrayNode d2) {
+                    var pairs = wrapper.putArray(type);
+                    int n = Math.min(d1.size(), d2.size());
+                    for (int i = 0; i < n; i++) {
+                        JsonNode a = d1.get(i), b = d2.get(i);
+                        if (a != null && a.isNumber() && b != null && b.isNumber()) {
+                            pairs.addArray().add(a.asDouble()).add(b.asDouble());
+                        } else {
+                            pairs.addNull();
+                        }
+                    }
+                    continue;
+                }
+                wrapper.set(type, el.get("data"));
             }
             return wrapper;
         }

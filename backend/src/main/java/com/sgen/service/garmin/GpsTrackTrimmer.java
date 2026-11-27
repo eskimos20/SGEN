@@ -35,18 +35,26 @@ public final class GpsTrackTrimmer {
         }
     }
 
-    /** Trim an Intervals-format streams array ([{type:"time",data:[...]}, ...]). */
+    /** Trim an Intervals-format streams array ([{type:"time",data:[...]}, ...]).
+     *  The latlng stream is dual-channel: data = lat series, data2 = lng series,
+     *  one point per index — both channels are nulled together. */
     public static void trimStreamsArray(JsonNode streams) {
         if (streams == null || !streams.isArray()) return;
-        ArrayNode timeData = null, latlngData = null;
+        ArrayNode timeData = null, latlngData = null, latlngData2 = null;
         for (JsonNode el : streams) {
             if (!(el.get("data") instanceof ArrayNode data)) continue;
             String type = el.path("type").asText("");
             if ("time".equals(type)) timeData = data;
-            else if ("latlng".equals(type)) latlngData = data;
+            else if ("latlng".equals(type)) {
+                latlngData = data;
+                if (el.get("data2") instanceof ArrayNode d2) latlngData2 = d2;
+            }
         }
         if (latlngData == null) return;
-        if (timeData != null) trimByTime(timeData, latlngData);
+        if (latlngData2 != null) {
+            if (timeData != null) trimByTimeDual(timeData, latlngData, latlngData2);
+            else trimByCountDual(latlngData, latlngData2);
+        } else if (timeData != null) trimByTime(timeData, latlngData);
         else trimByCount(latlngData);
     }
 
@@ -97,5 +105,40 @@ public final class GpsTrackTrimmer {
         if (idx < 0 || idx >= latlng.size()) return;
         latlng.set(idx, NullNode.getInstance());
         if (!pairs && idx + 1 < latlng.size()) latlng.set(idx + 1, NullNode.getInstance());
+    }
+
+    /** Trim dual-channel latlng (data = lat, data2 = lng) using the time axis. */
+    private static void trimByTimeDual(ArrayNode time, ArrayNode d1, ArrayNode d2) {
+        int n = Math.min(time.size(), Math.min(d1.size(), d2.size()));
+        if (n < 2) return;
+        double t0 = time.get(0).asDouble();
+        double t1 = time.get(n - 1).asDouble();
+        double dur = t1 - t0;
+        if (dur <= 0) return;
+        double trim = Math.min(MAX_TRIM_S, Math.max(MIN_TRIM_S, dur * TRIM_FRACTION));
+        double startCut = t0 + trim;
+        double endCut = t1 - trim;
+        for (int i = 0; i < n; i++) {
+            double t = time.get(i).asDouble();
+            if (t < startCut || t > endCut) {
+                d1.set(i, NullNode.getInstance());
+                d2.set(i, NullNode.getInstance());
+            }
+        }
+    }
+
+    /** Trim dual-channel latlng without a time axis — same count fraction. */
+    private static void trimByCountDual(ArrayNode d1, ArrayNode d2) {
+        int points = Math.min(d1.size(), d2.size());
+        if (points < 2) return;
+        int trim = Math.min(MAX_TRIM_POINTS, (int) Math.ceil(points * TRIM_FRACTION));
+        if (trim < 1) trim = 1;
+        if (2 * trim >= points) trim = Math.max(1, points / 4);
+        for (int i = 0; i < trim; i++) {
+            d1.set(i, NullNode.getInstance());
+            d2.set(i, NullNode.getInstance());
+            d1.set(points - 1 - i, NullNode.getInstance());
+            d2.set(points - 1 - i, NullNode.getInstance());
+        }
     }
 }
