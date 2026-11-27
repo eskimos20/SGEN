@@ -199,8 +199,7 @@ const OpenAIConfigCard = () => {
 
             {selectedModel && (
               <div className="bg-green-50 text-green-700 p-3 sm:p-4 rounded-lg">
-                <p className="font-medium">OpenAI is configured!</p>
-                <p className="text-sm mt-1">Using model: {selectedModel}</p>
+                <p className="text-sm">Using model: {selectedModel}</p>
               </div>
             )}
           </>
