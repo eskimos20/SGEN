@@ -28,6 +28,7 @@ public class GarminFileService {
     private final GarminFileQueueItemRepository fileQueueRepository;
     private final GarminConnectionRepository connectionRepository;
     private final GarminOAuthService oauthService;
+    private final com.sgen.repository.GarminActivityRepository garminActivityRepository;
 
     public void queue(JsonNode item) {
         String summaryId = item.path("summaryId").asText(null);
@@ -78,21 +79,48 @@ public class GarminFileService {
 
     private void uploadToIntervals(GarminFileQueueItem q, byte[] bytes) {
         if (q.getUserId() == null || bytes == null || bytes.length == 0) return;
-        String username = userLookupService.usernameOf(q.getUserId());
+        var user = userRepository.findById(q.getUserId()).orElse(null);
+        if (user == null || user.getIntervalsApiKey() == null || user.getIntervalsAthleteId() == null) {
+            // No Intervals creds — stays FETCHED so the sweep retries when
+            // (if) the user configures Intervals again.
+            q.setLastError("No Intervals credentials — upload postponed");
+            return;
+        }
+        String username = user.getUsername();
         if (username == null) return;
         try {
             String filename = "garmin-activity-" + q.getGarminActivityId()
                     + (q.getFileType() != null ? "." + q.getFileType().toLowerCase() : ".fit");
-            activityOpsService.uploadActivity(username, bytes, filename, null, null);
+            JsonNode uploaded = activityOpsService.uploadActivity(username, bytes, filename, null, null);
             q.setStatus("UPLOADED");
+            // Remember the upstream id so updates/deletes/gear changes can
+            // address the Intervals copy directly.
+            String upstreamId = uploaded != null ? uploaded.path("id").asText(null) : null;
+            if (upstreamId != null && !upstreamId.isBlank()) {
+                garminActivityRepository
+                        .findByUserIdAndGarminActivityId(q.getUserId(), q.getGarminActivityId())
+                        .ifPresent(a -> {
+                            a.setIntervalsActivityId(upstreamId);
+                            garminActivityRepository.save(a);
+                        });
+            }
             log.info("Uploaded Garmin file {} ({} bytes) to Intervals.icu for user {}",
                     q.getSummaryId(), bytes.length, username);
         } catch (Exception e) {
+            q.setAttempts(q.getAttempts() + 1);
             q.setLastError("Intervals upload failed: " + (e.getMessage() != null
                     ? e.getMessage().substring(0, Math.min(950, e.getMessage().length())) : "unknown"));
             log.warn("Intervals upload failed for Garmin file {} (user {}): {}",
                     q.getSummaryId(), username, e.getMessage());
         }
+    }
+
+    /** Sweep entry point: retry the Intervals upload for a FETCHED queue item. */
+    public void retryUpload(Long queueItemId) {
+        GarminFileQueueItem q = fileQueueRepository.findById(queueItemId).orElse(null);
+        if (q == null || q.getFitBytes() == null) return;
+        uploadToIntervals(q, q.getFitBytes());
+        fileQueueRepository.save(q);
     }
 
 }

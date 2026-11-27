@@ -7,7 +7,6 @@ import com.sgen.repository.GarminConnectionRepository;
 import com.sgen.repository.GarminPushItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +33,7 @@ public class GarminPushProcessor {
     private final GarminActivityMapper activityMapper;
     private final GarminWellnessMapper wellnessMapper;
     private final GarminFileService fileService;
+    private final com.sgen.repository.GarminFileQueueItemRepository fileQueueRepository;
     private final GarminOAuthService oauthService;
     private final GarminDataCleanupService cleanupService;
     private final ObjectMapper objectMapper;
@@ -47,7 +47,6 @@ public class GarminPushProcessor {
 
     private final ExecutorService executor = Executors.newFixedThreadPool(4);
 
-    @Async
     public void processAsync(List<Long> ids) {
         for (Long id : ids) {
             executor.submit(() -> processSafe(id));
@@ -63,6 +62,21 @@ public class GarminPushProcessor {
         for (GarminPushItem item : inboxRepository.findTop50ByStatusOrderByReceivedAtAsc("FAILED")) {
             if (item.getAttempts() < 24) { // ~1/day via sweeper cadence
                 executor.submit(() -> processSafe(item.getId()));
+            }
+        }
+        // File queue retry: FETCHED rows had a failed/postponed Intervals
+        // upload (fit bytes are stored, so retry is free); FAILED rows get
+        // the file fetch retried while the callback URL is still valid.
+        for (var q : fileQueueRepository.findTop20ByStatusOrderByCreatedAtAsc("FETCHED")) {
+            if (q.getAttempts() < 24 && q.getFitBytes() != null) {
+                executor.submit(() -> fileService.retryUpload(q.getId()));
+            }
+        }
+        for (var q : fileQueueRepository.findTop20ByStatusOrderByCreatedAtAsc("FAILED")) {
+            if (q.getAttempts() < 24
+                    && q.getUrlExpiresAt() != null
+                    && q.getUrlExpiresAt().isAfter(LocalDateTime.now())) {
+                executor.submit(() -> fileService.fetch(q.getId()));
             }
         }
         oauthService.refreshExpiringTokens();

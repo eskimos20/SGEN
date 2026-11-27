@@ -193,18 +193,8 @@ public class CalendarController {
         boolean garminConnected = garminClientFactory.isConnected(user.getId());
         boolean hasIntervals = user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank();
         if (garminConnected) {
-            // Incremental sync: refresh the requested range from Intervals so
-            // wellness synced there later (e.g. downloaded from Garmin) reaches
-            // the mirror — same pattern as the activities mirror sync.
-            if (hasIntervals) {
-                try {
-                    var fresh = wellnessService.fetchWellnessData(authentication.getName(), oldest, newest);
-                    intervalsMirrorService.saveWellnessRows(user.getId(), fresh);
-                } catch (Exception e) {
-                    org.slf4j.LoggerFactory.getLogger(CalendarController.class)
-                            .debug("Wellness mirror refresh failed: {}", e.getMessage());
-                }
-            }
+            // Local mirror only — Garmin users' wellness is never pulled
+            // from Intervals; the backfill importer owns refresh duties.
             org.slf4j.LoggerFactory.getLogger(CalendarController.class)
                     .debug("SOURCE=DB user {} wellness served from local mirror {}-{}",
                             authentication.getName(), oldest, newest);
@@ -277,7 +267,13 @@ public class CalendarController {
             Object st = doc.get("sport_type");
             if (st != null) type = st.toString();
         }
-        return type != null && type.toLowerCase().contains("run") ? "run" : "ride";
+        if (type == null) return "ride";
+        String t = type.toLowerCase();
+        if (t.contains("run")) return "run";
+        if (t.contains("swim")) return "swim";
+        if (t.contains("strength") || t.contains("weight") || t.contains("hiit")) return "strength";
+        if (t.contains("ride") || t.contains("bike") || t.contains("cycl")) return "ride";
+        return "other";
     }
 
     private void deleteGarminWorkout(String username, Integer intervalsEventId) {

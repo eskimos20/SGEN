@@ -32,19 +32,21 @@ public class IntervalsImageService {
     public byte[] getImage(String username, String activityId, String kind) {
         String path = PATHS.get(kind);
         if (path == null) throw new IllegalArgumentException("Unknown image kind: " + kind);
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        Long uid = ctx.user.getId();
+        Long uid = userService.getUserEntityByUsername(username).getId();
         boolean garminConnected = garminClientFactory.isConnected(uid);
-        if (garminConnected) {
+        if (garminConnected || (activityId != null && activityId.startsWith("garmin_"))) {
             byte[] cached = intervalsMirrorService.findImage(uid, activityId, kind);
             if (cached != null && cached.length > 0) {
                 log.debug("SOURCE=DB user {} {}.png served from local mirror: {}", username, kind, activityId);
                 return cached;
             }
+            // No Intervals fetch — activity data (including rendered images)
+            // is local-only for Garmin-connected users.
+            return null;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             byte[] png = intervalsApi.getBytes(ctx.client, path, activityId);
-            if (garminConnected) intervalsMirrorService.saveImage(uid, activityId, kind, png);
             return png;
         } catch (Exception e) {
             return null;

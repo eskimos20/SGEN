@@ -39,6 +39,10 @@ public class IntervalsStatsService {
     private final IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
+    private final com.sgen.service.garmin.GarminMergeService garminMergeService;
+    private final com.sgen.repository.GarminActivityRepository garminActivityRepository;
+    private final com.sgen.repository.GarminActivityStreamsRepository garminActivityStreamsRepository;
+    private final IntervalsApiRateLimiter rateLimiter;
 
     private static final int PARALLEL_REQUESTS = 4;
     private final ExecutorService executorService = Executors.newFixedThreadPool(PARALLEL_REQUESTS);
@@ -49,11 +53,13 @@ public class IntervalsStatsService {
     }
 
     public JsonNode getPowerCurveHistory(String username, String oldest, String newest, String type) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        Long uid = ctx.user.getId();
-        if (garminClientFactory.isConnected(uid) && intervalsActivityRepository.countByUserId(uid) > 0) {
+        Long uid = userService.getUserEntityByUsername(username).getId();
+        // Garmin-connected: everything is computed locally — never hit the
+        // Intervals activities API for curves.
+        if (garminClientFactory.isConnected(uid)) {
             return localCurveHistory(uid, username, oldest, newest, type, "watts");
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         String athleteId = ctx.user.getIntervalsAthleteId();
         WebClient client = ctx.client;
 
@@ -130,39 +136,22 @@ public class IntervalsStatsService {
 
     /** Fetch only the fields used by the Fitness & Form training totals panel. */
     public JsonNode getTrainingTotalsActivities(String username, String oldest, String newest) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        Long uid = ctx.user.getId();
+        Long uid = userService.getUserEntityByUsername(username).getId();
         String fields = "id,type,start_date_local,moving_time,distance,icu_distance,coasting_time,total_elevation_gain,icu_training_load,calories,kg_lifted,icu_joules,icu_zone_times,icu_hr_zone_times,pace_zone_times,gap_zone_times,use_gap_zone_times,tiz_order";
-        // Garmin-connected: refresh the range from Intervals into the mirror,
-        // then serve it — payloadJson holds the full field set the frontend needs.
-        if (garminClientFactory.isConnected(uid) && intervalsActivityRepository.countByUserId(uid) > 0) {
+        // Garmin-connected: serve the mirror plus local Garmin activities —
+        // no activity data is ever pulled from Intervals for these users.
+        if (garminClientFactory.isConnected(uid)) {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
-            try {
-                JsonNode fetched = intervalsApi.getJson(ctx.client,
-                        uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
-                                .queryParam("oldest", oldest)
-                                .queryParam("newest", newest)
-                                .queryParam("fields", fields)
-                                .build(ctx.user.getIntervalsAthleteId()));
-                if (fetched != null && fetched.isArray()) {
-                    var keepIds = new java.util.HashSet<String>();
-                    for (JsonNode a : fetched) {
-                        intervalsMirrorService.mergeActivityPayload(uid, a);
-                        keepIds.add(a.path("id").asText());
-                    }
-                    intervalsMirrorService.pruneActivities(uid, from, to, keepIds);
-                }
-            } catch (Exception e) {
-                log.debug("Training totals mirror refresh failed: {}", e.getMessage());
-            }
             var rows = intervalsActivityRepository
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(uid, from, to);
             var arr = com.sgen.util.JsonPayloads.toPayloadArray(
                     rows, r -> r.getPayloadJson(), objectMapper);
+            garminMergeService.mergeActivities(uid, arr, from, to);
             log.debug("SOURCE=DB user {} training totals served from local mirror: {}", username, arr.size());
             return arr;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             return intervalsApi.getJson(ctx.client,
                     uriBuilder -> uriBuilder.path("/api/v1/athlete/{id}/activities")
@@ -221,29 +210,52 @@ public class IntervalsStatsService {
             if (type != null && !type.isBlank() && !"all".equalsIgnoreCase(type) && !type.equalsIgnoreCase(t)) continue;
             byType.computeIfAbsent(t, k -> new ArrayList<>()).add(r.getActivityId());
         }
+        // Local Garmin activities contribute their own streams — keyed by
+        // "g:<id>" so the lookup below can tell them apart from mirror ids.
+        var garminActs = new LinkedHashMap<String, com.sgen.entity.GarminActivity>();
+        for (var a : garminActivityRepository
+                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(uid, from, to)) {
+            if (Boolean.TRUE.equals(a.getManual())) continue;
+            String t = garminMergeService.intervalsTypeFor(a);
+            if (t == null || t.isEmpty()) continue;
+            if (type != null && !type.isBlank() && !"all".equalsIgnoreCase(type) && !type.equalsIgnoreCase(t)) continue;
+            String key = "g:" + a.getId();
+            byType.computeIfAbsent(t, k -> new ArrayList<>()).add(key);
+            garminActs.put(key, a);
+        }
         var out = objectMapper.createArrayNode();
         for (var e : byType.entrySet()) {
             Map<Integer, Double> best = new java.util.TreeMap<>();
             for (String id : e.getValue()) {
-                var srow = intervalsStreamsRepository.findByUserIdAndActivityId(uid, id).orElse(null);
-                if (srow == null || srow.getStreamsJson() == null) continue;
                 try {
                     JsonNode c = null;
-                    // Stored per-activity curve — computed once, merged forever.
-                    if (srow.getCurvesJson() != null) {
-                        JsonNode stored = objectMapper.readTree(srow.getCurvesJson());
-                        if (stored.has(streamKey)) c = stored.get(streamKey);
-                    }
-                    if (c == null) {
-                        ObjectNode normalized = com.sgen.service.garmin.CurveCalculator.normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
+                    var garmin = garminActs.get(id);
+                    if (garmin != null) {
+                        var srow = garminActivityStreamsRepository.findByActivityId(garmin.getId()).orElse(null);
+                        if (srow == null || srow.getStreamsJson() == null) continue;
+                        ObjectNode normalized = com.sgen.service.garmin.CurveCalculator
+                                .normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
                         if (normalized == null || !normalized.has(streamKey)) continue;
                         c = com.sgen.service.garmin.CurveCalculator.curve(normalized.get(streamKey));
-                        ObjectNode curves = srow.getCurvesJson() != null
-                                ? (ObjectNode) objectMapper.readTree(srow.getCurvesJson())
-                                : objectMapper.createObjectNode();
-                        curves.set(streamKey, c);
-                        srow.setCurvesJson(objectMapper.writeValueAsString(curves));
-                        intervalsStreamsRepository.save(srow);
+                    } else {
+                        var srow = intervalsStreamsRepository.findByUserIdAndActivityId(uid, id).orElse(null);
+                        if (srow == null || srow.getStreamsJson() == null) continue;
+                        // Stored per-activity curve — computed once, merged forever.
+                        if (srow.getCurvesJson() != null) {
+                            JsonNode stored = objectMapper.readTree(srow.getCurvesJson());
+                            if (stored.has(streamKey)) c = stored.get(streamKey);
+                        }
+                        if (c == null) {
+                            ObjectNode normalized = com.sgen.service.garmin.CurveCalculator.normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
+                            if (normalized == null || !normalized.has(streamKey)) continue;
+                            c = com.sgen.service.garmin.CurveCalculator.curve(normalized.get(streamKey));
+                            ObjectNode curves = srow.getCurvesJson() != null
+                                    ? (ObjectNode) objectMapper.readTree(srow.getCurvesJson())
+                                    : objectMapper.createObjectNode();
+                            curves.set(streamKey, c);
+                            srow.setCurvesJson(objectMapper.writeValueAsString(curves));
+                            intervalsStreamsRepository.save(srow);
+                        }
                     }
                     var secs = c.path("secs"); var vals = c.path("values");
                     for (int i = 0; i < secs.size(); i++) {
@@ -289,6 +301,7 @@ public class IntervalsStatsService {
     public boolean testConnection(String username) {
         try {
             ApiContext ctx = clientFactory.buildContext(userService, username);
+            rateLimiter.acquire();
             String response = ctx.client.get()
                     .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                     .retrieve().bodyToMono(String.class).block();

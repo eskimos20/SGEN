@@ -32,11 +32,17 @@ public class IntervalsIntervalService {
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final IntervalsActivityAnalysisService analysisService;
     private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
+    private final com.sgen.repository.GarminActivityRepository garminActivityRepository;
+    private final com.sgen.repository.GarminActivityStreamsRepository garminActivityStreamsRepository;
+    private final com.sgen.repository.GarminActivityIntervalRepository garminActivityIntervalRepository;
 
     public JsonNode fetchActivityBestEfforts(String username, String activityId) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        Long uid = ctx.user.getId();
+        Long uid = userService.getUserEntityByUsername(username).getId();
         boolean garminConnected = garminClientFactory.isConnected(uid);
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            // Local Garmin activities have no upstream best-efforts.
+            return null;
+        }
         if (garminConnected) {
             String cached = intervalsMirrorService.findBestEffortsJson(uid, activityId);
             if (cached != null) {
@@ -45,12 +51,12 @@ public class IntervalsIntervalService {
                     return objectMapper.readTree(cached);
                 } catch (Exception ignored) {}
             }
+            // Never pull activity data from Intervals for Garmin-connected users.
+            return null;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String json = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/best-efforts", activityId);
-            if (garminConnected && json != null) {
-                intervalsMirrorService.saveBestEfforts(uid, activityId, json);
-            }
             return objectMapper.readTree(json);
         } catch (Exception e) {
             log.error("Failed to fetch best efforts for activity {}: {}", activityId, e.getMessage());
@@ -61,6 +67,19 @@ public class IntervalsIntervalService {
     public JsonNode findBestEfforts(String username, String activityId, String stream,
                                     Integer duration, Integer count, Float minValue,
                                     Boolean excludeIntervals) {
+        // Garmin-connected: compute locally from stored streams — same window
+        // search as compute-intervals, wrapped in the best-efforts shape.
+        if (garminClientFactory.isConnected(
+                userService.getUserEntityByUsername(username).getId())) {
+            var efforts = computeIntervalsFromStreams(username, activityId, stream,
+                    duration, count, null, null);
+            if (minValue != null) {
+                efforts.removeIf(w -> ((Number) w.get("average")).doubleValue() < minValue);
+            }
+            var wrap = objectMapper.createObjectNode();
+            wrap.set("efforts", objectMapper.valueToTree(efforts));
+            return wrap;
+        }
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             log.info("Finding best efforts for activity {} - stream: {}, duration: {}s, count: {}",
@@ -85,11 +104,15 @@ public class IntervalsIntervalService {
                                             List<Map<String, Object>> intervals,
                                             Integer searchDuration,
                                             JsonNode activityNode, JsonNode streamsNode) throws Exception {
+        // Local Garmin activities store intervals in garmin_activity_intervals.
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            return updateLocalGarminIntervals(username, activityId, intervals);
+        }
         ApiContext ctx = clientFactory.buildContext(userService, username);
         rateLimiter.acquire();
         log.info("Updating intervals for activity {} - count: {}", activityId, intervals.size());
 
-        boolean isStrokeBased = isStrokeBasedActivity(activityNode, streamsNode);
+        boolean isStrokeBased = activityNode != null && isStrokeBasedActivity(activityNode, streamsNode);
         log.info("Activity {} detected as {} data", activityId,
                 isStrokeBased ? "stroke-based" : "time-based");
 
@@ -108,6 +131,139 @@ public class IntervalsIntervalService {
         JsonNode res = objectMapper.readTree(json);
         persistIntervalsToMirror(ctx.user.getId(), activityId, res);
         return res;
+    }
+
+    /**
+     * Local interval write for garmin_ activities: replaces the rows in
+     * garmin_activity_intervals, computing avg/max stats from the stored
+     * streams. Returns the stored intervals in the icu_intervals array
+     * shape the frontend renders.
+     */
+    public JsonNode updateLocalGarminIntervals(String username, String activityId,
+                                             List<Map<String, Object>> intervals) throws Exception {
+        Long uid = userService.getUserEntityByUsername(username).getId();
+        Long gid = Long.parseLong(activityId.substring("garmin_".length()));
+        var act = garminActivityRepository.findById(gid)
+                .orElseThrow(() -> new IllegalArgumentException("Activity not found: " + activityId));
+        if (!act.getUserId().equals(uid)) {
+            throw new IllegalArgumentException("Activity does not belong to user");
+        }
+        com.fasterxml.jackson.databind.node.ObjectNode normalized = null;
+        var srow = garminActivityStreamsRepository.findByActivityId(gid).orElse(null);
+        if (srow != null && srow.getStreamsJson() != null) {
+            normalized = com.sgen.service.garmin.CurveCalculator
+                    .normalizeStreams(objectMapper.readTree(srow.getStreamsJson()));
+        }
+        var time = arr(normalized, "time");
+        var watts = arr(normalized, "watts");
+        var hr = arr(normalized, "heartrate");
+        var speed = arr(normalized, "velocity_smooth");
+        var cad = arr(normalized, "cadence");
+
+        garminActivityIntervalRepository.deleteByActivityId(gid);
+        var out = objectMapper.createArrayNode();
+        int order = 0;
+        for (Map<String, Object> iv : intervals) {
+            Integer s = numOrNull(iv.get("start_index"));
+            Integer e = numOrNull(iv.get("end_index"));
+            if (s == null || e == null || e < s) continue;
+            var row = com.sgen.entity.GarminActivityInterval.builder()
+                    .activityId(gid)
+                    .stepOrder(order++)
+                    .startIndex(s)
+                    .endIndex(e)
+                    .durationS(time != null && e < time.size()
+                            ? (int) Math.round(time.get(e).asDouble(0) - time.get(s).asDouble(0))
+                            : e - s)
+                    .type(String.valueOf(iv.getOrDefault("type", "WORK")))
+                    .avgWatts(avgRange(watts, s, e))
+                    .maxWatts(maxRange(watts, s, e))
+                    .avgHr(avgRange(hr, s, e))
+                    .startHr(hrAt(hr, s))
+                    .endHr(hrAt(hr, e - 1))
+                    .hrr(hrrAt(hr, e, time))
+                    .avgSpeed(avgRange(speed, s, e))
+                    .avgCadence(avgRange(cad, s, e))
+                    .build();
+            garminActivityIntervalRepository.save(row);
+            var o = objectMapper.createObjectNode();
+            o.put("start_index", s);
+            o.put("end_index", e);
+            o.put("type", row.getType());
+            if (iv.get("label") != null) o.put("label", String.valueOf(iv.get("label")));
+            if (row.getDurationS() != null) o.put("duration", row.getDurationS());
+            if (row.getAvgWatts() != null) o.put("average_watts", row.getAvgWatts());
+            if (row.getMaxWatts() != null) o.put("max_watts", row.getMaxWatts());
+            if (row.getAvgHr() != null) o.put("average_heartrate", row.getAvgHr());
+            if (row.getStartHr() != null) o.put("start_hr", row.getStartHr());
+            if (row.getEndHr() != null) o.put("end_hr", row.getEndHr());
+            if (row.getHrr() != null) o.put("hrr", row.getHrr());
+            if (row.getAvgSpeed() != null) o.put("average_speed", row.getAvgSpeed());
+            if (row.getAvgCadence() != null) o.put("average_cadence", row.getAvgCadence());
+            out.add(o);
+        }
+        log.info("Stored {} local intervals for garmin activity {} (user {})",
+                out.size(), activityId, uid);
+        return out;
+    }
+
+    private com.fasterxml.jackson.databind.node.ArrayNode arr(
+            com.fasterxml.jackson.databind.node.ObjectNode n, String key) {
+        return n != null && n.get(key) instanceof com.fasterxml.jackson.databind.node.ArrayNode a ? a : null;
+    }
+
+    private Integer numOrNull(Object v) {
+        return v instanceof Number num ? num.intValue() : null;
+    }
+
+    private Double avgRange(com.fasterxml.jackson.databind.node.ArrayNode a, int from, int to) {
+        if (a == null || a.isEmpty()) return null;
+        int f = Math.max(0, from), t = Math.min(to, a.size() - 1);
+        if (t < f) return null;
+        double sum = 0; int n = 0;
+        for (int i = f; i <= t; i++) {
+            var v = a.get(i);
+            if (v != null && v.isNumber() && v.asDouble() > 0) { sum += v.asDouble(); n++; }
+        }
+        return n > 0 ? sum / n : null;
+    }
+
+    private Double maxRange(com.fasterxml.jackson.databind.node.ArrayNode a, int from, int to) {
+        if (a == null || a.isEmpty()) return null;
+        int f = Math.max(0, from), t = Math.min(to, a.size() - 1);
+        if (t < f) return null;
+        double max = 0;
+        for (int i = f; i <= t; i++) {
+            var v = a.get(i);
+            if (v != null && v.isNumber() && v.asDouble() > max) max = v.asDouble();
+        }
+        return max > 0 ? max : null;
+    }
+
+    /** HR at a stream index — scans outward when the sample itself is 0/null. */
+    private Integer hrAt(com.fasterxml.jackson.databind.node.ArrayNode a, int idx) {
+        if (a == null || a.isEmpty()) return null;
+        int i = Math.max(0, Math.min(idx, a.size() - 1));
+        for (int d = 0; d < 30; d++) {
+            if (i - d >= 0) { double v = a.get(i - d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+            if (d > 0 && i + d < a.size()) { double v = a.get(i + d).asDouble(0); if (v > 0) return (int) Math.round(v); }
+        }
+        return null;
+    }
+
+    /** HR recovery: HR at interval end minus HR ~120s later. */
+    private Double hrrAt(com.fasterxml.jackson.databind.node.ArrayNode hr,
+                         int endIdx, com.fasterxml.jackson.databind.node.ArrayNode time) {
+        Integer endHr = hrAt(hr, endIdx);
+        if (endHr == null || time == null || endIdx >= time.size()) return null;
+        double target = time.get(endIdx).asDouble(0) + 120.0;
+        for (int i = endIdx; i < time.size() && i < endIdx + 600; i++) {
+            if (time.get(i).asDouble(0) >= target) {
+                Integer post = hrAt(hr, i);
+                return post != null ? (double) (endHr - post) : null;
+            }
+        }
+        return null;
     }
 
     /** Garmin-connected: keep the mirror's intervals_json in sync after edits. */
@@ -169,30 +325,47 @@ public class IntervalsIntervalService {
     public List<Map<String, Object>> computeIntervalsFromStreams(String username, String activityId,
                                                                   String streamType, Integer duration, Integer count,
                                                                   Integer skipSeconds, Integer cooldownSeconds) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
+        Long uid = userService.getUserEntityByUsername(username).getId();
         try {
             log.info("Computing intervals from streams for activity {} - stream: {}, duration: {}s, count: {}, skipSeconds: {}",
                     activityId, streamType, duration, count, skipSeconds);
 
-            // Fetch streams data — local mirror first for Garmin users
-            Long uid = ctx.user.getId();
+            // Streams resolution: local garmin table for garmin_ ids, the
+            // intervals mirror for Garmin-connected users, the API only for
+            // everyone else. No Intervals fetch ever happens for
+            // Garmin-connected users.
             boolean garminConnected = garminClientFactory.isConnected(uid);
             JsonNode streams = null;
-            if (garminConnected) {
+            if (activityId != null && activityId.startsWith("garmin_")) {
+                try {
+                    Long gid = Long.parseLong(activityId.substring("garmin_".length()));
+                    var srow = garminActivityStreamsRepository.findByActivityId(gid).orElse(null);
+                    if (srow != null && srow.getStreamsJson() != null) {
+                        streams = objectMapper.readTree(srow.getStreamsJson());
+                    }
+                } catch (NumberFormatException nfe) {
+                    log.debug("Bad garmin activity id {}", activityId);
+                }
+            } else if (garminConnected) {
                 String cached = intervalsMirrorService.findStreamsJson(uid, activityId);
                 if (cached != null) {
                     try { streams = objectMapper.readTree(cached); } catch (Exception ignored) {}
                 }
             }
             if (streams == null) {
-                String streamsJson = intervalsApi.getString(ctx.client, "/api/v1/activity/{id}/streams", activityId);
-                streams = objectMapper.readTree(streamsJson);
                 if (garminConnected) {
-                    intervalsMirrorService.saveStreams(uid, activityId, streams, null);
+                    log.debug("No local streams for {} — returning no intervals", activityId);
+                    return new ArrayList<>();
                 }
+                String streamsJson = intervalsApi.getString(
+                        clientFactory.buildContext(userService, username).client,
+                        "/api/v1/activity/{id}/streams", activityId);
+                streams = objectMapper.readTree(streamsJson);
             }
 
-            // Extract time and value streams
+            // Extract time and value streams — both the Intervals array
+            // format [{type,data}] and the normalized object format
+            // {time:[...], watts:[...]} used by locally stored Garmin streams.
             List<Double> timeData = new ArrayList<>();
             List<Double> valueData = new ArrayList<>();
 
@@ -211,6 +384,11 @@ public class IntervalsIntervalService {
                         }
                     }
                 }
+            } else if (streams.isObject()) {
+                JsonNode t = streams.get("time");
+                JsonNode v = streams.get(streamType);
+                if (t != null && t.isArray()) for (JsonNode d : t) timeData.add(d.asDouble(0));
+                if (v != null && v.isArray()) for (JsonNode d : v) valueData.add(d.asDouble(0));
             }
 
             if (timeData.isEmpty() || valueData.isEmpty() || timeData.size() != valueData.size()) {
@@ -351,6 +529,7 @@ public class IntervalsIntervalService {
 
         if (timeStream.isEmpty()) {
             log.warn("No time stream found for activity {}, falling back to standard approach", activityId);
+            rateLimiter.acquire();
             String json = client.put()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/v1/activity/{id}/intervals")
@@ -377,6 +556,7 @@ public class IntervalsIntervalService {
             clipped.add(c);
         }
 
+        rateLimiter.acquire();
         String json = client.put()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/activity/{id}/intervals")

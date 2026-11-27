@@ -73,17 +73,29 @@ public class IntervalsService {
         com.fasterxml.jackson.databind.node.ArrayNode activities = objectMapper.createArrayNode();
         garminMergeService.mergeActivities(uid, activities);
         allData.put("activities", activities);
-        allData.put("athlete", objectMapper.createObjectNode());
-        allData.put("sportSettings", objectMapper.createObjectNode());
-        allData.put("events", objectMapper.createArrayNode());
+        allData.put("athlete", mirroredDocOrEmpty(uid, "athlete"));
+        allData.put("sportSettings", mirroredDocOrEmpty(uid, "sport-settings"));
+        // Mirror events survive a credential removal — local-master events
+        // (negative ids) stay editable/deletable.
+        var events = objectMapper.createArrayNode();
+        for (var r : intervalsEventRepository.findByUserId(uid)) {
+            try { events.add(objectMapper.readTree(r.getPayloadJson())); }
+            catch (Exception ignored) {}
+        }
+        allData.put("events", events);
         allData.put("wellness", garminMergeService.mergeWellness(uid, java.util.List.of()));
         allData.put("hasIntervalsConfig", false);
         log.info("User {} served purely local (no Intervals config)", username);
         return allData;
     }
 
-    /** Session cache: activity ids whose FTP/VO2 stream analysis already ran. */
-    private final Map<Long, Set<String>> analyzedIds = new ConcurrentHashMap<>();
+    private JsonNode mirroredDocOrEmpty(Long uid, String kind) {
+        try {
+            String json = intervalsMirrorService.findAthleteJson(uid, kind);
+            if (json != null) return objectMapper.readTree(json);
+        } catch (Exception ignored) {}
+        return objectMapper.createObjectNode();
+    }
 
     @PreDestroy
     public void shutdown() {
@@ -126,7 +138,9 @@ public class IntervalsService {
         WebClient client = ctx.client;
         Map<String, Object> allData = new ConcurrentHashMap<>();
         final Map<String, JsonNode> streamsMap = new ConcurrentHashMap<>();
-        final Set<String> analyzed = analyzedIds.computeIfAbsent(ctx.user.getId(), k -> ConcurrentHashMap.newKeySet());
+        // Activity ids whose FTP/VO2 analysis already ran — DB-derived
+        // (activity_analysis rows), so no in-memory cache is needed.
+        final Set<String> analyzed = ConcurrentHashMap.newKeySet();
 
         // Garmin-connected: serve everything from local DB — no Intervals
         // activity/stream/wellness calls at all (pure local pipeline).
@@ -219,6 +233,12 @@ public class IntervalsService {
                     final JsonNode cachedIntervals = activity.path("icu_intervals").isArray()
                             ? activity.path("icu_intervals") : null;
                     final JsonNode cachedStreams = streamsMap.get(actId);
+                    // Garmin-connected: analysis may only run on data already
+                    // in the mirror — processActivity would otherwise fetch
+                    // the activity JSON/streams from Intervals to fill gaps.
+                    if (garminConnected && (cachedIntervals == null || cachedStreams == null)) {
+                        continue;
+                    }
                     futuresById.put(actId, CompletableFuture.supplyAsync(
                             () -> analysisService.processActivity(client, actId, weightKg, cachedIntervals, cachedStreams), executorService));
                 }

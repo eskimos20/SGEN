@@ -31,29 +31,33 @@ public class IntervalsActivityDetailService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final IntervalsApiClient intervalsApi;
     private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
-    private final IntervalsMirrorService intervalsMirrorService;
     private final com.sgen.repository.IntervalsActivityRepository intervalsActivityRepository;
     private final com.sgen.repository.IntervalsActivityStreamsRepository intervalsStreamsRepository;
     private final IntervalsActivityAnalysisService analysisService;
     private final IntervalsIntervalService intervalsIntervalService;
 
     public Map<String, Object> getActivityDetails(String username, String activityId) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        WebClient client = ctx.client;
         Map<String, Object> details = new HashMap<>();
-        Long uid = ctx.user.getId();
+        Long uid = userService.getUserEntityByUsername(username).getId();
         boolean garminConnected = garminClientFactory.isConnected(uid);
 
-        // Garmin-connected: serve from the local mirror when the row exists —
-        // no Intervals calls at all.
+        // Garmin-connected: serve from the local mirror only — activity
+        // data is never pulled from Intervals for these users. A mirror
+        // miss (not yet imported) renders as "incomplete" in the UI.
         if (garminConnected) {
             var mirrorRow = intervalsActivityRepository.findByUserIdAndActivityId(uid, activityId);
             if (mirrorRow.isPresent()) {
                 log.debug("SOURCE=DB user {} activity {} details served from local mirror", username, activityId);
-                return mirrorActivityDetails(uid, activityId, mirrorRow.get(), client);
+                return mirrorActivityDetails(uid, activityId, mirrorRow.get());
             }
+            details.put("incomplete", true);
+            details.put("incompleteReason",
+                    "This activity is not in the local mirror yet — run a backfill import to sync it.");
+            return details;
         }
 
+        ApiContext ctx = clientFactory.buildContext(userService, username);
+        WebClient client = ctx.client;
         try {
             JsonNode activityNode = intervalsApi.getJson(client,
                     uriBuilder -> uriBuilder.path("/api/v1/activity/{id}")
@@ -159,26 +163,12 @@ public class IntervalsActivityDetailService {
 
         addPaceCurve(activityId, details, (JsonNode) details.get("streams"));
 
-        // Garmin-connected: keep the mirror warm so the next view is fully local.
-        if (garminConnected) {
-            try {
-                JsonNode act = (JsonNode) details.get("activity");
-                if (act != null) intervalsMirrorService.saveActivity(uid, act);
-                intervalsMirrorService.saveStreams(uid, activityId,
-                        (JsonNode) details.get("streams"),
-                        act != null ? act.get("icu_intervals") : null);
-            } catch (Exception e) {
-                log.debug("Mirror persist on details failed: {}", e.getMessage());
-            }
-        }
-
         return details;
     }
 
     /** Same details shape as the API path, built entirely from mirror rows. */
     private Map<String, Object> mirrorActivityDetails(Long uid, String activityId,
-                                                      com.sgen.entity.IntervalsActivity row,
-                                                      WebClient client) {
+                                                      com.sgen.entity.IntervalsActivity row) {
         Map<String, Object> details = new HashMap<>();
         try {
             ObjectNode activity = (ObjectNode) objectMapper.readTree(row.getPayloadJson());
@@ -195,48 +185,17 @@ public class IntervalsActivityDetailService {
                 if (intervals != null && intervals.isObject() && intervals.has("icu_intervals"))
                     intervals = intervals.get("icu_intervals");
             }
-            // Missing pieces: fetch once from Intervals and persist into the mirror.
-            boolean intsMissing = intervals == null || (intervals.isArray() && intervals.isEmpty());
-            if (streams == null || intsMissing) {
-                if (intsMissing) intervals = null;
-                try {
-                    if (streams == null) {
-                        streams = intervalsApi.getJson(client, "/api/v1/activity/{id}/streams", activityId);
-                    }
-                    if (intervals == null) {
-                        JsonNode det = intervalsApi.getJson(client,
-                                b -> b.path("/api/v1/activity/{id}")
-                                        .queryParam("intervals", "true").build(activityId));
-                        if (det.has("icu_intervals")) intervals = det.get("icu_intervals");
-                    }
-                    intervalsMirrorService.saveStreams(uid, activityId, streams, intervals);
-                    log.info("Mirror for {} was missing streams/intervals — fetched and persisted", activityId);
-                } catch (Exception e) {
-                    log.debug("Mirror streams heal for {} failed: {}", activityId, e.getMessage());
-                }
-            }
+            // No lazy Intervals healing — the backfill importer owns the mirror.
             ObjectNode normalized = normalizeStreams(streams);
             if (normalized != null) {
                 com.sgen.service.garmin.GpsTrackTrimmer.trimNormalized(normalized);
                 details.put("streams", normalized);
                 details.put("powerCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("watts")));
                 details.put("hrCurve", com.sgen.service.garmin.CurveCalculator.curve(normalized.get("heartrate")));
-            }
-            // Mirror streams lack a usable latlng payload — fetch the /map payload instead.
-            if (!details.containsKey("mapData")) {
-                try {
-                    String mapJson = intervalsApi.getString(client, "/api/v1/activity/{id}/map", activityId);
-                    if (mapJson != null && !mapJson.isEmpty()) {
-                        JsonNode mapData = objectMapper.readTree(mapJson);
-                        if (mapData instanceof com.fasterxml.jackson.databind.node.ObjectNode mo
-                                && mo.get("latlngs") != null) {
-                            com.sgen.service.garmin.GpsTrackTrimmer.trimLatlngs(mo.get("latlngs"));
-                        }
-                        details.put("mapData", mapData);
-                    }
-                } catch (Exception e) {
-                    log.debug("Map fetch for {} failed: {}", activityId, e.getMessage());
-                }
+                // Map payload built locally from the latlng stream — same
+                // shape the Intervals /map endpoint returns.
+                ObjectNode map = localMapData(normalized);
+                if (map.has("latlngs")) details.put("mapData", map);
             }
             if (intervals != null) {
                 com.sgen.util.IntervalEnrichment.enrich(intervals, normalized);
@@ -254,6 +213,21 @@ public class IntervalsActivityDetailService {
     /** Normalize Intervals streams (array [{type,data}] or object) to {type→data}. */
     private ObjectNode normalizeStreams(JsonNode streams) {
         return com.sgen.service.garmin.CurveCalculator.normalizeStreams(streams);
+    }
+
+    /** {latlngs: [[lat,lng],...]} from the latlng stream — the shape the
+     *  frontend map renderer expects (Intervals /map payload format). */
+    private ObjectNode localMapData(ObjectNode normalized) {
+        ObjectNode map = objectMapper.createObjectNode();
+        if (normalized.get("latlng") instanceof com.fasterxml.jackson.databind.node.ArrayNode ll) {
+            int valid = 0;
+            for (JsonNode p : ll) {
+                if (p != null && p.isArray() && p.size() >= 2
+                        && p.get(0).isNumber() && p.get(1).isNumber()) valid++;
+            }
+            if (valid >= 2) map.set("latlngs", ll);
+        }
+        return map;
     }
 
     /** Pace curve for running activities, shared by the API and mirror paths. */

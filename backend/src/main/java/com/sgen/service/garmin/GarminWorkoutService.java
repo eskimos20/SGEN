@@ -7,12 +7,13 @@ import com.sgen.entity.GarminWorkoutPush;
 import com.sgen.repository.GarminWorkoutPushRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Pushes planned workouts to the user's Garmin Connect calendar:
@@ -33,9 +34,24 @@ public class GarminWorkoutService {
     private final GarminWorkoutPushRepository pushRepository;
     private final ObjectMapper objectMapper;
 
-    @Async
+    // No @EnableAsync in the app — @Async was dead code and these calls ran
+    // synchronously on the request thread (blocking event creation on Garmin
+    // round-trips). A dedicated single-thread executor does the job instead.
+    private final ExecutorService workoutExecutor = Executors.newSingleThreadExecutor();
+
+    @jakarta.annotation.PreDestroy
+    public void shutdown() {
+        workoutExecutor.shutdown();
+    }
+
     public void scheduleWorkout(Long userId, Long calendarEventId, Integer intervalsEventId,
                                 Map<String, Object> eventData, String sportKey) {
+        workoutExecutor.submit(() -> scheduleWorkoutSync(
+                userId, calendarEventId, intervalsEventId, eventData, sportKey));
+    }
+
+    private void scheduleWorkoutSync(Long userId, Long calendarEventId, Integer intervalsEventId,
+                                     Map<String, Object> eventData, String sportKey) {
         GarminWorkoutPush push = pushRepository.findByCalendarEventId(calendarEventId)
                 .orElseGet(() -> GarminWorkoutPush.builder()
                         .userId(userId).calendarEventId(calendarEventId).build());
@@ -94,13 +110,14 @@ public class GarminWorkoutService {
         }
     }
 
-    @Async
     public void deleteWorkoutByIntervalsEvent(Long userId, Integer intervalsEventId) {
-        // Several pushes can share an intervals_event_id after local id reuse —
-        // delete every Garmin object still referenced, skip finished rows.
-        for (GarminWorkoutPush push : pushRepository.findByIntervalsEventIdOrderByIdDesc(intervalsEventId)) {
-            if (!"DELETED".equals(push.getStatus())) deletePush(userId, push);
-        }
+        workoutExecutor.submit(() -> {
+            // Several pushes can share an intervals_event_id after local id reuse —
+            // delete every Garmin object still referenced, skip finished rows.
+            for (GarminWorkoutPush push : pushRepository.findByIntervalsEventIdOrderByIdDesc(intervalsEventId)) {
+                if (!"DELETED".equals(push.getStatus())) deletePush(userId, push);
+            }
+        });
     }
 
     private void deletePush(Long userId, GarminWorkoutPush push) {
@@ -125,8 +142,11 @@ public class GarminWorkoutService {
     }
 
     /** Reschedule = update the existing schedule's date. */
-    @Async
     public void rescheduleByIntervalsEvent(Long userId, Integer intervalsEventId, LocalDate newDate) {
+        workoutExecutor.submit(() -> rescheduleByIntervalsEventSync(userId, intervalsEventId, newDate));
+    }
+
+    private void rescheduleByIntervalsEventSync(Long userId, Integer intervalsEventId, LocalDate newDate) {
         pushRepository.findByIntervalsEventIdOrderByIdDesc(intervalsEventId).stream()
                 .filter(p -> !"DELETED".equals(p.getStatus()))
                 .findFirst()

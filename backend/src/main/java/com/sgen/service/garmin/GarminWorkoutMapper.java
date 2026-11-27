@@ -42,7 +42,7 @@ public class GarminWorkoutMapper {
         workout.put("workoutName", name.length() > 255 ? name.substring(0, 255) : name);
         String desc = String.valueOf(eventData.getOrDefault("description", ""));
         workout.put("description", desc.length() > 1024 ? desc.substring(0, 1024) : desc);
-        workout.put("sport", "run".equals(sportKey) ? "RUNNING" : "CYCLING");
+        workout.put("sport", garminSport(sportKey));
         workout.put("workoutProvider", "SGEN");
         workout.put("workoutSourceId", "SGEN");
         workout.put("isSessionTransitionEnabled", false);
@@ -71,6 +71,18 @@ public class GarminWorkoutMapper {
         segment.set("steps", steps);
         workout.putArray("segments").add(segment);
         return workout;
+    }
+
+    /** Coarse sport_key -> Garmin Training API sport enum. */
+    private String garminSport(String sportKey) {
+        if (sportKey == null) return "GENERIC";
+        return switch (sportKey) {
+            case "run" -> "RUNNING";
+            case "ride" -> "CYCLING";
+            case "swim" -> "LAP_SWIMMING";
+            case "strength" -> "STRENGTH_TRAINING";
+            default -> "GENERIC";
+        };
     }
 
     private void appendStep(ArrayNode out, JsonNode step, int[] order,

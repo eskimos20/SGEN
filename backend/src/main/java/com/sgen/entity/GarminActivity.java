@@ -119,6 +119,11 @@ public class GarminActivity {
     @Column(name = "source", nullable = false, length = 16)
     private String source = "GARMIN";
 
+    /** Intervals.icu activity id of the copy uploaded by GarminFileService —
+     *  lets updates/deletes address the upstream copy directly. */
+    @Column(name = "intervals_activity_id", length = 32)
+    private String intervalsActivityId;
+
     @Column(name = "raw_json", columnDefinition = "MEDIUMTEXT")
     private String rawJson;
 

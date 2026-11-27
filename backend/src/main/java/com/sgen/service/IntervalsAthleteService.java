@@ -26,6 +26,9 @@ public class IntervalsAthleteService {
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
     private final ZwiftService zwiftService;
+    private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
+    private final com.sgen.service.garmin.GarminClientFactory garminClientFactory;
+    private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
 
     @Value("${intervals.api.base-url}")
     private String intervalsBaseUrl;
@@ -38,12 +41,35 @@ public class IntervalsAthleteService {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         String athleteId = ctx.user.getIntervalsAthleteId();
         Map<String, Object> profile = new HashMap<>();
+        boolean garmin = garminClientFactory.isConnected(ctx.user.getId());
 
-        try {
-            String athleteJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}", athleteId);
-            profile.put("athlete", objectMapper.readTree(athleteJson));
-        } catch (Exception e) {
-            profile.put("athleteError", e.getMessage());
+        // Garmin-connected: the athlete mirror (kept ~daily-fresh by the
+        // statistics fetch) serves both docs — only cold pieces hit the API.
+        if (garmin) {
+            String cachedAthlete = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "athlete");
+            if (cachedAthlete != null) {
+                try { profile.put("athlete", objectMapper.readTree(cachedAthlete)); }
+                catch (Exception ignored) {}
+            }
+            String cachedSettings = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "sport-settings");
+            if (cachedSettings != null) {
+                try { profile.put("sportSettings", objectMapper.readTree(cachedSettings)); }
+                catch (Exception ignored) {}
+            }
+            if (profile.containsKey("athlete") && profile.containsKey("sportSettings")) {
+                log.debug("SOURCE=DB user {} athlete profile served from local mirror", username);
+                return profile;
+            }
+        }
+
+        if (!profile.containsKey("athlete")) {
+            try {
+                String athleteJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}", athleteId);
+                profile.put("athlete", objectMapper.readTree(athleteJson));
+                if (garmin) intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), athleteJson, null);
+            } catch (Exception e) {
+                profile.put("athleteError", e.getMessage());
+            }
         }
 
         // NOTE: GET /athlete/{id}/settings returns UI device settings that
@@ -51,11 +77,14 @@ public class IntervalsAthleteService {
         // over the athlete record — the Athlete schema itself carries the
         // authoritative sync toggles (per OpenAPI spec).
 
-        try {
-            String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", athleteId);
-            profile.put("sportSettings", objectMapper.readTree(sportSettingsJson));
-        } catch (Exception e) {
-            profile.put("sportSettingsError", e.getMessage());
+        if (!profile.containsKey("sportSettings")) {
+            try {
+                String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", athleteId);
+                profile.put("sportSettings", objectMapper.readTree(sportSettingsJson));
+                if (garmin) intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), null, sportSettingsJson);
+            } catch (Exception e) {
+                profile.put("sportSettingsError", e.getMessage());
+            }
         }
 
         return profile;
@@ -105,6 +134,7 @@ public class IntervalsAthleteService {
             JsonNode result = objectMapper.createObjectNode();
             if (!filtered.isEmpty()) {
                 log.info("Updating athlete profile for \"{}\", fields: {}", username, filtered.keySet());
+                rateLimiter.acquire();
                 String responseJson = ctx.client.put()
                         .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                         .bodyValue(filtered)
@@ -114,6 +144,14 @@ public class IntervalsAthleteService {
                     log.info("PUT {}={} -> Intervals echo {}", k, filtered.get(k), echo.path(k));
                 }
                 result = echo;
+                // Keep the athlete mirror fresh — Garmin-connected users
+                // read settings/profile from it.
+                if (garminClientFactory.isConnected(ctx.user.getId())) {
+                    try {
+                        intervalsMirrorService.saveAthleteProfile(
+                                ctx.user.getId(), responseJson, null);
+                    } catch (Exception ignored) {}
+                }
             }
             if (filtered.containsKey("weight") || filtered.containsKey("height")) {
                 zwiftService.syncProfile(username, null);
@@ -131,12 +169,22 @@ public class IntervalsAthleteService {
     public JsonNode updateAthleteSportSettings(String username, Object updates) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             String responseJson = ctx.client.put()
                     .uri("/api/v1/athlete/{id}/sport-settings/{sid}",
                             ctx.user.getIntervalsAthleteId(), ((Map<?, ?>) updates).get("id"))
                     .bodyValue(updates)
                     .retrieve().bodyToMono(String.class).block();
             JsonNode result = objectMapper.readTree(responseJson);
+            // Refresh the mirrored settings array so Garmin-connected users
+            // see the change immediately (mirror reads beat the API there).
+            if (garminClientFactory.isConnected(ctx.user.getId())) {
+                try {
+                    String fresh = intervalsApi.getString(ctx.client,
+                            "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
+                    intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), null, fresh);
+                } catch (Exception ignored) {}
+            }
             maybePushIndoorFtpToZwift(username, (Map<?, ?>) updates, result);
             return result;
         } catch (Exception e) {
@@ -188,6 +236,7 @@ public class IntervalsAthleteService {
     public JsonNode createAthleteSportSettings(String username, Object sportData) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             String responseJson = ctx.client.post()
                     .uri("/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId())
                     .bodyValue(sportData)
@@ -202,6 +251,7 @@ public class IntervalsAthleteService {
     public void deleteAthleteSportSettings(String username, int sportId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             ctx.client.delete()
                     .uri("/api/v1/athlete/{athleteId}/sport-settings/{sportId}",
                             ctx.user.getIntervalsAthleteId(), sportId)
@@ -227,6 +277,7 @@ public class IntervalsAthleteService {
     public JsonNode applySettingsToActivities(String username, int sportId) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             String responseJson = ctx.client.put()
                     .uri("/api/v1/athlete/{athleteId}/sport-settings/{id}/apply",
                             ctx.user.getIntervalsAthleteId(), sportId)
@@ -331,8 +382,17 @@ public class IntervalsAthleteService {
      */
     public JsonNode getSportSettings(String username) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        if (garminClientFactory.isConnected(ctx.user.getId())) {
+            String cached = intervalsMirrorService.findAthleteJson(ctx.user.getId(), "sport-settings");
+            if (cached != null) {
+                try { return objectMapper.readTree(cached); } catch (Exception ignored) {}
+            }
+        }
         try {
             String sportSettingsJson = intervalsApi.getString(ctx.client, "/api/v1/athlete/{id}/sport-settings", ctx.user.getIntervalsAthleteId());
+            if (garminClientFactory.isConnected(ctx.user.getId()) && sportSettingsJson != null) {
+                intervalsMirrorService.saveAthleteProfile(ctx.user.getId(), null, sportSettingsJson);
+            }
             return objectMapper.readTree(sportSettingsJson);
         } catch (Exception e) {
             log.error("Failed to fetch sport settings for {}: {}", username, e.getMessage());

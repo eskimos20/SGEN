@@ -24,6 +24,7 @@ public class IntervalsWellnessService {
     private final com.sgen.service.garmin.IntervalsMirrorService intervalsMirrorService;
     private final IntervalsService intervalsService;
     private final IntervalsStatsService statsService;
+    private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
 
     public List<Map<String, Object>> fetchWellnessData(String username, String oldest, String newest) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
@@ -50,8 +51,23 @@ public class IntervalsWellnessService {
     }
 
     public JsonNode updateWellnessData(String username, List<Map<String, Object>> updates) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
+        var user = userService.getUserEntityByUsername(username);
+        boolean garminConnected = garminClientFactory.isConnected(user.getId());
+        ApiContext ctx = null;
+        try { ctx = clientFactory.buildContext(userService, username); } catch (Exception ignored) {}
+        if (ctx == null) {
+            // No Intervals creds: Garmin-connected users can still edit —
+            // the mirror is the wellness master for them anyway.
+            if (!garminConnected) {
+                throw new RuntimeException("Intervals.icu is not configured");
+            }
+            for (Map<String, Object> update : updates) {
+                intervalsMirrorService.mergeWellnessUpdate(user.getId(), update);
+            }
+            return objectMapper.valueToTree(updates);
+        }
         try {
+            rateLimiter.acquire();
             String json = ctx.client.put()
                     .uri("/api/v1/athlete/{id}/wellness-bulk", ctx.user.getIntervalsAthleteId())
                     .bodyValue(updates)
@@ -71,16 +87,16 @@ public class IntervalsWellnessService {
     }
 
     public JsonNode fetchHrCurves(String username, String oldest, String newest) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        // Garmin-connected: compute from mirrored heartrate streams — no API call.
-        if (garminClientFactory.isConnected(ctx.user.getId())
-                && intervalsMirrorService.hasActivities(ctx.user.getId())) {
+        Long uid = userService.getUserEntityByUsername(username).getId();
+        // Garmin-connected: compute from local streams — no API call.
+        if (garminClientFactory.isConnected(uid)) {
             JsonNode local = statsService.localCurveHistory(
-                    ctx.user.getId(), username, oldest, newest, "all", "heartrate");
+                    uid, username, oldest, newest, "all", "heartrate");
             var wrapper = objectMapper.createObjectNode();
             wrapper.set("hrCurves", local);
             return wrapper;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String json = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{id}/hr-curves")

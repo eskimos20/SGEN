@@ -41,8 +41,12 @@ public class IntervalsActivityOpsService {
     private final IntervalsIntervalService intervalsIntervalService;
     private final IntervalsActivityDetailService activityDetailService;
     private final com.sgen.repository.GarminActivityRepository garminActivityRepository;
+    private final com.sgen.repository.GarminActivityStreamsRepository garminActivityStreamsRepository;
+    private final com.sgen.repository.GarminActivityIntervalRepository garminActivityIntervalRepository;
+    private final com.sgen.repository.UserDailyLoadRepository dailyLoadRepository;
     private final com.sgen.service.garmin.GarminMergeService garminMergeService;
     private final com.sgen.service.garmin.FitnessModelService fitnessModelService;
+    private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
 
     public Map<String, Object> updateActivity(String username, String activityId, Map<String, Object> updates) {
         if (activityId != null && activityId.startsWith("garmin_")) {
@@ -50,6 +54,7 @@ public class IntervalsActivityOpsService {
         }
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             String responseJson = ctx.client.put()
                     .uri("/api/v1/activity/{id}", activityId)
                     .bodyValue(updates)
@@ -76,8 +81,16 @@ public class IntervalsActivityOpsService {
     }
 
     public void deleteActivity(String username, String activityId) {
+        // garmin_ ids are local activities — delete from the Garmin tables,
+        // drop the day's GARMIN load, and remove the uploaded Intervals
+        // copy best-effort.
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            deleteLocalGarminActivity(username, activityId);
+            return;
+        }
         ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             ctx.client.delete()
                     .uri("/api/v1/activity/{activityId}", activityId)
                     .retrieve().bodyToMono(Void.class).block();
@@ -104,6 +117,71 @@ public class IntervalsActivityOpsService {
         }
     }
 
+    /**
+     * Local delete for garmin_ activities: children first (streams,
+     * intervals), then the activity; the day's GARMIN daily-load row is
+     * removed and rebuildGarminLoads recomputes the rest. The uploaded
+     * Intervals copy is deleted best-effort via the stored link (or the
+     * timestamp heuristic for activities uploaded before the link existed).
+     */
+    private void deleteLocalGarminActivity(String username, String activityId) {
+        Long uid = userService.getUserEntityByUsername(username).getId();
+        Long gid = Long.parseLong(activityId.substring("garmin_".length()));
+        var act = garminActivityRepository.findById(gid)
+                .orElseThrow(() -> new RuntimeException("Garmin activity not found: " + activityId));
+        if (!act.getUserId().equals(uid)) {
+            throw new RuntimeException("Activity does not belong to user");
+        }
+        java.time.LocalDate day = act.getStartDateLocal() != null
+                ? act.getStartDateLocal().toLocalDate() : null;
+        garminActivityIntervalRepository.deleteByActivityId(gid);
+        garminActivityStreamsRepository.deleteByActivityId(gid);
+        garminActivityRepository.delete(act);
+        if (day != null) {
+            dailyLoadRepository.deleteByUserIdAndLoadDateAndSource(uid, day, "GARMIN");
+        }
+        fitnessModelService.rebuildGarminLoads(uid);
+        activityAnalysisService.purgeForDeletedActivity(uid, activityId);
+        deleteIntervalsCopy(username, uid, act, day);
+    }
+
+    /** Best-effort upstream delete of the Intervals copy of a Garmin activity. */
+    private void deleteIntervalsCopy(String username, Long uid,
+                                     com.sgen.entity.GarminActivity act, java.time.LocalDate day) {
+        try {
+            String targetId = act.getIntervalsActivityId();
+            if (targetId == null || targetId.isBlank()) {
+                if (day == null) return;
+                for (var row : intervalsActivityRepository
+                        .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(
+                                uid, day.atStartOfDay(), day.plusDays(1).atStartOfDay())) {
+                    JsonNode payload = objectMapper.readTree(row.getPayloadJson());
+                    if (garminMergeService.isDuplicateOfLocal(List.of(act), payload)) {
+                        targetId = row.getActivityId();
+                        break;
+                    }
+                }
+            }
+            if (targetId == null || targetId.isBlank()) return;
+            ApiContext ctx = clientFactory.buildContext(userService, username);
+            rateLimiter.acquire();
+            ctx.client.delete()
+                    .uri("/api/v1/activity/{id}", targetId)
+                    .retrieve().bodyToMono(Void.class).block();
+            final String tid = targetId;
+            intervalsActivityRepository.findByUserIdAndActivityId(uid, tid)
+                    .ifPresent(intervalsActivityRepository::delete);
+            intervalsStreamsRepository.findByUserIdAndActivityId(uid, tid)
+                    .ifPresent(intervalsStreamsRepository::delete);
+            if (day != null) {
+                intervalsMirrorService.deleteIntervalsDailyLoad(uid, day);
+            }
+        } catch (Exception e) {
+            log.debug("Upstream delete of Intervals copy for garmin activity {} failed: {}",
+                    act.getId(), e.getMessage());
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Interval & best-effort — delegate to analysis service
     // -------------------------------------------------------------------------
@@ -127,6 +205,16 @@ public class IntervalsActivityOpsService {
     public JsonNode updateActivityIntervals(String username, String activityId,
                                             List<Map<String, Object>> intervals,
                                             Integer searchDuration) {
+        // garmin_ intervals live in garmin_activity_intervals — replace the
+        // rows locally, no Intervals calls.
+        if (activityId != null && activityId.startsWith("garmin_")) {
+            try {
+                return intervalsIntervalService.updateLocalGarminIntervals(username, activityId, intervals);
+            } catch (Exception e) {
+                log.error("Failed to update local intervals for {}: {}", activityId, e.getMessage());
+                throw new RuntimeException("Failed to update intervals: " + e.getMessage());
+            }
+        }
         try {
             Map<String, Object> details = activityDetailService.getActivityDetails(username, activityId);
             JsonNode activityNode = (JsonNode) details.get("activity");
@@ -159,11 +247,13 @@ public class IntervalsActivityOpsService {
      * also synced there) is updated best-effort to keep data consistent.
      */
     private Map<String, Object> updateLocalGarminActivity(String username, String activityId, Map<String, Object> updates) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
+        // Identity via the user record — Garmin-only users may have removed
+        // their Intervals credentials, so no Intervals context is needed here.
+        Long uid = userService.getUserEntityByUsername(username).getId();
         Long gid = Long.parseLong(activityId.substring("garmin_".length()));
         com.sgen.entity.GarminActivity act = garminActivityRepository.findById(gid)
                 .orElseThrow(() -> new RuntimeException("Garmin activity not found: " + activityId));
-        if (!act.getUserId().equals(ctx.user.getId())) {
+        if (!act.getUserId().equals(uid)) {
             throw new RuntimeException("Activity does not belong to user");
         }
         if (updates.containsKey("name")) {
@@ -192,8 +282,10 @@ public class IntervalsActivityOpsService {
             act.setSportType(intervalsTypeToSportKey(t));
         }
         garminActivityRepository.save(act);
-        fitnessModelService.rebuildGarminLoads(ctx.user.getId());
-        pushToIntervalsCopy(ctx, act, updates);
+        fitnessModelService.rebuildGarminLoads(uid);
+        ApiContext ctx = null;
+        try { ctx = clientFactory.buildContext(userService, username); } catch (Exception ignored) {}
+        if (ctx != null) pushToIntervalsCopy(ctx, act, updates);
         return objectMapper.convertValue(garminMergeService.toIntervalsActivityJson(act), Map.class);
     }
 
@@ -220,15 +312,38 @@ public class IntervalsActivityOpsService {
         }
         if (upstream.isEmpty()) return;
         try {
+            String linkedId = act.getIntervalsActivityId();
+            if (linkedId != null && !linkedId.isBlank()) {
+                rateLimiter.acquire();
+                ctx.client.put().uri("/api/v1/activity/{id}", linkedId)
+                        .bodyValue(upstream)
+                        .retrieve().bodyToMono(String.class).block();
+                intervalsActivityRepository.findByUserIdAndActivityId(ctx.user.getId(), linkedId)
+                        .ifPresent(row -> {
+                            try {
+                                JsonNode payload = objectMapper.readTree(row.getPayloadJson());
+                                if (payload instanceof com.fasterxml.jackson.databind.node.ObjectNode on) {
+                                    upstream.forEach((k, v) -> on.set(k, objectMapper.valueToTree(v)));
+                                    row.setPayloadJson(on.toString());
+                                    intervalsActivityRepository.save(row);
+                                }
+                            } catch (Exception ignored) {}
+                        });
+                return;
+            }
             var day = act.getStartDateLocal().toLocalDate();
             for (var row : intervalsActivityRepository
                     .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(
                             ctx.user.getId(), day.atStartOfDay(), day.plusDays(1).atStartOfDay())) {
                 JsonNode payload = objectMapper.readTree(row.getPayloadJson());
                 if (garminMergeService.isDuplicateOfLocal(List.of(act), payload)) {
+                    rateLimiter.acquire();
                     ctx.client.put().uri("/api/v1/activity/{id}", row.getActivityId())
                             .bodyValue(upstream)
                             .retrieve().bodyToMono(String.class).block();
+                    // Remember the link — the next update skips the heuristic.
+                    act.setIntervalsActivityId(row.getActivityId());
+                    garminActivityRepository.save(act);
                     if (payload instanceof com.fasterxml.jackson.databind.node.ObjectNode on) {
                         upstream.forEach((k, v) -> on.set(k, objectMapper.valueToTree(v)));
                         row.setPayloadJson(on.toString());
@@ -265,6 +380,7 @@ public class IntervalsActivityOpsService {
                 public String getFilename() { return originalFilename; }
             }).header("Content-Disposition", "form-data; name=file; filename=" + originalFilename);
 
+            rateLimiter.acquire();
             String responseJson = ctx.client.post()
                     .uri(uriBuilder -> {
                         uriBuilder.path("/api/v1/athlete/{athleteId}/activities");
@@ -280,7 +396,17 @@ public class IntervalsActivityOpsService {
                                     .map(body -> new RuntimeException("API error " + response.statusCode() + ": " + body)))
                     .bodyToMono(String.class).block();
 
-            return objectMapper.readTree(responseJson);
+            JsonNode uploaded = objectMapper.readTree(responseJson);
+            // Garmin-connected: keep the mirror warm so the new upload is
+            // visible immediately without another Intervals read.
+            if (garminClientFactory.isConnected(ctx.user.getId()) && uploaded != null) {
+                try {
+                    intervalsMirrorService.saveActivity(ctx.user.getId(), uploaded);
+                } catch (Exception e) {
+                    log.debug("Mirror persist of uploaded activity failed: {}", e.getMessage());
+                }
+            }
+            return uploaded;
         } catch (Exception e) {
             log.error("Failed to upload activity for user {}: {}", username, e.getMessage());
             throw new RuntimeException("Failed to upload activity: " + e.getMessage());

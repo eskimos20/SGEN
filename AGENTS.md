@@ -31,12 +31,30 @@
 - With an active Garmin connection, `IntervalsService.fetchAllData` serves
   activities/events **only** from the local mirror tables
   (`intervals_activity`, `intervals_event`) — `SOURCE=DB` in logs.
-  If the mirror is empty (`countByUserId == 0`) it falls back to the
-  Intervals API and persists what it fetches via `IntervalsMirrorService`.
-  Same DB-first + persist pattern applies to wellness
-  (`intervals_wellness`, served via CalendarController), activity
-  details, streams/icu_intervals (hydrated into the FTP analysis step)
-  and training totals.
+  **No Intervals activity-data GETs ever run for Garmin-connected users.**
+  The only exception is the one-time bootstrap import when the mirror is
+  empty — gated by the `activities-seeded` doc in `intervals_documents` so
+  it never re-triggers. There are NO lazy "heal" fetches: missing
+  streams/intervals/details/map stay missing until the backfill importer
+  populates them. Wellness, training totals, power/HR/pace curves,
+  compute-intervals and best-efforts are all mirror/local-Garmin only.
+  Activity details for mirror-missed ids return `{incomplete: true}`.
+- Allowed Intervals reads for Garmin users: athlete profile +
+  sport-settings (served mirror-first from `intervals_athlete`, refreshed
+  ~24h via `fetchMirroredDoc`/`GarminSportSettingsService`), single-event
+  fetch/update fallback, and all writes (activity upload/update/delete,
+  gear, intervals, events, wellness).
+- `garmin_`-prefixed ids are routed locally everywhere: detail view,
+  update, delete (children first + daily-load row + upstream copy via
+  `garmin_activities.intervals_activity_id`), interval writes
+  (`garmin_activity_intervals`), compute-intervals (stored streams), gear
+  (PUT to the linked Intervals copy).
+- `GarminWorkoutService`/`GarminPushProcessor` run background work on
+  dedicated executors — `@Async` is dead code (no `@EnableAsync`); do not
+  rely on it.
+- `garmin_activities.intervals_activity_id` links a Garmin activity to its
+  uploaded Intervals copy — set by `GarminFileService` after FIT upload and
+  lazily by `pushToIntervalsCopy`/gear update via the time-match heuristic.
 - `IntervalsBackfillService` runs on a dedicated single-thread executor —
   `@Async` does NOT work here (self-invocation + no @EnableAsync). The
   HTTP endpoint must return immediately; never run the import inline.

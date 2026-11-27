@@ -27,25 +27,34 @@ public class GarminClientFactory {
     @Value("${garmin.api-base-url:https://apis.garmin.com}")
     private String apiBaseUrl;
 
-    private final ConcurrentHashMap<String, WebClient> clientCache = new ConcurrentHashMap<>();
+    // Keyed by userId (not token): OAuth refresh rotates the token ~daily
+    // and a token-keyed cache would grow unboundedly.
+    private final ConcurrentHashMap<Long, CachedClient> clientCache = new ConcurrentHashMap<>();
 
-    private WebClient forToken(String accessToken) {
-        return clientCache.computeIfAbsent(accessToken, token -> {
-            HttpClient httpClient = HttpClient.create().responseTimeout(Duration.ofSeconds(60));
-            return WebClient.builder()
-                    .baseUrl(apiBaseUrl)
-                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                    .codecs(c -> c.defaultCodecs().maxInMemorySize(20 * 1024 * 1024))
-                    .clientConnector(new ReactorClientHttpConnector(httpClient))
-                    .build();
-        });
+    private record CachedClient(String token, WebClient client) {}
+
+    private WebClient forToken(Long userId, String accessToken) {
+        CachedClient cached = clientCache.get(userId);
+        if (cached != null && cached.token().equals(accessToken)) return cached.client();
+        HttpClient httpClient = HttpClient.create().responseTimeout(Duration.ofSeconds(60));
+        WebClient client = WebClient.builder()
+                .baseUrl(apiBaseUrl)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(20 * 1024 * 1024))
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
+        clientCache.put(userId, new CachedClient(accessToken, client));
+        return client;
     }
 
     /** WebClient for a connected user, or null if not connected. */
     public WebClient clientForUser(Long userId) {
-        if (!connectionRepository.findByUserId(userId).isPresent()) return null;
+        if (!connectionRepository.findByUserId(userId).isPresent()) {
+            clientCache.remove(userId);
+            return null;
+        }
         String token = oauthService.getValidAccessToken(userId);
-        return token == null ? null : forToken(token);
+        return token == null ? null : forToken(userId, token);
     }
 
     /** Whether a user has an ACTIVE garmin connection. */

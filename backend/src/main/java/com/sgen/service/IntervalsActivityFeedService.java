@@ -54,8 +54,24 @@ public class IntervalsActivityFeedService {
                           boolean analyze, Map<String, JsonNode> streamsMap) {
         Long uid = ctx.user.getId();
         String username = ctx.user.getUsername();
-        if (garminConnected && intervalsActivityRepository.countByUserId(uid) > 0) {
-            return serveFromMirror(ctx, uid, username, oldest, newest, analyze, streamsMap);
+        if (garminConnected) {
+            // Mirror populated: serve locally. Mirror empty: the Intervals
+            // import runs once — marked by the "activities-seeded" doc so a
+            // Garmin-only user (whose Intervals feed holds nothing but
+            // restricted GARMIN_CONNECT shells) does not trigger the full
+            // list+hydrate import on every dashboard load.
+            if (intervalsActivityRepository.countByUserId(uid) > 0
+                    || intervalsMirrorService.getDoc(uid, "activities-seeded") != null) {
+                return serveFromMirror(ctx, uid, username, oldest, newest, analyze, streamsMap);
+            }
+            JsonNode imported = fetchFromApi(ctx, uid, username, oldest, newest, true, streamsMap);
+            // Mark seeded only when the import actually ran — a failed fetch
+            // must be retried on the next request.
+            if (imported != null) {
+                intervalsMirrorService.saveDoc(uid, "activities-seeded",
+                        objectMapper.createObjectNode().put("done", true));
+            }
+            return imported;
         }
         return fetchFromApi(ctx, uid, username, oldest, newest, garminConnected, streamsMap);
     }
@@ -99,26 +115,8 @@ public class IntervalsActivityFeedService {
                 if (ints != null && ints.isObject() && ints.has("icu_intervals"))
                     ints = ints.get("icu_intervals");
             }
-            if (str == null || ints == null || (ints.isArray() && ints.isEmpty())) {
-                try {
-                    if (str == null) {
-                        str = intervalsApi.getJson(ctx.client, "/api/v1/activity/{id}/streams", id);
-                    }
-                    if (ints == null) {
-                        JsonNode det = intervalsApi.getJson(ctx.client,
-                                b -> b.path("/api/v1/activity/{id}")
-                                        .queryParam("intervals", "true").build(id));
-                        if (det.has("icu_intervals")) ints = det.get("icu_intervals");
-                        if (det.has("icu_max_watts") && !n.has("icu_max_watts")
-                                && n instanceof ObjectNode on) {
-                            on.set("icu_max_watts", det.get("icu_max_watts"));
-                        }
-                    }
-                    intervalsMirrorService.saveStreams(uid, id, str, ints);
-                } catch (Exception e) {
-                    log.debug("Mirror streams fetch for {} failed: {}", id, e.getMessage());
-                }
-            }
+            // No lazy Intervals fetch here — missing streams/intervals stay
+            // missing; the backfill importer owns populating the mirror.
             if (ints != null) {
                 com.sgen.util.IntervalEnrichment.enrich(ints, str);
                 if (n instanceof ObjectNode on) on.set("icu_intervals", ints);

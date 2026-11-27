@@ -47,10 +47,21 @@ public class GarminMergeService {
      * brands (Suunto/Polar/etc.) always come from Intervals untouched.
      */
     public void mergeActivities(Long userId, JsonNode activitiesNode) {
+        mergeActivities(userId, activitiesNode,
+                LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now().plusDays(1));
+    }
+
+    /**
+     * Same merge, but only local Garmin activities starting within
+     * [from, to] are appended/deduped — use for range-bound responses
+     * (training totals) where appending the full history would corrupt
+     * the totals.
+     */
+    public void mergeActivities(Long userId, JsonNode activitiesNode,
+                                LocalDateTime from, LocalDateTime to) {
         if (!(activitiesNode instanceof ArrayNode arr)) return;
         List<GarminActivity> local = activityRepository
-                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(
-                        userId, LocalDateTime.of(2000, 1, 1, 0, 0), LocalDateTime.now().plusDays(1))
+                .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(userId, from, to)
                 .stream()
                 // MoveIQ auto-detected items are not real activities — the watch
                 // often duplicates a recorded session (e.g. ski flagged as swim)

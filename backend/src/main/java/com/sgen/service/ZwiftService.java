@@ -42,6 +42,7 @@ public class ZwiftService {
     private final UserService userService;
     private final IntervalsClientFactory clientFactory;
     private final ObjectMapper objectMapper;
+    private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15)).build();
 
@@ -159,6 +160,7 @@ public class ZwiftService {
 
     private JsonNode fetchIntervalsAthlete(String username) {
         ApiContext ctx = clientFactory.buildContext(userService, username);
+        rateLimiter.acquire();
         String json = ctx.client.get()
                 .uri("/api/v1/athlete/{id}", ctx.user.getIntervalsAthleteId())
                 .retrieve().bodyToMono(String.class).block();

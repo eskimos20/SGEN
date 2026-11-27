@@ -2,6 +2,7 @@ package com.sgen.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sgen.entity.User;
 import com.sgen.service.IntervalsClientFactory.ApiContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,16 +27,17 @@ public class IntervalsEventService {
     private final com.sgen.repository.GarminWorkoutPushRepository garminWorkoutPushRepository;
     private final com.sgen.repository.CalendarEventRepository calendarEventRepository;
     private final com.sgen.service.garmin.GarminMergeService garminMergeService;
+    private final com.sgen.util.IntervalsApiRateLimiter rateLimiter;
 
     public JsonNode fetchCalendarEvents(String username, String oldest, String newest) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
+        User user = userService.getUserEntityByUsername(username);
         // Garmin-connected: the local DB is master — Intervals is a write
         // destination only, never a read source. No refresh, no pruning.
-        if (garminClientFactory.isConnected(ctx.user.getId())) {
+        if (garminClientFactory.isConnected(user.getId())) {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
             var rows = intervalsEventRepository
-                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(ctx.user.getId(), from, to);
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalAsc(user.getId(), from, to);
             var arr = objectMapper.createArrayNode();
             for (var r : rows) {
                 try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
@@ -43,6 +45,7 @@ public class IntervalsEventService {
             }
             return arr;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events?oldest={oldest}&newest={newest}",
                             ctx.user.getIntervalsAthleteId(), oldest, newest);
@@ -54,32 +57,14 @@ public class IntervalsEventService {
     }
 
     public JsonNode fetchCalendarActivities(String username, String oldest, String newest) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        // Garmin-connected: refresh the mirror from Intervals, then serve it —
-        // protected sources survive even if the API starts filtering them.
-        if (garminClientFactory.isConnected(ctx.user.getId())) {
+        User user = userService.getUserEntityByUsername(username);
+        // Garmin-connected: the local mirror plus local Garmin activities is
+        // the only source — activity data is never pulled from Intervals.
+        if (garminClientFactory.isConnected(user.getId())) {
             var from = java.time.LocalDateTime.parse(oldest + "T00:00:00");
             var to = java.time.LocalDateTime.parse(newest + "T23:59:59");
-            try {
-                String json = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
-                                .path("/api/v1/athlete/{id}/activities")
-                                .queryParam("oldest", oldest)
-                                .queryParam("newest", newest)
-                                .build(ctx.user.getIntervalsAthleteId()));
-                JsonNode fetched = objectMapper.readTree(json);
-                if (fetched != null && fetched.isArray()) {
-                    var keepIds = new java.util.HashSet<String>();
-                    for (JsonNode a : fetched) {
-                        intervalsMirrorService.saveActivity(ctx.user.getId(), a);
-                        keepIds.add(a.path("id").asText());
-                    }
-                    intervalsMirrorService.pruneActivities(ctx.user.getId(), from, to, keepIds);
-                }
-            } catch (Exception e) {
-                log.debug("Calendar activities mirror refresh failed: {}", e.getMessage());
-            }
             var rows = intervalsActivityRepository
-                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(ctx.user.getId(), from, to);
+                    .findByUserIdAndStartDateLocalBetweenOrderByStartDateLocalDesc(user.getId(), from, to);
             var arr = objectMapper.createArrayNode();
             for (var r : rows) {
                 try { arr.add(objectMapper.readTree(r.getPayloadJson())); }
@@ -87,9 +72,10 @@ public class IntervalsEventService {
             }
             // Same merge as statistics — local Garmin activities (with locally
             // computed load) take precedence over their Intervals copies.
-            garminMergeService.mergeActivities(ctx.user.getId(), arr);
+            garminMergeService.mergeActivities(user.getId(), arr, from, to);
             return arr;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String json = intervalsApi.getString(ctx.client, uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{id}/activities")
@@ -104,15 +90,36 @@ public class IntervalsEventService {
     }
 
     public JsonNode fetchEvent(String username, int eventId) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
+        User user = userService.getUserEntityByUsername(username);
         // Local-master events (negative ids) live only in our DB.
-        if (eventId < 0 || garminClientFactory.isConnected(ctx.user.getId())) {
+        if (eventId < 0 || garminClientFactory.isConnected(user.getId())) {
             var row = intervalsEventRepository
-                    .findByUserIdAndEventId(ctx.user.getId(), String.valueOf(eventId)).orElse(null);
-            if (row == null) return null;
-            try { return objectMapper.readTree(row.getPayloadJson()); }
-            catch (Exception e) { return null; }
+                    .findByUserIdAndEventId(user.getId(), String.valueOf(eventId)).orElse(null);
+            if (row != null) {
+                try { return objectMapper.readTree(row.getPayloadJson()); }
+                catch (Exception e) { return null; }
+            }
+            if (eventId < 0 || !garminClientFactory.isConnected(user.getId())) return null;
+            // Positive id not mirrored: an upstream event (e.g. created in the
+            // Intervals UI). Fetch just that event — never the activity feed —
+            // so detail views/edits still work, and mirror it for next time.
+            ApiContext ctx = intervalsCtxOrNull(username);
+            if (ctx == null) return null;
+            try {
+                String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events/{eventId}",
+                        ctx.user.getIntervalsAthleteId(), eventId);
+                JsonNode ev = objectMapper.readTree(json);
+                if (ev != null && ev.isObject()) {
+                    intervalsMirrorService.saveEvents(user.getId(),
+                            objectMapper.createArrayNode().add(ev));
+                }
+                return ev;
+            } catch (Exception e) {
+                log.debug("Upstream event {} fetch failed: {}", eventId, e.getMessage());
+                return null;
+            }
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             String json = intervalsApi.getString(ctx.client, "/api/v1/athlete/{athleteId}/events/{eventId}",
                             ctx.user.getIntervalsAthleteId(), eventId);
@@ -124,23 +131,46 @@ public class IntervalsEventService {
     }
 
     public JsonNode updateEvent(String username, int eventId, Map<String, Object> updates) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        boolean localMaster = garminClientFactory.isConnected(ctx.user.getId());
+        User user = userService.getUserEntityByUsername(username);
+        boolean localMaster = garminClientFactory.isConnected(user.getId());
         if (localMaster) {
             // Local DB is master: apply the update locally first, then push
             // to Intervals best-effort. Positive ids are themselves the
             // upstream id; local events carry theirs in sgen_intervals_id.
-            JsonNode merged = mergeEventIntoMirror(ctx.user.getId(), eventId, updates);
+            JsonNode merged = mergeEventIntoMirror(user.getId(), eventId, updates);
+            ApiContext ctx = intervalsCtxOrNull(username);
             if (merged == null) {
-                throw new RuntimeException("Event not found: " + eventId);
+                // Not mirrored — a positive id may still exist upstream;
+                // push the update there and mirror the response.
+                if (ctx == null || eventId <= 0) {
+                    throw new RuntimeException("Event not found: " + eventId);
+                }
+                try {
+                    rateLimiter.acquire();
+                    String json = ctx.client.put()
+                            .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
+                                    ctx.user.getIntervalsAthleteId(), eventId)
+                            .bodyValue(updates)
+                            .retrieve().bodyToMono(String.class).block();
+                    JsonNode updated = objectMapper.readTree(json);
+                    if (updated != null && updated.isObject()) {
+                        intervalsMirrorService.saveEvents(user.getId(),
+                                objectMapper.createArrayNode().add(updated));
+                    }
+                    return updated;
+                } catch (Exception e) {
+                    throw new RuntimeException("Event not found: " + eventId, e);
+                }
             }
             Long upstreamId = upstreamIdFor(merged, eventId);
+            if (ctx == null) return merged; // no Intervals link — local only
             if (upstreamId == null) {
                 // Never reached Intervals — try creating it there now.
                 pushEventToIntervals(ctx, (com.fasterxml.jackson.databind.node.ObjectNode) merged);
                 return merged;
             }
             try {
+                rateLimiter.acquire();
                 String json = ctx.client.put()
                         .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
                                 ctx.user.getIntervalsAthleteId(), upstreamId)
@@ -148,7 +178,7 @@ public class IntervalsEventService {
                         .retrieve().bodyToMono(String.class).block();
                 JsonNode updated = objectMapper.readTree(json);
                 if (updated != null && eventId > 0) {
-                    intervalsMirrorService.saveEvents(ctx.user.getId(),
+                    intervalsMirrorService.saveEvents(user.getId(),
                             updated.isArray() ? updated : objectMapper.createArrayNode().add(updated));
                 }
                 return merged;
@@ -158,7 +188,9 @@ public class IntervalsEventService {
                 return merged;
             }
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             String json = ctx.client.put()
                     .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
                             ctx.user.getIntervalsAthleteId(), eventId)
@@ -173,14 +205,14 @@ public class IntervalsEventService {
 
     @org.springframework.transaction.annotation.Transactional
     public void deleteEvent(String username, int eventId) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        boolean localMaster = garminClientFactory.isConnected(ctx.user.getId());
+        User user = userService.getUserEntityByUsername(username);
+        boolean localMaster = garminClientFactory.isConnected(user.getId());
         if (localMaster) {
             // Master: always remove locally; Intervals delete best-effort.
             // Resolve the upstream id before deleting the local row.
             Long upstreamId = null;
             var row = intervalsEventRepository
-                    .findByUserIdAndEventId(ctx.user.getId(), String.valueOf(eventId)).orElse(null);
+                    .findByUserIdAndEventId(user.getId(), String.valueOf(eventId)).orElse(null);
             if (row != null) {
                 try {
                     var payload = objectMapper.readTree(row.getPayloadJson());
@@ -188,9 +220,12 @@ public class IntervalsEventService {
                 } catch (Exception ignored) {}
             }
             intervalsEventRepository.deleteByUserIdAndEventId(
-                    ctx.user.getId(), String.valueOf(eventId));
+                    user.getId(), String.valueOf(eventId));
             if (upstreamId == null) return; // never existed upstream
+            ApiContext ctx = intervalsCtxOrNull(username);
+            if (ctx == null) return;
             try {
+                rateLimiter.acquire();
                 ctx.client.delete()
                         .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
                                 ctx.user.getIntervalsAthleteId(), upstreamId)
@@ -201,7 +236,9 @@ public class IntervalsEventService {
             }
             return;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
+            rateLimiter.acquire();
             ctx.client.delete()
                     .uri("/api/v1/athlete/{athleteId}/events/{eventId}",
                             ctx.user.getIntervalsAthleteId(), eventId)
@@ -213,15 +250,15 @@ public class IntervalsEventService {
     }
 
     public JsonNode createEvent(String username, Map<String, Object> eventData) {
-        ApiContext ctx = clientFactory.buildContext(userService, username);
-        if (garminClientFactory.isConnected(ctx.user.getId())) {
+        User user = userService.getUserEntityByUsername(username);
+        if (garminClientFactory.isConnected(user.getId())) {
             // Local DB is master: always write the event locally first with a
             // negative id (compatible with calendar_events and
             // garmin_workout_pushes int columns), then push to Intervals
             // best-effort and remember the upstream id for update/delete.
             var ev = (com.fasterxml.jackson.databind.node.ObjectNode)
                     objectMapper.valueToTree(eventData);
-            ev.put("id", nextLocalEventId(ctx.user));
+            ev.put("id", nextLocalEventId(user));
             ev.put("sgen_local", true);
             // Scheduler events arrive without category — a workout_doc means
             // WORKOUT, same default Intervals applies.
@@ -229,13 +266,16 @@ public class IntervalsEventService {
                 ev.put("category", "WORKOUT");
             }
             normalizeEndDate(ev);
-            intervalsMirrorService.saveEvents(ctx.user.getId(),
+            intervalsMirrorService.saveEvents(user.getId(),
                     objectMapper.createArrayNode().add(ev));
-            pushEventToIntervals(ctx, ev);
+            ApiContext ctx = intervalsCtxOrNull(username);
+            if (ctx != null) pushEventToIntervals(ctx, ev);
             return ev;
         }
+        ApiContext ctx = clientFactory.buildContext(userService, username);
         try {
             List<Map<String, Object>> events = List.of(eventData);
+            rateLimiter.acquire();
             String json = ctx.client.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{athleteId}/events/bulk")
@@ -267,6 +307,7 @@ public class IntervalsEventService {
             outbound.remove("id");
             outbound.remove("sgen_local");
             outbound.remove("sgen_intervals_id");
+            rateLimiter.acquire();
             String json = ctx.client.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/api/v1/athlete/{athleteId}/events/bulk")
@@ -284,6 +325,16 @@ public class IntervalsEventService {
         } catch (Exception e) {
             log.warn("Intervals push failed for local event {} — stays local-only: {}",
                     ev.path("id").asText(), e.getMessage());
+        }
+    }
+
+    /** Intervals context when the user still has credentials configured,
+     *  null otherwise — Garmin-only users may have removed theirs. */
+    private ApiContext intervalsCtxOrNull(String username) {
+        try {
+            return clientFactory.buildContext(userService, username);
+        } catch (Exception e) {
+            return null;
         }
     }
 
