@@ -17,6 +17,7 @@ public class UserResponse {
     private String role;
     private boolean mustChangePassword;
     private boolean hasIntervalsConfig;
+    private Boolean intervalsEnabled;
     private String intervalsAthleteId;
 
     // OpenAI user-level configuration

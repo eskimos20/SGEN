@@ -1,11 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
-import { CheckCircle, Loader2, Link2, Unlink, Download } from 'lucide-react';
+import { CheckCircle, Loader2, Link2, Download } from 'lucide-react';
+import ConnectionCard from '../profile/ConnectionCard';
 
 /**
  * Garmin Connect OAuth connection card with anonymized-data consent gate.
  * The authorize URL is only issued after the user ticks the policy checkbox
  * (backend enforces consent:true before returning the URL).
+ *
+ * Uses the shared connection-card pattern: an On/Off toggle (soft
+ * disconnect — tokens and local data stay, the app just stops treating
+ * the user as Garmin-connected) and a trash can that fully disconnects
+ * after confirmation.
  */
 export default function GarminConnectCard() {
   const [status, setStatus] = useState(null);
@@ -73,9 +79,17 @@ export default function GarminConnectCard() {
     }
   };
 
-  const disconnect = async () => {
-    if (!window.confirm('Disconnect Garmin? Your local Garmin data will be deleted.')) return;
-    setBusy(true);
+  const toggle = async (on) => {
+    try {
+      setError('');
+      await api.post('/garmin/enabled', { enabled: on });
+      setStatus(prev => ({ ...prev, enabled: on }));
+    } catch (e) {
+      setError('Could not update the Garmin connection.');
+    }
+  };
+
+  const handleDelete = async () => {
     try {
       await api.delete('/garmin/disconnect');
       setConsent(false);
@@ -83,8 +97,6 @@ export default function GarminConnectCard() {
       await loadStatus();
     } catch (e) {
       setError('Could not disconnect.');
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -98,25 +110,29 @@ export default function GarminConnectCard() {
     );
   }
 
-  return (
-    <div className="bg-white rounded-xl sm:shadow-sm border border-gray-200 p-3 sm:p-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-900">Garmin (direct connection)</h2>
-          {status.connected && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
-              <CheckCircle className="h-3 w-3" />
-              Connected
-            </span>
-          )}
-          {status.status === 'NEEDS_REAUTH' && (
-            <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-              Reconnect required
-            </span>
-          )}
-        </div>
-      </div>
+  const garminEnabled = status.enabled !== false;
 
+  const badge = status.connected && garminEnabled ? (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+      <CheckCircle className="h-3 w-3" />
+      Connected
+    </span>
+  ) : status.status === 'NEEDS_REAUTH' ? (
+    <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+      Reconnect required
+    </span>
+  ) : null;
+
+  return (
+    <ConnectionCard
+      title="Garmin (direct connection)"
+      name="Garmin"
+      badge={badge}
+      enabled={status.connected ? garminEnabled : true}
+      onToggle={status.connected ? toggle : null}
+      toggleLabel="Enable Garmin Integration"
+      onDelete={status.connected ? handleDelete : null}
+    >
       {status.connected ? (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
@@ -155,13 +171,7 @@ export default function GarminConnectCard() {
             )}
           </div>
 
-          <button
-            onClick={disconnect}
-            disabled={busy}
-            className="inline-flex items-center gap-2 text-sm text-red-600 hover:text-red-700 disabled:opacity-50"
-          >
-            <Unlink className="h-4 w-4" /> Disconnect Garmin
-          </button>
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       ) : (
         <div className="space-y-3">
@@ -197,6 +207,6 @@ export default function GarminConnectCard() {
           </button>
         </div>
       )}
-    </div>
+    </ConnectionCard>
   );
 }

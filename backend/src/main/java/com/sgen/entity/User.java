@@ -33,6 +33,9 @@ public class User {
     @Column(name = "must_change_password")
     private boolean mustChangePassword;
 
+    @Column(name = "intervals_enabled", columnDefinition = "boolean default true")
+    private Boolean intervalsEnabled = true;
+
     @Column(name = "intervals_api_key")
     private String intervalsApiKey;
 

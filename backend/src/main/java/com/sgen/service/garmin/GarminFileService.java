@@ -80,7 +80,8 @@ public class GarminFileService {
     private void uploadToIntervals(GarminFileQueueItem q, byte[] bytes) {
         if (q.getUserId() == null || bytes == null || bytes.length == 0) return;
         var user = userRepository.findById(q.getUserId()).orElse(null);
-        if (user == null || user.getIntervalsApiKey() == null || user.getIntervalsAthleteId() == null) {
+        if (user == null || user.getIntervalsApiKey() == null || user.getIntervalsAthleteId() == null
+                || Boolean.FALSE.equals(user.getIntervalsEnabled())) {
             // No Intervals creds — stays FETCHED so the sweep retries when
             // (if) the user configures Intervals again.
             q.setLastError("No Intervals credentials — upload postponed");

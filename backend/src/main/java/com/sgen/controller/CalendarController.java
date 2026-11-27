@@ -191,7 +191,8 @@ public class CalendarController {
         var user = userService.getUserEntityByUsername(authentication.getName());
         java.util.List<Map<String, Object>> base = java.util.List.of();
         boolean garminConnected = garminClientFactory.isConnected(user.getId());
-        boolean hasIntervals = user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank();
+        boolean hasIntervals = user.getIntervalsAthleteId() != null && !user.getIntervalsAthleteId().isBlank()
+                && !Boolean.FALSE.equals(user.getIntervalsEnabled());
         if (garminConnected) {
             // Local mirror only — Garmin users' wellness is never pulled
             // from Intervals; the backfill importer owns refresh duties.

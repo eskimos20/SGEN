@@ -169,6 +169,9 @@ public class UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        if (request.getIntervalsEnabled() != null) {
+            user.setIntervalsEnabled(request.getIntervalsEnabled());
+        }
         if (request.getIntervalsApiKey() != null) {
             intervalsClientFactory.evict(user.getIntervalsApiKey());
             user.setIntervalsApiKey(request.getIntervalsApiKey());
@@ -226,7 +229,9 @@ public class UserService {
                 .username(user.getUsername())
                 .role(user.getRole().name())
                 .mustChangePassword(user.isMustChangePassword())
-                .hasIntervalsConfig(user.getIntervalsApiKey() != null && user.getIntervalsAthleteId() != null)
+                .hasIntervalsConfig(user.getIntervalsApiKey() != null && user.getIntervalsAthleteId() != null
+                        && !Boolean.FALSE.equals(user.getIntervalsEnabled()))
+                .intervalsEnabled(user.getIntervalsEnabled())
                 .intervalsAthleteId(user.getIntervalsAthleteId())
                 // OpenAI configuration
                 .hasOpenAIConfig(user.getOpenaiApiKey() != null && user.getOpenaiEnabled() != null && user.getOpenaiEnabled()

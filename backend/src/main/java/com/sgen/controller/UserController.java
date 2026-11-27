@@ -4,6 +4,7 @@ import com.sgen.dto.UserProfileRequest;
 import com.sgen.dto.UserResponse;
 import com.sgen.entity.User;
 import com.sgen.service.AIUsageService;
+import com.sgen.service.IntervalsClientFactory;
 import com.sgen.service.IntervalsService;
 import com.sgen.service.OpenAIService;
 import com.sgen.service.UserService;
@@ -29,6 +30,7 @@ public class UserController {
 
     private final UserService userService;
     private final IntervalsService intervalsService;
+    private final IntervalsClientFactory intervalsClientFactory;
     private final OpenAIService openAIService;
     private final AIUsageService aiUsageService;
     private final ZwiftService zwiftService;
@@ -81,6 +83,17 @@ public class UserController {
         ));
     }
 
+    @DeleteMapping("/intervals")
+    public ResponseEntity<Map<String, String>> deleteIntervalsSettings(Authentication authentication) {
+        User user = userService.getUserEntityByUsername(authentication.getName());
+        intervalsClientFactory.evict(user.getIntervalsApiKey());
+        user.setIntervalsApiKey(null);
+        user.setIntervalsAthleteId(null);
+        user.setIntervalsEnabled(false);
+        userService.saveUser(user);
+        return ResponseEntity.ok(Map.of("message", "Intervals.icu settings deleted"));
+    }
+
     @GetMapping("/openai/enabled")
     public ResponseEntity<Map<String, Boolean>> isOpenAIEnabled(Authentication authentication) {
         UserResponse user = userService.getCurrentUser(authentication.getName());
@@ -112,13 +125,23 @@ public class UserController {
 
     @PostMapping("/openai/disable")
     public ResponseEntity<Map<String, String>> disableUserOpenAI(Authentication authentication) {
+        // Values stay in the DB — Off is a pause, not a delete. The trash
+        // can (DELETE /user/openai) is the destructive path.
         UserProfileRequest request = new UserProfileRequest();
         request.setOpenaiEnabled(false);
-        request.setOpenaiApiKey(null);
-        request.setOpenaiModel(null);
-        request.setOpenaiConnectionTested(false);
         userService.updateUserProfile(authentication.getName(), request);
-        return ResponseEntity.ok(Map.of("message", "OpenAI disabled and configuration cleared"));
+        return ResponseEntity.ok(Map.of("message", "OpenAI disabled for user"));
+    }
+
+    @DeleteMapping("/openai")
+    public ResponseEntity<Map<String, String>> deleteOpenAISettings(Authentication authentication) {
+        User user = userService.getUserEntityByUsername(authentication.getName());
+        user.setOpenaiApiKey(null);
+        user.setOpenaiModel(null);
+        user.setOpenaiConnectionTested(false);
+        user.setOpenaiEnabled(false);
+        userService.saveUser(user);
+        return ResponseEntity.ok(Map.of("message", "OpenAI settings deleted"));
     }
 
     @PostMapping("/openai/test")
@@ -126,6 +149,13 @@ public class UserController {
             Authentication authentication,
             @RequestBody Map<String, String> request) {
         String apiKey = request.get("apiKey");
+        if (apiKey == null || apiKey.isBlank() || apiKey.contains("•")) {
+            // Masked placeholder — use the stored key (same fallback as Zwift).
+            apiKey = userService.getUserEntityByUsername(authentication.getName()).getOpenaiApiKey();
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "No OpenAI API key configured"));
+        }
         boolean success = openAIService.testConnection(apiKey);
 
         if (success) {
@@ -186,6 +216,17 @@ public class UserController {
         request.setZwiftEnabled(false);
         userService.updateUserProfile(authentication.getName(), request);
         return ResponseEntity.ok(Map.of("message", "Zwift disabled for user"));
+    }
+
+    @DeleteMapping("/zwift")
+    public ResponseEntity<Map<String, String>> deleteZwiftSettings(Authentication authentication) {
+        User user = userService.getUserEntityByUsername(authentication.getName());
+        user.setZwiftUsername(null);
+        user.setZwiftPassword(null);
+        user.setZwiftPlayerId(null);
+        user.setZwiftEnabled(false);
+        userService.saveUser(user);
+        return ResponseEntity.ok(Map.of("message", "Zwift settings deleted"));
     }
 
     @PostMapping("/zwift/test")

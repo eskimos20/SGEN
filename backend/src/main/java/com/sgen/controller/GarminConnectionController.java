@@ -44,6 +44,7 @@ public class GarminConnectionController {
         User user = userService.getUserEntityByUsername(auth.getName());
         connectionRepository.findByUserId(user.getId()).ifPresentOrElse(conn -> {
             out.put("connected", "ACTIVE".equals(conn.getStatus()));
+            out.put("enabled", conn.getEnabled());
             out.put("status", conn.getStatus());
             out.put("garminUserId", conn.getGarminUserId());
             out.put("scopes", conn.getScopes());
@@ -144,6 +145,21 @@ public class GarminConnectionController {
             url.append(err != null ? "?error=" + err : "?success=true");
         }
         return new RedirectView(url.toString());
+    }
+
+    /** Soft disconnect: keep tokens + local data, just stop treating the
+     *  user as Garmin-connected. Re-enabling flips it back instantly. */
+    @PostMapping("/enabled")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> setEnabled(Authentication auth,
+                                                          @RequestBody Map<String, Boolean> body) {
+        User user = userService.getUserEntityByUsername(auth.getName());
+        boolean enabled = Boolean.TRUE.equals(body.get("enabled"));
+        connectionRepository.findByUserId(user.getId()).ifPresent(conn -> {
+            conn.setEnabled(enabled);
+            connectionRepository.save(conn);
+        });
+        return ResponseEntity.ok(Map.of("enabled", enabled));
     }
 
     @DeleteMapping("/disconnect")

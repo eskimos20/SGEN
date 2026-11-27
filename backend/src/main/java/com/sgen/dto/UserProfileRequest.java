@@ -5,6 +5,8 @@ import lombok.Data;
 @Data
 public class UserProfileRequest {
 
+    private Boolean intervalsEnabled;
+
     private String intervalsApiKey;
 
     private String intervalsAthleteId;

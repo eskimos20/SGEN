@@ -57,9 +57,12 @@ public class GarminClientFactory {
         return token == null ? null : forToken(userId, token);
     }
 
-    /** Whether a user has an ACTIVE garmin connection. */
+    /** Whether a user has an ACTIVE and enabled garmin connection.
+     *  enabled=false is a soft-disconnect: tokens stay in the DB but the
+     *  app treats the user as non-Garmin (Intervals/mirror paths). */
     public boolean isConnected(Long userId) {
         return connectionRepository.findByUserId(userId)
-                .map(c -> "ACTIVE".equals(c.getStatus())).orElse(false);
+                .map(c -> "ACTIVE".equals(c.getStatus()) && !Boolean.FALSE.equals(c.getEnabled()))
+                .orElse(false);
     }
 }

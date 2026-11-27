@@ -39,6 +39,10 @@ public class GarminConnection {
     private String status = "ACTIVE";
 
     @Builder.Default
+    @Column(name = "enabled", nullable = false)
+    private Boolean enabled = true;
+
+    @Builder.Default
     @Column(name = "consent_ai_processing", nullable = false)
     private Boolean consentAiProcessing = false;
 

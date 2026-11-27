@@ -57,7 +57,8 @@ public class IntervalsClientFactory {
 
     public ApiContext buildContext(UserService userService, String username) {
         User user = userService.getUserEntityByUsername(username);
-        if (user.getIntervalsApiKey() == null || user.getIntervalsAthleteId() == null) {
+        if (user.getIntervalsApiKey() == null || user.getIntervalsAthleteId() == null
+                || Boolean.FALSE.equals(user.getIntervalsEnabled())) {
             throw new RuntimeException("Intervals.icu credentials not configured");
         }
         return new ApiContext(user, forApiKey(user.getIntervalsApiKey()));
