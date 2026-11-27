@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
-import { format, subDays } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 
 // Custom hook for Statistics page state management
 export const useStatisticsState = (user) => {
   // User and data state
   const [currentUser, setCurrentUser] = useState(user);
-  const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
