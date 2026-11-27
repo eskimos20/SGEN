@@ -80,6 +80,7 @@ public class IntervalsActivityOpsService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteActivity(String username, String activityId) {
         // garmin_ ids are local activities — delete from the Garmin tables,
         // drop the day's GARMIN load, and remove the uploaded Intervals
